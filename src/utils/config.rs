@@ -91,20 +91,15 @@ impl Config {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct DatabaseConfig {
     /// Database local path
-    pub path: Option<String>,
+    pub path: Option<PathBuf>,
 }
 
 impl DatabaseConfig {
-    /// Get the Database Path
-    pub fn path(&self) -> Option<&str> {
-        self.path.as_deref()
-    }
-
     /// Create / Connect to the Database
     #[cfg(feature = "models")]
     pub async fn database(&self) -> Result<libsql::Database, Error> {
         if let Some(path) = &self.path {
-            log::info!("Connecting to Database: {}", path);
+            log::info!("Connecting to Database: {:?}", path);
 
             // Create all directories in the path
             let dirpath = std::path::Path::new(&path);
@@ -129,9 +124,12 @@ impl DatabaseConfig {
 
 impl Default for DatabaseConfig {
     fn default() -> Self {
-        Self {
-            path: Some("/tmp/konarr.db".to_string()),
-        }
+        let path = match std::env::var("KONARR_DATABASE_PATH") {
+            Ok(path) => PathBuf::from(path),
+            Err(_) => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("konarr.db"),
+        };
+
+        Self { path: Some(path) }
     }
 }
 

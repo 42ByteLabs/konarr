@@ -3,12 +3,13 @@ extern crate rocket;
 extern crate geekorm;
 
 use anyhow::Result;
+use base64::Engine;
 use konarr::{
     models::{self, ServerSettings},
     Config, KonarrError,
 };
 use log::{error, info, warn};
-use rocket::fs::FileServer;
+use rocket::{fs::FileServer, Rocket};
 use rocket_cors::{Cors, CorsOptions};
 
 mod api;
@@ -72,6 +73,19 @@ fn cors(config: &Config) -> Result<Cors, KonarrError> {
     Ok(cors)
 }
 
+fn rocket() -> Rocket<rocket::Build> {
+    // Generate Rocket Secret (32 bytes, base64 encoded)
+    // This will force re-authentication
+    let secret = geekorm::utils::crypto::rand::generate_random_string(32, "");
+    let secret64 = base64::engine::general_purpose::STANDARD.encode(secret);
+
+    let rocket_config = rocket::Config::figment()
+        // Always overwrite the secret key
+        .merge(("secret_key", secret64));
+
+    rocket::custom(rocket_config)
+}
+
 async fn server(config: Config) -> Result<()> {
     let frontend = config.frontend_path()?;
     let cors = cors(&config)?;
@@ -91,7 +105,7 @@ async fn server(config: Config) -> Result<()> {
     };
 
     info!("Building Rocket");
-    let rocket = rocket::build()
+    let rocket = rocket()
         .manage(state)
         .attach(cors)
         // Limit

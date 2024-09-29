@@ -1,3 +1,5 @@
+# Default Configuration for Rocket
+
 [default]
 address = "0.0.0.0"
 port = 8000
@@ -11,9 +13,6 @@ temp_dir = "/tmp"
 cli_colors = true
 
 limits = { json = "10MiB" }
-
-secret_key = "ilq4B6K0SbqRlShA/JUC9RTPzz3KxkgO18yjiaGgXiQ="
-
 
 [debug]
 address = "0.0.0.0"
