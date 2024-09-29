@@ -1,0 +1,17 @@
+# Konarr Server Configuration
+#
+# This is the configuration file for the Konarr server. It is a YAML file that
+# contains the configuration options for the server. The server will read this
+# file when it starts up and use the values to configure itself.
+
+server:
+  domain: 0.0.0.0
+  scheme: http
+  port: 9000
+
+database:
+  path: /data/konarr.db
+
+frontend:
+  path: "/app/dist"
+

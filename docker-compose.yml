@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  konarr:
+    build: .
+    container_name: konarr
+    restart: always
+    ports:
+      - "9000:9000"
+

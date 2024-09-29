@@ -1,0 +1,26 @@
+[default]
+address = "0.0.0.0"
+port = 8000
+workers = 8
+max_blocking = 512
+keep_alive = 5
+ident = "Rocket"
+ip_header = "X-Real-IP" # set to `false` to disable
+log_level = "normal"
+temp_dir = "/tmp"
+cli_colors = true
+
+limits = { json = "10MiB" }
+
+secret_key = "ilq4B6K0SbqRlShA/JUC9RTPzz3KxkgO18yjiaGgXiQ="
+
+
+[debug]
+address = "0.0.0.0"
+workers = 2
+log_level = "debug"
+
+[release]
+address = "0.0.0.0"
+log_level = "normal"
+

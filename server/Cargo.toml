@@ -1,0 +1,42 @@
+[package]
+name = "konarr-server"
+description = "Konarr Web Server API based on Rocket"
+
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+keywords.workspace = true
+categories.workspace = true
+documentation.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+build = "build.rs"
+
+[dependencies]
+konarr = { path = "../", features = ["models"] }
+
+# Rocket web framework
+rocket = { version = "^0.5", features = ["serde_json", "json", "secrets"] }
+rocket_cors = "^0.6"
+rocket-governor = "0.2.0-rc.3"
+
+# Database
+geekorm = { version = "^0.6", features = ["all", "libsql"] }
+libsql = "^0.5"
+
+tokio = { version = "1", features = ["full"] }
+
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.5", features = ["env", "derive"] }
+log = "0.4"
+env_logger = "0.11"
+dotenvy = { version = "0.15", features = ["clap"] }
+console = "0.15"
+
+thiserror = "1"
+

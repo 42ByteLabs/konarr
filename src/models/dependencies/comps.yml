@@ -1,0 +1,11 @@
+# Operating systems
+- type: OperatingSystem
+  purl: pkg:deb/debian
+
+- type: OperatingSystem
+  purl: pkg:deb/alpine
+
+# Programming Languages
+- type: ProgrammingLanguage
+  purl: pkg:apk/python
+
