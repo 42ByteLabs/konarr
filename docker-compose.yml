@@ -1,15 +1,20 @@
 version: "3.8"
 
 services:
+  # Konarr Server
   konarr:
+    # Manually build the image
     build:
       context: .
       dockerfile: ./server/Dockerfile
+    # image: ghcr.io/42bytelabs/konarr:latest
     container_name: konarr
-    restart: always
+    restart: unless-stopped
     ports:
+      # Expose the server on port 9000
       - "9000:9000"
     volumes:
+      # Mount the data and config volumes
       - data:/data
       - config:/config
 
