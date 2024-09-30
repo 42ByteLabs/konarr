@@ -23,11 +23,28 @@ pub struct AdminUserSummary {
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
+pub struct AdminUserStats {
+    total: i64,
+    active: i64,
+    inactive: i64,
+}
+
+#[derive(Default, serde::Serialize, serde::Deserialize)]
+pub struct AdminProjectStats {
+    total: i64,
+    inactive: i64,
+    archived: i64,
+}
+
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminResponse {
     pub settings: HashMap<String, String>,
 
+    pub project_stats: AdminProjectStats,
+
     pub users: Vec<AdminUserSummary>,
+    pub user_stats: AdminUserStats,
 }
 
 #[get("/")]
@@ -44,11 +61,24 @@ pub async fn settings(state: &State<AppState>, session: Session) -> ApiResult<Ad
     let users =
         konarr::models::Users::query(&connection, konarr::models::Users::query_all()).await?;
 
+    let user_stats = AdminUserStats {
+        total: konarr::models::Users::total(&connection).await?,
+        active: konarr::models::Users::count_active(&connection).await?,
+        inactive: konarr::models::Users::count_inactive(&connection).await?,
+    };
+    let project_stats = AdminProjectStats {
+        total: konarr::models::Projects::total(&connection).await?,
+        inactive: konarr::models::Projects::count_inactive(&connection).await?,
+        archived: konarr::models::Projects::count_archived(&connection).await?,
+    };
+
     Ok(Json(AdminResponse {
         settings: settings
             .into_iter()
             .map(|setting| (setting.name.clone(), setting.value))
             .collect(),
+        project_stats,
+        user_stats,
         users: users
             .into_iter()
             .map(|user| AdminUserSummary {
@@ -87,12 +117,24 @@ pub async fn update_settings(
         ServerSettings::query(&connection, ServerSettings::query_all()).await?;
     let users =
         konarr::models::Users::query(&connection, konarr::models::Users::query_all()).await?;
+    let user_stats = AdminUserStats {
+        total: konarr::models::Users::total(&connection).await?,
+        active: konarr::models::Users::count_active(&connection).await?,
+        inactive: konarr::models::Users::count_inactive(&connection).await?,
+    };
+    let project_stats = AdminProjectStats {
+        total: konarr::models::Projects::total(&connection).await?,
+        inactive: konarr::models::Projects::count_inactive(&connection).await?,
+        archived: konarr::models::Projects::count_archived(&connection).await?,
+    };
 
     Ok(Json(AdminResponse {
         settings: settings
             .into_iter()
             .map(|setting| (setting.name.clone(), setting.value))
             .collect(),
+        project_stats,
+        user_stats,
         users: users
             .into_iter()
             .map(|user| AdminUserSummary {

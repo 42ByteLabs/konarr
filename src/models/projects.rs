@@ -126,6 +126,34 @@ impl Projects {
         .await?)
     }
 
+    /// Count the Archived Projects
+    pub async fn count_archived<'a, T>(connection: &'a T) -> Result<i64, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Ok(Projects::row_count(
+            connection,
+            Projects::query_count()
+                .where_eq("status", ProjectStatus::Archived)
+                .build()?,
+        )
+        .await?)
+    }
+
+    /// Count the Inactive Projects
+    pub async fn count_inactive<'a, T>(connection: &'a T) -> Result<i64, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Ok(Projects::row_count(
+            connection,
+            Projects::query_count()
+                .where_eq("status", ProjectStatus::Inactive)
+                .build()?,
+        )
+        .await?)
+    }
+
     /// Count the number of Servers
     pub async fn count_servers<'a, T>(connection: &'a T) -> Result<i64, crate::KonarrError>
     where

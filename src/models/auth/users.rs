@@ -140,6 +140,34 @@ impl Users {
             UserRole::Agent => &config.agents,
         }
     }
+
+    /// Count Active Users
+    pub async fn count_active<'a, T>(connection: &'a T) -> Result<i64, geekorm::Error>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Users::row_count(
+            connection,
+            Users::query_count()
+                .where_eq("state", UserState::Active)
+                .build()?,
+        )
+        .await
+    }
+
+    /// Count Inactive Users
+    pub async fn count_inactive<'a, T>(connection: &'a T) -> Result<i64, geekorm::Error>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Users::row_count(
+            connection,
+            Users::query_count()
+                .where_eq("state", UserState::Disabled)
+                .build()?,
+        )
+        .await
+    }
 }
 
 impl ToString for UserState {
