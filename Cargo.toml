@@ -59,7 +59,7 @@ serde_yaml = "0.9"
 chrono = { version = "0.4", features = ["serde"] }
 rand = "0.8"
 thiserror = "1"
-url = "2.5"
+url = { version = "2.5", features = ["serde"] }
 
 # Database / Models
 geekorm = { version = "0.6.9", features = ["all"], optional = true }
@@ -76,4 +76,7 @@ reqwest = { version = "^0.12", features = ["json", "cookies"], optional = true }
 openssl-sys = { version = "0.9", optional = true }
 # Docker
 bollard = { version = "^0.17", optional = true }
+
+[dev-dependencies]
+anyhow = "1"
 

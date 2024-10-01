@@ -8,11 +8,9 @@ WORKDIR /app
 
 COPY . .
 
-ENV KONARR_GIT_COMMIT=84fde23
-RUN apk add --no-cache openssl-dev musl-dev && \
+RUN apk add --no-cache openssl-dev musl-dev git && \
     rustup target add x86_64-unknown-linux-musl && \
-    cargo build -p konarr-server --release --target x86_64-unknown-linux-musl && \
-    ls -l target/x86_64-unknown-linux-musl/release/
+    cargo build -p konarr-server --release --target x86_64-unknown-linux-musl
 
 # Build the Web
 FROM docker.io/library/node:22-alpine as web

@@ -9,7 +9,7 @@
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
 //!    let client = KonarrClient::init()
-//!         .base("http://localhost:8000".parse().unwrap())
+//!         .base("https://localhost:8000")?
 //!         .build()?;
 //!
 //!     Ok(())
@@ -87,11 +87,12 @@ impl KonarrClient {
             token: None,
         }
     }
-    /// Initialize a new Konarr Client
+    /// Initialize a new Konarr Client Builder
     pub fn init() -> KonarrClientBuilder {
         KonarrClientBuilder::new()
     }
 
+    /// Get the Base URL + Path
     pub(crate) fn url(&self, path: &str) -> Result<Url, url::ParseError> {
         let base = self.base.path().trim_end_matches('/');
         self.base.join(&format!("{}{}", base, path))
@@ -188,9 +189,9 @@ impl KonarrClientBuilder {
     }
 
     /// Set the Base URL
-    pub fn base(mut self, url: impl Into<Url>) -> Self {
-        self.url = Some(url.into());
-        self
+    pub fn base(mut self, url: impl Into<String>) -> Result<Self, crate::KonarrError> {
+        self.url = Some(Url::parse(&url.into())?);
+        Ok(self)
     }
 
     /// Set the API Token

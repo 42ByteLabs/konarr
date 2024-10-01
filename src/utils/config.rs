@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use log::debug;
+use log::{debug, warn};
 use url::Url;
 
 #[cfg(feature = "client")]
@@ -56,16 +56,19 @@ impl Config {
     }
 
     /// Get Frontend URL
-    pub fn frontend_url(&self) -> Result<String, crate::KonarrError> {
+    pub fn frontend_url(&self) -> Result<Url, crate::KonarrError> {
         if let Some(domain) = &self.frontend.domain {
-            Ok(domain.to_string())
+            Ok(domain.clone())
         } else {
-            Ok(format!(
-                "{}://{}:{}",
-                self.server.scheme.clone().unwrap_or("http".to_string()),
-                self.server.domain,
-                self.server.port
-            ))
+            Ok(Url::parse(
+                format!(
+                    "{}://{}:{}",
+                    self.server.scheme.clone().unwrap_or("http".to_string()),
+                    self.server.domain,
+                    self.server.port
+                )
+                .as_str(),
+            )?)
         }
     }
     /// Get the Frontend Path
@@ -161,10 +164,24 @@ impl Default for ServerConfig {
 
 impl ServerConfig {
     /// Get the Server URL
+    ///
+    /// ```rust
+    /// let config = konarr::Config::default();
+    /// let url = config.server.url().unwrap();
+    ///
+    /// assert_eq!(url.as_str(), "https://localhost:9000/");
+    /// ```
     pub fn url(&self) -> Result<Url, crate::KonarrError> {
-        let scheme = self.scheme.clone().unwrap_or("https".to_string());
-        let url = format!("{}://{}:{}", scheme, self.domain, self.port);
-        Ok(Url::parse(&url)?)
+        let url = Url::parse(&format!(
+            "{}://{}:{}",
+            self.scheme.clone().unwrap_or("https".to_string()),
+            self.domain,
+            self.port
+        ))?;
+        if url.scheme() != "https" {
+            warn!("Using insecure scheme: {}", url.scheme());
+        }
+        Ok(url)
     }
     /// Get the Server API URL
     pub fn api_url(&self) -> Result<Url, crate::KonarrError> {
@@ -175,14 +192,14 @@ impl ServerConfig {
     /// Get the Konarr Client
     #[cfg(feature = "client")]
     pub fn client(&self) -> Result<KonarrClient, crate::KonarrError> {
-        Ok(KonarrClient::init().base(self.api_url()?).build()?)
+        Ok(KonarrClient::init().base(self.api_url()?)?.build()?)
     }
 
     /// Get the Konarr Client with Token
     #[cfg(feature = "client")]
     pub fn client_with_token(&self, token: String) -> Result<KonarrClient, crate::KonarrError> {
         Ok(KonarrClient::init()
-            .base(self.api_url()?)
+            .base(self.api_url()?)?
             .token(token)
             .build()?)
     }
@@ -209,7 +226,7 @@ pub struct FrontendConfig {
     /// Path to the Frontend Files to serve
     pub path: PathBuf,
     /// Domain of the Frontend (for CORS)
-    pub domain: Option<String>,
+    pub domain: Option<Url>,
 }
 
 impl Default for FrontendConfig {
