@@ -24,6 +24,11 @@ pub struct Snapshot {
     #[geekorm(new = "Utc::now()")]
     pub created_at: DateTime<Utc>,
 
+    /// Components
+    #[geekorm(skip)]
+    #[serde(skip)]
+    pub components: Vec<Dependencies>,
+
     /// Snapshot Metadata
     #[geekorm(skip)]
     #[serde(skip)]

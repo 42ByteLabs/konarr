@@ -57,7 +57,22 @@ pub(crate) async fn get_dependency(
         let mut dep = models::Component::fetch_by_primary_key(&connection, id).await?;
         dep.fetch(&connection).await?;
 
-        Ok(Json(dep.into()))
+        let projects: Vec<ProjectResp> =
+            models::Projects::find_project_by_component(&connection, dep.id.into())
+                .await?
+                .iter()
+                .map(|p| p.clone().into())
+                .collect();
+
+        Ok(Json(DependencyResp {
+            id: dep.id.into(),
+            r#type: dep.component_type.to_string(),
+            manager: dep.manager.to_string(),
+            name: dep.name.to_string(),
+            purl: Some(dep.purl()),
+            projects: Some(projects),
+            ..Default::default()
+        }))
     }
 }
 

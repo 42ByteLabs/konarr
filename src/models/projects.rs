@@ -7,7 +7,7 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
-use super::Snapshot;
+use super::{Dependencies, Snapshot};
 
 /// Status of the Project
 #[derive(Data, Debug, Default, Clone, PartialEq)]
@@ -240,6 +240,40 @@ impl Projects {
         Ok(projects)
     }
 
+    /// Find a list of projects by component in latest snapshot
+    pub async fn find_project_by_component<'a, T>(
+        connection: &'a T,
+        component_id: i32,
+    ) -> Result<Vec<Self>, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        let mut results = vec![];
+        // TODO: This is a terrible way to do this
+        let mut projects = Projects::query(connection, Projects::query_all()).await?;
+
+        for proj in projects.iter_mut() {
+            if let Some(snap) = proj.fetch_latest_snapshot(connection).await? {
+                let dep = Dependencies::query(
+                    connection,
+                    Dependencies::query_select()
+                        .where_eq("snapshot_id", snap.id)
+                        .and()
+                        .where_eq("component_id", component_id)
+                        .limit(1)
+                        .build()?,
+                )
+                .await?;
+
+                if dep.len() == 1 {
+                    results.push(proj.clone());
+                }
+            }
+        }
+
+        Ok(results)
+    }
+
     /// Find all the possible parents
     pub async fn find_parents<'a, T>(connection: &'a T) -> Result<Vec<Self>, crate::KonarrError>
     where
@@ -296,6 +330,7 @@ impl Projects {
         match ProjectSnapshots::query_first(
             connection,
             ProjectSnapshots::query_select()
+                .where_eq("project_id", self.id)
                 .order_by("created_at", QueryOrder::Desc)
                 .limit(1)
                 .build()?,
