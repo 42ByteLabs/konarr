@@ -21,8 +21,20 @@ It is designed to be lightweight and fast, with minimal resource usage.
 
 It is written in [Rust][rust-lang], uses [Rocker][rocket] for the web server, and [Vue.js](https://vuejs.org/) for the front-end.
 
+<details>
+<summary><strong>Origin Story</strong></summary>
 
-**Name origin**: Konarr is from the name [Konar quo Maten](https://oldschool.runescape.wiki/w/Konar_quo_Maten) (translated as Konar the Hunter) from the game [Old School Runescape](https://oldschool.runescape.com/).
+This project came out of the need to monitor my homelab for insecure dependencies / components.
+All the products that offer this are proprietary and cost money to use.
+
+[In December 2021, Log4Shell (CVE-2021-44228)](https://en.wikipedia.org/wiki/Log4Shell) came dropped and like most of the world I was running around trying to find if I had a service using it.
+Turned out I was but it was a painful process in finding if I was even using it.
+
+**Name Origin:**
+
+Konarr is from the name [Konar quo Maten](https://oldschool.runescape.wiki/w/Konar_quo_Maten) (translated as Konar the Hunter) from the game [Old School Runescape](https://oldschool.runescape.com/).
+
+</details>
 
 ## ✨ Features
 
@@ -38,7 +50,42 @@ TODO: Update this section with the correct information.
 
 ## 🚀 Quick Start
 
-TODO: Update this section with the correct information.
+### Server
+
+The Konarr Server is a Rust (Server) and VueJS (frontend) that 
+
+#### Konarr Server using Docker Compose
+
+```bash
+# Download docker-compose config
+curl https://raw.githubusercontent.com/42ByteLabs/konarr/refs/heads/main/docker-compose.yml
+
+# Spin up container using Docker Compose
+docker-compose up -d
+```
+
+*Note:* Podman-compose also works.
+
+#### Konarr Server using Docker
+
+```bash
+docker run -it --rm \
+    -p 9000:9000 \
+    -v ./data:/data -v ./config:/config \
+    ghcr.io/42bytelabs/konarr:latest
+```
+
+### Agent
+
+#### Running Agent in Docker
+
+```bash
+docker run -it --rm \
+    -e KONARR_INSTANCE \
+    -e KONARR_AGENT_TOKEN \
+    -e KONARR_PROJECT_ID \
+    ghcr.io/42bytelabs/konarr-agent:latest
+```
 
 ## ❤️  Maintainers / Contributors
 
