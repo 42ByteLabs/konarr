@@ -62,13 +62,15 @@ thiserror = "1"
 url = { version = "2.5", features = ["serde"] }
 
 # Database / Models
-geekorm = { version = "0.6.10", features = ["all", "libsql"], optional = true }
+geekorm = { version = "0.6.10", features = ["all", "semver", "libsql"], optional = true }
 libsql = { version = "^0.6", optional = true }
 
 # SBOM
 purl = { version = "^0.1" }
 serde_json = "1.0"
 sha2 = "0.10"
+semver = { version = "1.0", features = ["serde"] }
+
 # Runtime
 tokio = { version = "1", features = ["full"], optional = true }
 async-trait = "0.1"

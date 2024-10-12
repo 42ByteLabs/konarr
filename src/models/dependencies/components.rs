@@ -80,7 +80,8 @@ impl Component {
         }
 
         let version: ComponentVersion = if let Some(version) = purl.version() {
-            ComponentVersion::new(component.id, version.to_string())
+            let v = version.replace('v', "");
+            ComponentVersion::new(component.id, v)
         } else {
             ComponentVersion::new(component.id, "0.0.0".to_string())
         };
@@ -178,6 +179,11 @@ pub struct ComponentVersion {
 }
 
 impl ComponentVersion {
+    /// Semver Version
+    pub fn version(&self) -> Result<semver::Version, crate::KonarrError> {
+        Ok(semver::Version::parse(self.version.as_str())?)
+    }
+
     /// Find or Create Component Version
     pub async fn find_or_crate<'a, T>(
         &mut self,

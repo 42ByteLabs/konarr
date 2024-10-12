@@ -19,6 +19,9 @@ pub enum KonarrError {
     /// Figment Error
     #[error("Figment Error")]
     FigmentError(#[from] figment::Error),
+    /// Semver Version Error
+    #[error("Version Error")]
+    VersionError(#[from] semver::Error),
 
     /// Parsing Bill of Materials Error
     #[error("Failed to parse SBOM: {0}")]
