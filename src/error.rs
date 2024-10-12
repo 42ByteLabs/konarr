@@ -16,6 +16,9 @@ pub enum KonarrError {
     /// JSON Error
     #[error("JSON Error: {0}")]
     JsonError(#[from] serde_json::Error),
+    /// Figment Error
+    #[error("Figment Error")]
+    FigmentError(#[from] figment::Error),
 
     /// Parsing Bill of Materials Error
     #[error("Failed to parse SBOM: {0}")]

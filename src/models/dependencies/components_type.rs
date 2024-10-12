@@ -5,7 +5,7 @@ use std::fmt::Display;
 use crate::bom::sbom::BomComponentType;
 
 /// Component Type Enum
-#[derive(Data, Debug, Default, Clone)]
+#[derive(Data, Debug, Hash, Default, Clone, PartialEq, Eq)]
 pub enum ComponentType {
     /// Library
     Library,
@@ -15,16 +15,14 @@ pub enum ComponentType {
     Framework,
     /// Operating System
     OperatingSystem,
-    /// Device
-    Device,
-    /// File
-    File,
+    /// Package Manager
+    PackageManager,
     /// Container
     Container,
     /// Firmware
     Firmware,
-    /// Data
-    Data,
+    /// Cryptograph Library
+    CryptoLibrary,
     /// Service
     Service,
     /// Database
@@ -47,11 +45,10 @@ impl Display for ComponentType {
             ComponentType::Application => write!(f, "application"),
             ComponentType::Framework => write!(f, "framework"),
             ComponentType::OperatingSystem => write!(f, "operating_system"),
-            ComponentType::Device => write!(f, "device"),
-            ComponentType::File => write!(f, "file"),
+            ComponentType::PackageManager => write!(f, "package_manager"),
             ComponentType::Container => write!(f, "container"),
             ComponentType::Firmware => write!(f, "firmware"),
-            ComponentType::Data => write!(f, "data"),
+            ComponentType::CryptoLibrary => write!(f, "cryptography_library"),
             ComponentType::Service => write!(f, "service"),
             ComponentType::Database => write!(f, "database"),
             ComponentType::OperatingEnvironment => write!(f, "operating_environment"),
@@ -69,11 +66,10 @@ impl From<&String> for ComponentType {
             "application" => ComponentType::Application,
             "framework" => ComponentType::Framework,
             "os" | "operatingsystem" | "operating_system" => ComponentType::OperatingSystem,
-            "device" => ComponentType::Device,
-            "file" => ComponentType::File,
-            "container" => ComponentType::Container,
+            "package_manager" => ComponentType::PackageManager,
+            "container" | "docker" => ComponentType::Container,
             "firmware" => ComponentType::Firmware,
-            "data" => ComponentType::Data,
+            "crypto" | "cryptography" | "cryptography_library" => ComponentType::CryptoLibrary,
             "service" => ComponentType::Service,
             "db" | "database" => ComponentType::Database,
             "operatingenvironment" | "operating_environment" => ComponentType::OperatingEnvironment,
@@ -84,6 +80,12 @@ impl From<&String> for ComponentType {
     }
 }
 
+impl From<String> for ComponentType {
+    fn from(value: String) -> Self {
+        Self::from(&value)
+    }
+}
+
 impl From<BomComponentType> for ComponentType {
     fn from(value: BomComponentType) -> Self {
         match value {
@@ -91,11 +93,9 @@ impl From<BomComponentType> for ComponentType {
             BomComponentType::Application => ComponentType::Application,
             BomComponentType::Framework => ComponentType::Framework,
             BomComponentType::OperatingSystem => ComponentType::OperatingSystem,
-            BomComponentType::Device => ComponentType::Device,
-            BomComponentType::File => ComponentType::File,
             BomComponentType::Container => ComponentType::Container,
             BomComponentType::Firmware => ComponentType::Firmware,
-            BomComponentType::Data => ComponentType::Data,
+            BomComponentType::CryptoLibrary => ComponentType::CryptoLibrary,
             BomComponentType::Service => ComponentType::Service,
             BomComponentType::Database => ComponentType::Database,
             BomComponentType::OperatingEnvironment => ComponentType::OperatingEnvironment,

@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use figment::{providers::Format, Figment};
 use log::{debug, warn};
 use url::Url;
 
@@ -37,8 +38,11 @@ impl Config {
     /// Load the Configuration
     pub fn load(path: &PathBuf) -> Result<Self, Error> {
         debug!("Loading Configuration: {:?}", path);
-        let config = std::fs::read_to_string(path)?;
-        Ok(serde_yaml::from_str(config.as_str())?)
+
+        Ok(Figment::new()
+            .merge(figment::providers::Env::prefixed("KONARR_"))
+            .merge(figment::providers::Yaml::file(path))
+            .extract()?)
     }
 
     /// Save the Configuration
@@ -57,17 +61,21 @@ impl Config {
 
     /// Get Frontend URL
     pub fn frontend_url(&self) -> Result<Url, crate::KonarrError> {
+        let scheme = if let Some(scheme) = &self.server.scheme {
+            if scheme.as_str() == "http" {
+                log::warn!("Insecure HTTP is being used...")
+            }
+            scheme
+        } else {
+            log::warn!("Defaulting to insecure HTTP (no TLS)");
+            &"http".to_string()
+        };
+
         if let Some(domain) = &self.frontend.domain {
             Ok(domain.clone())
         } else {
             Ok(Url::parse(
-                format!(
-                    "{}://{}:{}",
-                    self.server.scheme.clone().unwrap_or("http".to_string()),
-                    self.server.domain,
-                    self.server.port
-                )
-                .as_str(),
+                format!("{}://{}:{}", scheme, self.server.domain, self.server.port).as_str(),
             )?)
         }
     }

@@ -128,16 +128,12 @@ pub enum BomComponentType {
     Framework,
     /// Operating System
     OperatingSystem,
-    /// Device
-    Device,
-    /// File
-    File,
     /// Container
     Container,
     /// Firmware
     Firmware,
-    /// Data
-    Data,
+    /// CryptoLibrary
+    CryptoLibrary,
     /// Service
     Service,
     /// Database
@@ -160,11 +156,8 @@ impl From<String> for BomComponentType {
             "application" => BomComponentType::Application,
             "framework" => BomComponentType::Framework,
             "operating_system" => BomComponentType::OperatingSystem,
-            "device" => BomComponentType::Device,
-            "file" => BomComponentType::File,
             "container" => BomComponentType::Container,
             "firmware" => BomComponentType::Firmware,
-            "data" => BomComponentType::Data,
             "service" => BomComponentType::Service,
             "database" => BomComponentType::Database,
             "operating_environment" => BomComponentType::OperatingEnvironment,

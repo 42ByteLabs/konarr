@@ -1,11 +1,17 @@
 # Operating systems
-- type: OperatingSystem
-  purl: pkg:deb/debian
+os:
+  - pkg:deb/debian
+  - pkg:deb/alpine
 
-- type: OperatingSystem
-  purl: pkg:deb/alpine
+# Package Managers
+package_manager:
+  - pkg:deb/debian/apt
+  - pkg:apk/alpine/apk-tools
+  - pkg:generic/composer
+  - pkg:golang/golang.org/x/mod
 
 # Programming Languages
-- type: ProgrammingLanguage
-  purl: pkg:apk/python
+programming_languages:
+  - pkg:apk/python
+  - pkg:golang/cloud.google.com/go
 

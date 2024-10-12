@@ -1,6 +1,6 @@
 //! # Dependency Components Models / Tables
 
-use std::{fmt::Display, str::FromStr};
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use geekorm::prelude::*;
 use log::debug;
@@ -11,11 +11,7 @@ use super::ComponentType;
 
 const COMPONENTS: &str = include_str!("./comps.yml");
 
-#[derive(Deserialize)]
-struct CompYml {
-    pub r#type: String,
-    pub purl: String,
-}
+type CompYml = HashMap<String, Vec<String>>;
 
 /// Component Model
 #[derive(Table, Debug, Default, Clone, Serialize, Deserialize)]
@@ -44,12 +40,15 @@ impl Component {
         debug!("Creating and Initialising Component Table");
         Component::create_table(connection).await?;
 
-        let comps: Vec<CompYml> = serde_yaml::from_str(COMPONENTS)?;
+        let comps: CompYml = serde_yaml::from_str(COMPONENTS)?;
         debug!("Creating Standard Components: {}", comps.len());
-        for comp in comps {
-            let (mut component, _) = Component::from_purl(comp.purl)?;
-            component.component_type = ComponentType::from(&comp.r#type);
-            component.fetch_or_create(connection).await?;
+        for (name, purls) in &comps {
+            let comp_type = ComponentType::from(name);
+            for purl in purls {
+                let (mut component, _) = Component::from_purl(purl)?;
+                component.component_type = comp_type.clone();
+                component.fetch_or_create(connection).await?;
+            }
         }
 
         Ok(())
@@ -138,6 +137,28 @@ impl Component {
             .build()?;
 
         Ok(Component::query(connection, select).await?)
+    }
+
+    /// Find Component by type
+    pub async fn find_by_component_type<'a, T>(
+        connection: &'a T,
+        ctype: impl Into<ComponentType>,
+        page: usize,
+        limit: usize,
+    ) -> Result<Vec<Component>, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        let ctype = ctype.into();
+        Ok(Self::query(
+            connection,
+            Self::query_select()
+                .where_eq("component_type", ctype)
+                .limit(limit)
+                .offset(page * limit)
+                .build()?,
+        )
+        .await?)
     }
 }
 

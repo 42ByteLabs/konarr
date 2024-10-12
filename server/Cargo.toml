@@ -23,8 +23,8 @@ rocket_cors = "^0.6"
 rocket-governor = "0.2.0-rc.3"
 
 # Database
-geekorm = { version = "^0.6", features = ["all", "libsql"] }
-libsql = "^0.5"
+geekorm = { version = "^0.6.10", features = ["all", "libsql", "log"] }
+libsql = "^0.6"
 
 tokio = { version = "1", features = ["full"] }
 
