@@ -10,6 +10,7 @@ use tokio::spawn;
 use tokio_schedule::{every, Job};
 
 async fn run(arguments: Arguments) -> Result<()> {
+    #[allow(unused_mut)]
     let mut config = match Config::load(&arguments.config) {
         Ok(config) => config,
         Err(error) => {
@@ -70,7 +71,7 @@ async fn run(arguments: Arguments) -> Result<()> {
             database_url,
         }) => {
             if let Some(url) = database_url {
-                config.database.path = Some(url);
+                config.database.path = Some(url.into());
             }
             cli::database::run(&config, subcommands).await
         }

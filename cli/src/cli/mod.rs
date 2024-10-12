@@ -50,7 +50,7 @@ pub struct Arguments {
 pub enum ArgumentCommands {
     #[cfg(feature = "database")]
     Database {
-        #[clap(long, env = "DATABASE_URL")]
+        #[clap(long, env = "KONARR_DATABASE_URL")]
         database_url: Option<String>,
 
         #[clap(subcommand)]
@@ -63,10 +63,10 @@ pub enum ArgumentCommands {
     },
     Agent {
         /// Root Server Project ID
-        #[clap(long, env = "PROJECT_ID")]
+        #[clap(long, env = "KONARR_PROJECT_ID")]
         project_id: Option<u32>,
 
-        #[clap(long, env = "HOST")]
+        #[clap(long, env = "KONARR_HOST")]
         hostname: Option<String>,
 
         /// Agent Token
