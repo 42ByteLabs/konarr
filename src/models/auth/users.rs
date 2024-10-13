@@ -58,7 +58,7 @@ pub enum UserRole {
 }
 
 /// User State
-#[derive(Data, Debug, Default, Clone)]
+#[derive(Data, Debug, Default, Clone, PartialEq, Eq)]
 pub enum UserState {
     /// Active User
     #[default]
@@ -88,13 +88,58 @@ impl Users {
         Ok(user)
     }
 
+    /// User Login function
+    pub async fn login<'a, T>(
+        connection: &'a T,
+        username: impl Into<String>,
+        password: impl Into<String>,
+    ) -> Result<(Self, Sessions), KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        let username = username.into();
+        let password = password.into();
+        let mut user = match Users::fetch_by_username(connection, username).await {
+            Ok(u) => u,
+            Err(e) => {
+                log::warn!("Failed to login due to error: {}", e);
+                return Err(KonarrError::AuthenticationError(
+                    "Invalid credentials".to_string(),
+                ));
+            }
+        };
+
+        if user.state == UserState::Disabled {
+            return Err(KonarrError::Unauthorized);
+        }
+
+        if !user.check_password(password)? {
+            Err(KonarrError::AuthenticationError(
+                "Invalid credentials".to_string(),
+            ))
+        } else {
+            log::info!("Logging in user: {:?}", user.id);
+            let mut session = user.fetch_sessions(connection).await?;
+            session.state = SessionState::Active;
+            session.regenerate_token();
+            session.last_accessed = chrono::Utc::now();
+            session.update(connection).await?;
+
+            log::info!("Created new session for user");
+
+            Ok((user, session))
+        }
+    }
+
     /// Revoke the current session of the user
     pub async fn logout<'a, T>(&mut self, connection: &'a T) -> Result<(), geekorm::Error>
     where
         T: GeekConnection<Connection = T> + 'a,
     {
         self.sessions.data.state = SessionState::Inactive;
-        self.sessions.data.update(connection).await
+        self.sessions.data.update(connection).await?;
+        log::info!("Logged out user :: {:?}", self.id);
+        Ok(())
     }
 
     /// Validate Users Session
@@ -167,6 +212,16 @@ impl Users {
                 .build()?,
         )
         .await
+    }
+}
+
+impl From<&str> for UserState {
+    fn from(value: &str) -> Self {
+        match value.to_lowercase().as_str() {
+            "active" | "activate" => UserState::Active,
+            "reset" => UserState::Reset,
+            _ => UserState::Disabled,
+        }
     }
 }
 

@@ -31,6 +31,9 @@ pub enum KonarrError {
     #[error("Failed to index data: {0}")]
     IndexingError(String),
 
+    /// Authentication Error
+    #[error("Authentication Error: {0}")]
+    AuthenticationError(String),
     /// Unauthorized Error
     #[error("Unauthorized")]
     Unauthorized,

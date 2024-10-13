@@ -16,6 +16,14 @@ pub struct Session {
     pub session: Sessions,
 }
 
+#[allow(unused)]
+#[derive(Debug)]
+pub struct AdminSession {
+    pub user: Users,
+    #[allow(unused)]
+    pub session: Sessions,
+}
+
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for Session {
     type Error = ();
@@ -85,5 +93,22 @@ impl<'r> FromRequest<'r> for Session {
         };
 
         Outcome::Success(Session { user, session })
+    }
+}
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for AdminSession {
+    type Error = ();
+
+    async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        let session: Session = try_outcome!(req.guard::<Session>().await);
+
+        match session.user.role {
+            UserRole::Admin => Outcome::Success(AdminSession {
+                user: session.user,
+                session: session.session,
+            }),
+            _ => Outcome::Error((rocket::http::Status::Unauthorized, ())),
+        }
     }
 }

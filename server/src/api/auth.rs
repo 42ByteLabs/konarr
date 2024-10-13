@@ -46,22 +46,17 @@ pub async fn login(
 ) -> ApiResult<LoginResponse> {
     let connection = state.db.connect()?;
 
-    let mut user: Users = Users::fetch_by_username(&connection, payload.username.clone()).await?;
+    let (user, session) = Users::login(
+        &connection,
+        payload.username.clone(),
+        payload.password.clone(),
+    )
+    .await?;
 
-    if !user.check_password(&payload.password)? {
-        Ok(Json(LoginResponse::failed("Invalid credentials")))
-    } else {
-        info!("Logging in user: {:?}", user.id);
-        let mut session = user.fetch_sessions(&connection).await?;
-        session.state = SessionState::Active;
-        session.regenerate_token();
-        session.last_accessed = chrono::Utc::now();
-        session.update(&connection).await?;
+    cookies.add_private(("x-konarr-token", session.token));
+    log::info!("Successfull logged in: {:?}", user.id);
 
-        cookies.add_private(("x-konarr-token", session.token));
-
-        Ok(Json(LoginResponse::success()))
-    }
+    Ok(Json(LoginResponse::success()))
 }
 
 #[post("/logout")]
