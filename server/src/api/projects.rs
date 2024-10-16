@@ -251,15 +251,24 @@ impl From<models::Projects> for ProjectResp {
             None
         };
 
+        let status: Option<bool> = match &snapshot {
+            Some(snap) => snap
+                .find_metadata("status")
+                .map(|status| status.value == "online".as_bytes()),
+            None => None,
+        };
+
         ProjectResp {
             id: project.id.into(),
             name: project.name.clone(),
             title: project.title.unwrap_or(project.name),
+            status,
             project_type: project.project_type.to_string(),
             description: project.description.clone(),
             created_at: project.created_at.to_string(),
             snapshot: snapshot.map(|snap| snap.into()),
             snapshots: project.snapshots.len() as u32,
+            security: Some(super::security::SecuritySummary::default()),
             parent,
             children: project
                 .children

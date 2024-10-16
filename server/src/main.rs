@@ -120,7 +120,8 @@ async fn server(config: Config) -> Result<()> {
         .mount("/api/projects", api::projects::routes())
         .mount("/api/snapshots", api::snapshots::routes())
         .mount("/api/dependencies", api::dependencies::routes())
-        .mount("/api/admin", api::admin::routes());
+        .mount("/api/admin", api::admin::routes())
+        .mount("/api", api::websock::routes());
 
     if let Err(e) = rocket.launch().await {
         error!("Error launching Rocket: {}", e);

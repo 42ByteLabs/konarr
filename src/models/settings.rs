@@ -40,7 +40,7 @@ pub struct ServerSettings {
     pub value: String,
 
     /// Updated At Datetime
-    #[geekorm(new = "chrono::Utc::now()")]
+    #[geekorm(new = "chrono::Utc::now()", on_update = "chrono::Utc::now()")]
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 

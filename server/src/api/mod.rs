@@ -17,6 +17,7 @@ pub mod dependencies;
 pub mod projects;
 pub mod security;
 pub mod snapshots;
+pub mod websock;
 
 /// API Response Wrapper
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

@@ -21,6 +21,7 @@ konarr = { path = "../", features = ["models"] }
 rocket = { version = "^0.5", features = ["serde_json", "json", "secrets"] }
 rocket_cors = "^0.6"
 rocket-governor = "0.2.0-rc.3"
+ws = { package = "rocket_ws", version = "0.1" }
 
 # Database
 geekorm = { version = "^0.6.10", features = ["all", "libsql", "log"] }

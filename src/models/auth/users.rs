@@ -119,13 +119,17 @@ impl Users {
             ))
         } else {
             log::info!("Logging in user: {:?}", user.id);
+            let login_time = chrono::Utc::now();
+
             let mut session = user.fetch_sessions(connection).await?;
             session.state = SessionState::Active;
             session.regenerate_token();
-            session.last_accessed = chrono::Utc::now();
+            session.last_accessed = login_time.clone();
             session.update(connection).await?;
 
             log::info!("Created new session for user");
+            user.last_login = login_time;
+            user.update(connection).await?;
 
             Ok((user, session))
         }

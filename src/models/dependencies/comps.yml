@@ -15,3 +15,7 @@ programming_languages:
   - pkg:apk/python
   - pkg:golang/cloud.google.com/go
 
+database:
+  - pkg:apk/debian/sqlite
+  - pkg:apk/alpine/sqlite
+
