@@ -42,10 +42,6 @@ authors.workspace = true
 shared-version = true
 tag-name = "v{{version}}"
 
-[[bin]]
-name = "konarr"
-path = "cli/src/main.rs"
-
 [features]
 default = []
 # Database / Models
