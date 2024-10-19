@@ -58,17 +58,26 @@ async fn create(config: &Config) -> Result<()> {
 }
 
 fn cors(config: &Config) -> Result<Cors, KonarrError> {
-    let domain = config.frontend_url()?;
-    info!("CORS Domain: {}", domain);
+    let cors = if let Some(domain) = config.frontend_url()? {
+        info!("CORS Domain: {}", domain);
 
-    let cors = CorsOptions {
-        // TODO: Update this to be more secure
-        allowed_origins: rocket_cors::AllowedOrigins::some_exact(&[domain]),
-        allow_credentials: true,
-        ..Default::default()
-    }
-    .to_cors()
-    .map_err(|_| KonarrError::UnknownError("Failed to build CORS".to_string()))?;
+        CorsOptions {
+            // TODO: Update this to be more secure
+            allowed_origins: rocket_cors::AllowedOrigins::some_exact(&[domain]),
+            allow_credentials: true,
+            ..Default::default()
+        }
+        .to_cors()
+        .map_err(|_| KonarrError::UnknownError("Failed to build CORS".to_string()))?
+    } else {
+        // TODO: Is this secure?
+        warn!("CORS Domain: Allowing all origins");
+        CorsOptions {
+            allowed_origins: rocket_cors::AllowedOrigins::all(),
+            allow_credentials: true,
+            ..Default::default()
+        }
+    };
 
     Ok(cors)
 }

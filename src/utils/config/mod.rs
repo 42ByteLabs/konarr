@@ -1,9 +1,31 @@
-//! Configuration
+//! # Konarr Configuration
+//!
+//! This is the main configuration for the Konarr Server. It is used to configure the server, database, and other settings.
+//!
+//! ## Example
+//!
+//! ```yaml
+//! database:
+//!   path: /var/lib/konarr/konarr.db
+//! server:
+//!   domain: localhost
+//! sessions:
+//!   admins:
+//!     expires: 1 # 1 hour
+//!   users:
+//!     expires: 24 # 24 hours
+//! ```
+//!
+//! This allows you to configure the server to run as you need it to.
+//!
+//!
 
-use std::path::PathBuf;
-
-use figment::{providers::Format, Figment};
+use figment::{
+    providers::{Format, Serialized},
+    Figment,
+};
 use log::{debug, warn};
+use std::path::PathBuf;
 use url::Url;
 
 #[cfg(feature = "client")]
@@ -11,6 +33,27 @@ use crate::client::KonarrClient;
 use crate::error::KonarrError as Error;
 
 /// Application Configuration
+///
+/// ```rust
+/// let data = r#"
+/// database:
+///   path: /var/lib/konarr/konarr.db
+/// server:
+///   domain: konarr.42bytelabs.com
+///   scheme: https
+/// agent:
+///   id: 1
+/// "#;
+/// // Set the KONARR_DATABASE_PATH environment variable to /etc/konarr.db
+/// std::env::set_var("KONARR_DB_PATH", "/etc/konarr.db");
+///
+/// let config = konarr::Config::load_str(data).unwrap();
+///
+/// # assert_eq!(config.database.path, Some(std::path::PathBuf::from("/etc/konarr.db")));
+/// # assert_eq!(config.server.domain, Some("konarr.42bytelabs.com".to_string()));
+/// # assert_eq!(config.server.url().unwrap(), url::Url::parse("https://konarr.42bytelabs.com/").unwrap());
+///
+/// ```
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     /// Database Configuration
@@ -23,15 +66,7 @@ pub struct Config {
 
     /// Project Configuration
     #[serde(default)]
-    pub project: ProjectConfig,
-
-    /// Frontend Configuration
-    #[serde(default)]
-    pub frontend: FrontendConfig,
-
-    /// Session Configuration
-    #[serde(default)]
-    pub sessions: SessionsConfig,
+    pub agent: AgentConfig,
 }
 
 impl Config {
@@ -39,10 +74,33 @@ impl Config {
     pub fn load(path: &PathBuf) -> Result<Self, Error> {
         debug!("Loading Configuration: {:?}", path);
 
-        Ok(Figment::new()
-            .merge(figment::providers::Env::prefixed("KONARR_"))
+        let figment = Figment::new()
             .merge(figment::providers::Yaml::file(path))
-            .extract()?)
+            .merge(figment::providers::Env::prefixed("KONARR_"));
+
+        let mut config: Self = figment.extract()?;
+        // TODO: Redo this to be more dynamic
+        config.database = DatabaseConfig::figment(&config.database).extract()?;
+        config.server = ServerConfig::figment(&config.server).extract()?;
+        config.agent = AgentConfig::figment(&config.agent).extract()?;
+
+        Ok(config)
+    }
+
+    /// Load the Configuration from a String
+    pub fn load_str(data: impl Into<String>) -> Result<Self, Error> {
+        let data = data.into();
+        debug!("Loading Configuration from str");
+
+        let figment = Figment::new()
+            .merge(figment::providers::Yaml::string(&data))
+            .merge(figment::providers::Env::prefixed("KONARR_"));
+
+        let mut config: Self = figment.extract()?;
+        config.database = DatabaseConfig::figment(&config.database).extract()?;
+        config.server = ServerConfig::figment(&config.server).extract()?;
+        config.agent = AgentConfig::figment(&config.agent).extract()?;
+        Ok(config)
     }
 
     /// Save the Configuration
@@ -60,28 +118,34 @@ impl Config {
     }
 
     /// Get Frontend URL
-    pub fn frontend_url(&self) -> Result<Url, crate::KonarrError> {
-        let scheme = if let Some(scheme) = &self.server.scheme {
+    ///
+    /// ```rust
+    /// let config = konarr::Config::default();
+    /// let url = config.frontend_url().unwrap();
+    ///
+    /// # assert_eq!(url, None);
+    /// ```
+    pub fn frontend_url(&self) -> Result<Option<Url>, crate::KonarrError> {
+        if let Some(domain) = &self.server.domain {
+            let scheme = self.server.scheme.clone();
             if scheme.as_str() == "http" {
                 log::warn!("Insecure HTTP is being used...")
             }
-            scheme
-        } else {
-            log::warn!("Defaulting to insecure HTTP (no TLS)");
-            &"http".to_string()
-        };
 
-        if let Some(domain) = &self.frontend.domain {
-            Ok(domain.clone())
+            let url_str = if let Some(port) = self.server.port {
+                format!("{}://{}:{}", scheme, domain, port)
+            } else {
+                format!("{}://{}", scheme, domain)
+            };
+
+            Ok(Some(Url::parse(&url_str)?))
         } else {
-            Ok(Url::parse(
-                format!("{}://{}:{}", scheme, self.server.domain, self.server.port).as_str(),
-            )?)
+            Ok(None)
         }
     }
     /// Get the Frontend Path
     pub fn frontend_path(&self) -> Result<PathBuf, Error> {
-        let path = self.frontend.path.clone();
+        let path = self.server.frontend.clone();
         if path.exists() {
             Ok(path)
         } else {
@@ -90,11 +154,6 @@ impl Config {
                 format!("Frontend Path does not exist: {:?}", path),
             )))
         }
-    }
-
-    /// Get Sessions Configuration
-    pub fn sessions<'c>(&'c self) -> &'c SessionsConfig {
-        &self.sessions
     }
 }
 
@@ -106,6 +165,12 @@ pub struct DatabaseConfig {
 }
 
 impl DatabaseConfig {
+    /// Get the Database Configuration
+    pub(crate) fn figment(base: &Self) -> Figment {
+        Figment::from(Serialized::defaults(base))
+            .merge(figment::providers::Env::prefixed("KONARR_DB_"))
+    }
+
     /// Create / Connect to the Database
     #[cfg(feature = "models")]
     pub async fn database(&self) -> Result<libsql::Database, Error> {
@@ -148,43 +213,66 @@ impl Default for DatabaseConfig {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ServerConfig {
     /// Server Domain
-    pub domain: String,
+    pub domain: Option<String>,
     /// Port
-    pub port: u16,
+    pub port: Option<i32>,
     /// Scheme
     #[serde(default)]
-    pub scheme: Option<String>,
-    /// Entry Point
+    pub scheme: String,
+
+    // Frontend Settings
+    /// Frontend static files path
     #[serde(default)]
-    pub api: ServerApiConfig,
+    pub frontend: PathBuf,
+
+    /// Entry Point for the API (default to `/api`)
+    #[serde(default)]
+    pub api: String,
 }
 
 impl Default for ServerConfig {
     fn default() -> Self {
+        let frontend = match std::env::var("KONARR_CLIENT_PATH") {
+            Ok(path) => PathBuf::from(path),
+            Err(_) => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("client/build"),
+        };
+
         Self {
-            domain: "localhost".to_string(),
-            port: 9000,
-            scheme: Some("https".to_string()),
-            api: ServerApiConfig::default(),
+            domain: None,
+            port: None,
+            scheme: "http".to_string(),
+            frontend,
+            api: "/api".to_string(),
         }
     }
 }
 
 impl ServerConfig {
+    /// Get the Server Configuration
+    pub(crate) fn figment(base: &Self) -> Figment {
+        Figment::from(Serialized::defaults(base))
+            .merge(figment::providers::Env::prefixed("KONARR_SERVER_"))
+    }
     /// Get the Server URL
     ///
     /// ```rust
     /// let config = konarr::Config::default();
     /// let url = config.server.url().unwrap();
     ///
-    /// assert_eq!(url.as_str(), "https://localhost:9000/");
+    /// assert_eq!(url.as_str(), "http://localhost:9000/");
     /// ```
     pub fn url(&self) -> Result<Url, crate::KonarrError> {
+        let port = if self.scheme.as_str() == "http" {
+            9000
+        } else {
+            443
+        };
+
         let url = Url::parse(&format!(
             "{}://{}:{}",
-            self.scheme.clone().unwrap_or("https".to_string()),
-            self.domain,
-            self.port
+            self.scheme.clone(),
+            self.domain.clone().unwrap_or("localhost".to_string()),
+            port
         ))?;
         if url.scheme() != "https" {
             warn!("Using insecure scheme: {}", url.scheme());
@@ -192,9 +280,16 @@ impl ServerConfig {
         Ok(url)
     }
     /// Get the Server API URL
+    ///
+    /// ```rust
+    /// let config = konarr::Config::default();
+    /// let url = config.server.api_url().unwrap();
+    ///
+    /// assert_eq!(url.as_str(), "http://localhost:9000/api");
+    /// ```
     pub fn api_url(&self) -> Result<Url, crate::KonarrError> {
         let url = self.url()?;
-        Ok(url.join(self.api.entrypoint.as_str())?)
+        Ok(url.join(self.api.as_str())?)
     }
 
     /// Get the Konarr Client
@@ -210,41 +305,6 @@ impl ServerConfig {
             .base(self.api_url()?)?
             .token(token)
             .build()?)
-    }
-}
-
-/// Server API Configuration
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct ServerApiConfig {
-    /// Entry Point
-    pub entrypoint: String,
-}
-
-impl Default for ServerApiConfig {
-    fn default() -> Self {
-        Self {
-            entrypoint: "/api".to_string(),
-        }
-    }
-}
-
-/// Frontend Configuration
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct FrontendConfig {
-    /// Path to the Frontend Files to serve
-    pub path: PathBuf,
-    /// Domain of the Frontend (for CORS)
-    pub domain: Option<Url>,
-}
-
-impl Default for FrontendConfig {
-    fn default() -> Self {
-        let path = match std::env::var("KONARR_CLIENT_PATH") {
-            Ok(path) => PathBuf::from(path),
-            Err(_) => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("client/build"),
-        };
-
-        Self { path, domain: None }
     }
 }
 
@@ -280,7 +340,17 @@ impl Default for SessionsConfig {
 
 /// Project Configuration
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
-pub struct ProjectConfig {
-    /// Project ID
+pub struct AgentConfig {
+    /// Agent base Project ID (default to root project of 0)
     pub id: Option<u32>,
+
+    /// Agent Token
+    pub token: Option<String>,
+}
+
+impl AgentConfig {
+    pub(crate) fn figment(base: &Self) -> Figment {
+        Figment::from(Serialized::defaults(base))
+            .merge(figment::providers::Env::prefixed("KONARR_AGENT_"))
+    }
 }
