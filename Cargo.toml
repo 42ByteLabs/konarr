@@ -50,6 +50,7 @@ models = ["dep:geekorm", "dep:libsql"]
 tools = ["dep:tokio", "client"]
 # Client
 client = ["dep:reqwest", "dep:openssl", "dep:tokio"]
+websocket = []
 docker = ["dep:bollard"]
 
 [dependencies]
@@ -81,7 +82,11 @@ openssl = { version = "0.10", features = ["vendored"], optional = true }
 # Docker
 bollard = { version = "^0.17", optional = true }
 figment = { version = "0.10.19", features = ["env", "serde_yaml", "yaml"] }
+tokio-tungstenite = { version = "0.24.0", features = ["url", "native-tls"] }
 
 [dev-dependencies]
+konarr = { path = ".", features = ["client"] }
+tokio = { version = "1", features = ["full"] }
 anyhow = "1"
+
 
