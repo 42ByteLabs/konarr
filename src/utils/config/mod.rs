@@ -54,7 +54,7 @@ use crate::error::KonarrError as Error;
 /// # assert_eq!(config.server.url().unwrap(), url::Url::parse("https://konarr.42bytelabs.com/").unwrap());
 ///
 /// ```
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     /// Database Configuration
     #[serde(default)]
@@ -167,7 +167,7 @@ impl Config {
 }
 
 /// Database Configuration
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DatabaseConfig {
     /// Database local path
     pub path: Option<PathBuf>,
@@ -219,7 +219,7 @@ impl Default for DatabaseConfig {
 }
 
 /// Server Configuration
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ServerConfig {
     /// Server Domain
     pub domain: Option<String>,
@@ -318,7 +318,7 @@ impl ServerConfig {
 }
 
 /// Sessions Configuration
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SessionsConfig {
     /// Admin Config
     pub admins: SessionsRoleConfig,
@@ -329,7 +329,7 @@ pub struct SessionsConfig {
 }
 
 /// Session Role Config
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SessionsRoleConfig {
     /// Time in hours of when a session should be invalidated
     pub expires: i32,
@@ -348,7 +348,7 @@ impl Default for SessionsConfig {
 }
 
 /// Project Configuration
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct AgentConfig {
     /// Agent base Project ID (default to root project of 0)
     pub project_id: Option<u32>,

@@ -1,33 +1,88 @@
-use std::{collections::HashMap, path::PathBuf};
-
 use bollard::{container::ListContainersOptions, API_DEFAULT_VERSION};
-use clap::Subcommand;
 use konarr::{
-    client::{projects::KonarrProject, snapshot::KonarrSnapshot, ApiResponse},
+    client::{
+        projects::{KonarrProject, KonarrProjects},
+        snapshot::KonarrSnapshot,
+        ApiResponse,
+    },
     tools::{syft::Syft, Tool},
     Config, KonarrError,
 };
 use log::{debug, info};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use tokio::spawn;
+use tokio_schedule::{every, Job};
 
-#[derive(Subcommand, Debug, Clone)]
-pub enum AgentCommands {
-    Docker {
-        #[clap(short, long, env = "DOCKER_HOST")]
-        socket: Option<String>,
+pub async fn setup(
+    config: &Config,
+    client: &konarr::client::KonarrClient,
+) -> Result<(), konarr::KonarrError> {
+    // ID -> Hostname -> New Project
+    let mut project = if let Some(project_id) = config.agent.project_id {
+        KonarrProjects::by_id(&client, project_id).await?
+    } else if let Ok(hostname) = std::env::var("KONARR_HOST") {
+        match KonarrProjects::by_name(&client, &hostname).await {
+            Ok(project) => project,
+            Err(error) => {
+                log::error!("Failed to get project by name: {}", error);
+                return Err(error.into());
+            }
+        }
+    } else if let Ok(hostname) = std::env::var("HOST") {
+        match KonarrProjects::by_name(&client, &hostname).await {
+            Ok(project) => project,
+            Err(error) => {
+                log::error!("Failed to get project by name: {}", error);
+                return Err(error.into());
+            }
+        }
+    } else {
+        log::error!("Failed to get project by ID or Name");
+        return Err(KonarrError::UnknownError(
+            "Unknown project id / name".to_string(),
+        ));
+    };
 
-        #[clap(long, env = "HOST")]
-        host: Option<String>,
-    },
+    info!("Project :: {}", project.id);
+
+    // TODO: Multi-threading is hard...
+    let config = Arc::new(config.clone());
+    let client = Arc::new(client.clone());
+
+    if config.agent.monitoring {
+        info!("Monitoring mode enabled");
+
+        let task = every(1).minutes().perform(move || {
+            // TODO: Multi-threading is hard...
+            let config = config.clone();
+            let client = client.clone();
+            let mut project = project.clone();
+
+            async move {
+                info!("Running task...");
+
+                run(&config, &client, &mut project)
+                    .await
+                    .expect("Panic in monitoring mode...");
+
+                info!("Finishing task... Waiting for next");
+            }
+        });
+        spawn(task).await.expect("Panic in monitoring mode...");
+
+        Ok(())
+    } else {
+        run(&config, &client, &mut project).await?;
+        Ok(())
+    }
 }
 
-pub async fn run(
+async fn run(
     config: &Config,
-    subcommands: Option<AgentCommands>,
     client: &konarr::client::KonarrClient,
-    project: KonarrProject,
+    project: &mut KonarrProject,
 ) -> Result<(), konarr::KonarrError> {
-    let mut project = project.clone();
-    let snapshot = if let Some(snap) = project.snapshot {
+    let snapshot = if let Some(snap) = project.snapshot.clone() {
         snap
     } else {
         info!("Creating Snapshot...");
@@ -39,49 +94,41 @@ pub async fn run(
             }
         }
     };
+
     debug!("Snapshot: {:#?}", snapshot);
     project.snapshot = Some(snapshot);
 
-    match subcommands {
-        #[allow(unused_variables)]
-        Some(AgentCommands::Docker { socket, host }) => {
-            run_docker(config, socket, client, project).await?;
-            Ok(())
+    info!("Auto-Discover mode...");
+
+    // Docker
+    match std::env::var("DOCKER_HOST") {
+        Ok(socket) => {
+            info!("Using Docker Socket: {}", socket);
+            run_docker(config, Some(socket), client, project).await?;
         }
-        None => {
-            info!("Auto-Discover mode...");
-
-            // Docker
-            match std::env::var("DOCKER_HOST") {
-                Ok(socket) => {
-                    info!("Using Docker Socket: {}", socket);
-                    run_docker(config, Some(socket), client, project).await?;
-                }
-                Err(_) => {
-                    let docker_socket = PathBuf::from("/var/run/docker.sock");
-                    if docker_socket.exists() {
-                        info!("Using Docker Socket: {:?}", docker_socket);
-                        run_docker(
-                            config,
-                            Some(docker_socket.to_str().unwrap().to_string()),
-                            client,
-                            project,
-                        )
-                        .await?;
-                    }
-                }
+        Err(_) => {
+            let docker_socket = PathBuf::from("/var/run/docker.sock");
+            if docker_socket.exists() {
+                info!("Using Docker Socket: {:?}", docker_socket);
+                run_docker(
+                    config,
+                    Some(docker_socket.to_str().unwrap().to_string()),
+                    client,
+                    project,
+                )
+                .await?;
             }
-
-            Err(KonarrError::UnknownError("No Agent found".to_string()))
         }
     }
+
+    Ok(())
 }
 
-pub async fn run_docker(
+async fn run_docker(
     _config: &Config,
     socket: Option<String>,
     client: &konarr::client::KonarrClient,
-    server_project: KonarrProject,
+    server_project: &KonarrProject,
 ) -> Result<(), konarr::KonarrError> {
     info!("Docker Monitor Command");
 
@@ -96,7 +143,7 @@ pub async fn run_docker(
     let version = docker.version().await?;
     let engine = version.platform.unwrap_or_default().name;
 
-    let server_snapshot = server_project.snapshot.expect(
+    let server_snapshot = server_project.snapshot.clone().expect(
         "Snapshot is required to update metadata. Please create a snapshot before running this command");
 
     server_snapshot

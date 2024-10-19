@@ -34,8 +34,25 @@ pub struct Arguments {
     #[clap(short, long, env, default_value = "./")]
     pub working_dir: PathBuf,
 
-    #[clap(short, long, env = "KONARR_MONITORING")]
+    // Database Settings
+    /// Database URL (SQLite)
+    #[cfg(feature = "database")]
+    #[clap(long, env = "KONARR_DATABASE_URL")]
+    pub database_url: Option<String>,
+
+    // Agent Settings
+    /// Monitoring Enabled
+    #[clap(short, long, env = "KONARR_AGENT_MONITORING")]
     pub monitoring: bool,
+    /// Agent Token
+    #[clap(short, long, env = "KONARR_AGENT_TOKEN")]
+    pub agent_token: Option<String>,
+    /// Root Server Project ID
+    #[clap(long, env = "KONARR_AGENT_PROJECT_ID")]
+    pub project_id: Option<u32>,
+    /// Agent Hostname
+    #[clap(long, env = "HOST")]
+    pub hostname: Option<String>,
 
     /// If the command is running in a container
     #[clap(long, env = "KONARR_CONTAINER")]
@@ -50,9 +67,6 @@ pub struct Arguments {
 pub enum ArgumentCommands {
     #[cfg(feature = "database")]
     Database {
-        #[clap(long, env = "KONARR_DATABASE_URL")]
-        database_url: Option<String>,
-
         #[clap(subcommand)]
         subcommands: Option<database::DatabaseCommands>,
     },
@@ -62,20 +76,9 @@ pub enum ArgumentCommands {
         subcommands: Option<display::DisplayCommands>,
     },
     Agent {
-        /// Root Server Project ID
-        #[clap(long, env = "KONARR_PROJECT_ID")]
-        project_id: Option<u32>,
-
-        #[clap(long, env = "KONARR_HOST")]
-        hostname: Option<String>,
-
-        /// Agent Token
-        #[clap(short, long, env = "KONARR_AGENT_TOKEN")]
-        agent_token: Option<String>,
-
-        /// Subcommands
-        #[clap(subcommand)]
-        subcommands: Option<agent::AgentCommands>,
+        /// Docker Socket Path
+        #[clap(short, long, env = "DOCKER_HOST")]
+        docker_socket: Option<String>,
     },
     #[cfg(feature = "database")]
     Index {
