@@ -61,6 +61,7 @@ chrono = { version = "0.4", features = ["serde"] }
 rand = "0.8"
 thiserror = "1"
 url = { version = "2.5", features = ["serde"] }
+base64 = "0.22"
 
 # Database / Models
 geekorm = { version = "0.6.10", features = ["all", "semver", "libsql"], optional = true }

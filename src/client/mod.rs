@@ -100,8 +100,13 @@ impl KonarrClient {
         KonarrClientBuilder::new()
     }
 
+    /// Get the URL of the client
+    pub fn url(&self) -> &Url {
+        &self.url
+    }
+
     /// Get the Base URL + Path
-    pub(crate) fn url(&self, path: &str) -> Result<Url, url::ParseError> {
+    pub(crate) fn base(&self, path: &str) -> Result<Url, url::ParseError> {
         let base = self.url.path().trim_end_matches('/');
         self.url.join(&format!("{}{}", base, path))
     }
@@ -160,7 +165,7 @@ impl KonarrClient {
     /// Client GET Request
     pub async fn get(&self, path: &str) -> Result<reqwest::Response, reqwest::Error> {
         self.client
-            .get(self.url(path).unwrap())
+            .get(self.base(path).unwrap())
             .header("Authorization", self.token.clone().unwrap_or_default())
             .send()
             .await
@@ -171,7 +176,7 @@ impl KonarrClient {
         T: serde::Serialize + Send,
     {
         self.client
-            .post(self.url(path).unwrap())
+            .post(self.base(path).unwrap())
             .header("Authorization", self.token.clone().unwrap_or_default())
             .json(&json)
             .send()
@@ -183,7 +188,7 @@ impl KonarrClient {
         T: serde::Serialize + Send,
     {
         self.client
-            .patch(self.url(path).unwrap())
+            .patch(self.base(path).unwrap())
             .header("Authorization", self.token.clone().unwrap_or_default())
             .json(&json)
             .send()
@@ -192,7 +197,7 @@ impl KonarrClient {
     /// Client DELETE Request
     pub async fn delete(&self, path: &str) -> Result<reqwest::Response, reqwest::Error> {
         self.client
-            .delete(self.url(path).unwrap())
+            .delete(self.base(path).unwrap())
             .header("Authorization", self.token.clone().unwrap_or_default())
             .send()
             .await

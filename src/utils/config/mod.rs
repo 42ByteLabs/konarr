@@ -20,6 +20,7 @@
 //!
 //!
 
+use base64::Engine;
 use figment::{
     providers::{Format, Serialized},
     Figment,
@@ -30,7 +31,7 @@ use url::Url;
 
 #[cfg(feature = "client")]
 use crate::client::KonarrClient;
-use crate::error::KonarrError as Error;
+use crate::{error::KonarrError as Error, utils::rand::generate_random_string};
 
 /// Application Configuration
 ///
@@ -88,6 +89,11 @@ impl Config {
         config.server = ServerConfig::figment(&config.server).extract()?;
         config.agent = AgentConfig::figment(&config.agent).extract()?;
 
+        // Generate a secret if one is not provided
+        if config.server.secret.is_empty() {
+            config.server.secret = ServerConfig::generate_secret();
+        }
+
         Ok(config)
     }
 
@@ -131,7 +137,12 @@ impl Config {
     /// ```
     pub fn frontend_url(&self) -> Result<Option<Url>, crate::KonarrError> {
         if let Some(domain) = &self.server.domain {
-            let scheme = self.server.scheme.clone();
+            let scheme = self
+                .server
+                .scheme
+                .clone()
+                .unwrap_or_else(|| "http".to_string());
+
             if scheme.as_str() == "http" {
                 log::warn!("Insecure HTTP is being used...")
             }
@@ -170,6 +181,7 @@ impl Config {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DatabaseConfig {
     /// Database local path
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<PathBuf>,
 }
 
@@ -221,13 +233,23 @@ impl Default for DatabaseConfig {
 /// Server Configuration
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ServerConfig {
+    /// Server / Rocket Secret (default to random)
+    #[serde(default)]
+    pub secret: String,
+
     /// Server Domain
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub domain: Option<String>,
     /// Port
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub port: Option<i32>,
     /// Scheme
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scheme: Option<String>,
+
+    /// CORS Enabled
     #[serde(default)]
-    pub scheme: String,
+    pub cors: bool,
 
     // Frontend Settings
     /// Frontend static files path
@@ -235,8 +257,8 @@ pub struct ServerConfig {
     pub frontend: PathBuf,
 
     /// Entry Point for the API (default to `/api`)
-    #[serde(default)]
-    pub api: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api: Option<String>,
 }
 
 impl Default for ServerConfig {
@@ -247,11 +269,13 @@ impl Default for ServerConfig {
         };
 
         Self {
+            secret: String::new(),
             domain: None,
             port: None,
-            scheme: "http".to_string(),
+            scheme: None,
+            cors: false,
             frontend,
-            api: "/api".to_string(),
+            api: Some("/api".to_string()),
         }
     }
 }
@@ -259,7 +283,8 @@ impl Default for ServerConfig {
 impl ServerConfig {
     /// Get the Server Configuration
     pub(crate) fn figment(base: &Self) -> Figment {
-        Figment::from(Serialized::defaults(base))
+        Figment::from(Serialized::defaults(Self::default()))
+            .merge(Serialized::defaults(base))
             .merge(figment::providers::Env::prefixed("KONARR_SERVER_"))
     }
     /// Get the Server URL
@@ -271,15 +296,19 @@ impl ServerConfig {
     /// assert_eq!(url.as_str(), "http://localhost:9000/");
     /// ```
     pub fn url(&self) -> Result<Url, crate::KonarrError> {
-        let port = if self.scheme.as_str() == "http" {
-            9000
+        let scheme = if let Some(scheme) = &self.scheme {
+            scheme.clone()
         } else {
-            443
+            "http".to_string()
         };
+
+        let port = self
+            .port
+            .unwrap_or_else(|| if scheme.as_str() == "http" { 9000 } else { 443 });
 
         let url = Url::parse(&format!(
             "{}://{}:{}",
-            self.scheme.clone(),
+            scheme,
             self.domain.clone().unwrap_or("localhost".to_string()),
             port
         ))?;
@@ -288,6 +317,7 @@ impl ServerConfig {
         }
         Ok(url)
     }
+
     /// Get the Server API URL
     ///
     /// ```rust
@@ -298,7 +328,16 @@ impl ServerConfig {
     /// ```
     pub fn api_url(&self) -> Result<Url, crate::KonarrError> {
         let url = self.url()?;
-        Ok(url.join(self.api.as_str())?)
+        let api_base = self.api.clone().unwrap_or_else(|| "/api".to_string());
+        Ok(url.join(api_base.as_str())?)
+    }
+
+    /// Generate a base64 encoded secret
+    pub fn generate_secret() -> String {
+        log::info!("Generating Server Secret...");
+        let secret = generate_random_string(32);
+        let secret64 = base64::engine::general_purpose::STANDARD.encode(secret);
+        secret64
     }
 
     /// Get the Konarr Client
@@ -351,14 +390,16 @@ impl Default for SessionsConfig {
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct AgentConfig {
     /// Agent base Project ID (default to root project of 0)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub project_id: Option<u32>,
     /// Agent Token
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
     /// Monitoring Mode Enabled
     #[serde(default)]
     pub monitoring: bool,
     /// Docker Socket
-    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub docker_socket: Option<String>,
 }
 

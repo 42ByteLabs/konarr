@@ -3,7 +3,6 @@ extern crate rocket;
 extern crate geekorm;
 
 use anyhow::Result;
-use base64::Engine;
 use konarr::{
     models::{self, ServerSettings},
     Config, KonarrError,
@@ -40,6 +39,9 @@ async fn main() -> Result<()> {
         }
     };
 
+    info!("Saving Configuration to: {}", arguments.config.display());
+    config.save(&arguments.config)?;
+
     // Database
     create(&config).await?;
     // Server
@@ -58,41 +60,43 @@ async fn create(config: &Config) -> Result<()> {
 }
 
 fn cors(config: &Config) -> Result<Cors, KonarrError> {
-    let cors = if let Some(domain) = config.frontend_url()? {
-        info!("CORS Domain: {}", domain);
+    if config.server.cors {
+        info!("Enabling CORS");
+        let cors = if let Some(domain) = config.frontend_url()? {
+            info!("CORS Domain: {}", domain);
 
-        CorsOptions {
-            // TODO: Update this to be more secure
-            allowed_origins: rocket_cors::AllowedOrigins::some_exact(&[domain]),
-            allow_credentials: true,
-            ..Default::default()
-        }
-        .to_cors()
-        .map_err(|_| KonarrError::UnknownError("Failed to build CORS".to_string()))?
+            CorsOptions {
+                // TODO: Update this to be more secure
+                allowed_origins: rocket_cors::AllowedOrigins::some_exact(&[domain]),
+                allow_credentials: true,
+                ..Default::default()
+            }
+            .to_cors()
+            .map_err(|_| KonarrError::UnknownError("Failed to build CORS".to_string()))?
+        } else {
+            info!("CORS enabled");
+            CorsOptions::default()
+                .to_cors()
+                .map_err(|_| KonarrError::UnknownError("Failed to build CORS".to_string()))?
+        };
+
+        Ok(cors)
     } else {
-        // TODO: Is this secure?
-        warn!("CORS Domain: Allowing all origins");
-        CorsOptions {
+        warn!("CORS is disabled, allowing all origins");
+        Ok(CorsOptions {
             allowed_origins: rocket_cors::AllowedOrigins::all(),
             allow_credentials: true,
             ..Default::default()
         }
         .to_cors()
-        .map_err(|_| KonarrError::UnknownError("Failed to build CORS".to_string()))?
-    };
-
-    Ok(cors)
+        .map_err(|_| KonarrError::UnknownError("Failed to build CORS".to_string()))?)
+    }
 }
 
-fn rocket() -> Rocket<rocket::Build> {
-    // Generate Rocket Secret (32 bytes, base64 encoded)
-    // This will force re-authentication
-    let secret = geekorm::utils::crypto::rand::generate_random_string(32, "");
-    let secret64 = base64::engine::general_purpose::STANDARD.encode(secret);
-
+fn rocket(config: &Config) -> Rocket<rocket::Build> {
     let rocket_config = rocket::Config::figment()
         // Always overwrite the secret key
-        .merge(("secret_key", secret64));
+        .merge(("secret_key", config.server.secret.clone()));
 
     rocket::custom(rocket_config)
 }
@@ -111,12 +115,12 @@ async fn server(config: Config) -> Result<()> {
 
     let state = AppState {
         db: database,
-        config,
+        config: config.clone(),
         init,
     };
 
     info!("Building Rocket");
-    let rocket = rocket()
+    let rocket = rocket(&config)
         .manage(state)
         .attach(cors)
         // Limit

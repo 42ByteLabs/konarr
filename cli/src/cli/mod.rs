@@ -37,7 +37,7 @@ pub struct Arguments {
     // Database Settings
     /// Database URL (SQLite)
     #[cfg(feature = "database")]
-    #[clap(long, env = "KONARR_DATABASE_URL")]
+    #[clap(long, env = "KONARR_DB_URL")]
     pub database_url: Option<String>,
 
     // Agent Settings

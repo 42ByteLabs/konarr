@@ -3,7 +3,11 @@ use konarr::models::{self, ProjectType};
 use rocket::{serde::json::Json, State};
 
 use super::{ApiResponse, ApiResult};
-use crate::{error::KonarrServerError, guards::Session, AppState};
+use crate::{
+    error::KonarrServerError,
+    guards::{AdminSession, Session},
+    AppState,
+};
 
 pub fn routes() -> Vec<rocket::Route> {
     routes![
@@ -221,23 +225,22 @@ pub(crate) async fn update_project_metadata(
 #[delete("/<id>")]
 pub async fn delete_project(
     state: &State<AppState>,
-    session: Session,
+    session: AdminSession,
     id: i32,
 ) -> ApiResult<ProjectResp> {
     let connection = state.db.connect()?;
 
-    if session.user.role == models::UserRole::Admin {
-        let mut project = match models::Projects::fetch_by_primary_key(&connection, id).await {
-            Ok(project) => project,
-            Err(_) => return Err(KonarrServerError::ProjectNotFoundError(id)),
-        };
-        info!("Archiving Project :: {}", project.name);
-        project.archive(&connection).await?;
+    let mut project = match models::Projects::fetch_by_primary_key(&connection, id).await {
+        Ok(project) => project,
+        Err(_) => return Err(KonarrServerError::ProjectNotFoundError(id)),
+    };
+    info!(
+        "Archiving Project :: {} by {}",
+        project.name, session.user.username
+    );
+    project.archive(&connection).await?;
 
-        Ok(Json(project.into()))
-    } else {
-        return Err(KonarrServerError::Unauthorized);
-    }
+    Ok(Json(project.into()))
 }
 
 /// Model -> Response

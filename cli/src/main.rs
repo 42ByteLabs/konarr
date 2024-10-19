@@ -22,12 +22,21 @@ async fn main() -> Result<()> {
 
     match arguments.commands {
         Some(cli::ArgumentCommands::Agent { docker_socket }) => {
+            // HACK: Manually set some stuff for now
             config.agent.docker_socket = docker_socket;
+            config.agent.project_id = arguments.project_id;
+            if let Some(token) = arguments.agent_token {
+                config.agent.token = Some(token);
+            }
 
-            let client = config
-                .server
-                .client_with_token(arguments.agent_token.expect("Agent Token must be provided"))?;
-            info!("Client created");
+            let client = config.server.client_with_token(
+                config
+                    .agent
+                    .token
+                    .clone()
+                    .expect("Agent Token must be provided"),
+            )?;
+            info!("Client created :: {}", client.url());
 
             let serverinfo = client.server().await?;
             info!("Server Info :: {}", serverinfo.version);
