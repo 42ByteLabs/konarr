@@ -4,7 +4,7 @@
 //!
 //! ```no_run
 //! # use anyhow::Result;
-//! use konarr::client::KonarrClient;
+//! use konarr::KonarrClient;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
@@ -69,24 +69,32 @@ where
 /// Konarr REST Client
 #[derive(Debug, Clone)]
 pub struct KonarrClient {
+    /// Base URL
+    url: Url,
+    /// Web Client
     client: reqwest::Client,
-    base: Url,
+    /// Web Server Token
     token: Option<String>,
 }
 
 impl KonarrClient {
     /// New Konarr Client
-    pub fn new(base: impl Into<Url>) -> Self {
+    pub fn new(url: impl Into<Url>) -> Self {
+        let url = url.into();
         let client = reqwest::Client::builder()
             .cookie_store(true)
             .build()
             .unwrap();
+
+        log::debug!("Setting up Konarr Client for {}", url);
+
         Self {
             client,
-            base: base.into(),
+            url,
             token: None,
         }
     }
+
     /// Initialize a new Konarr Client Builder
     pub fn init() -> KonarrClientBuilder {
         KonarrClientBuilder::new()
@@ -94,8 +102,59 @@ impl KonarrClient {
 
     /// Get the Base URL + Path
     pub(crate) fn url(&self, path: &str) -> Result<Url, url::ParseError> {
-        let base = self.base.path().trim_end_matches('/');
-        self.base.join(&format!("{}{}", base, path))
+        let base = self.url.path().trim_end_matches('/');
+        self.url.join(&format!("{}{}", base, path))
+    }
+
+    /// Check to see if the client is authenticated
+    pub async fn is_authenticated(&self) -> bool {
+        self.server()
+            .await
+            .map(|svr| svr.user.is_some())
+            .unwrap_or(false)
+    }
+
+    /// Get Server Information
+    pub async fn server(&self) -> Result<ServerInfo, crate::KonarrError> {
+        debug!("Getting Server Information");
+        self.get("/").await?.json().await.map_err(KonarrError::from)
+    }
+
+    /// Get Projects
+    pub async fn get_projects(
+        &self,
+    ) -> Result<Pagination<projects::KonarrProject>, crate::KonarrError> {
+        projects::KonarrProjects::list(self).await
+    }
+
+    /// Get the User Information
+    pub async fn user(&self) -> Result<Option<User>, crate::KonarrError> {
+        debug!("Getting User Information");
+        Ok(self.server().await?.user)
+    }
+
+    /// Login to Konarr Server
+    pub async fn login(
+        &mut self,
+        username: impl Into<String>,
+        password: impl Into<String>,
+    ) -> Result<(), KonarrError> {
+        let response = self
+            .post(
+                "/auth/login",
+                &serde_json::json!({
+                    "username": username.into(),
+                    "password": password.into(),
+                }),
+            )
+            .await?;
+
+        if response.status().is_success() {
+            info!("Login Successful");
+            Ok(())
+        } else {
+            Err(KonarrError::UnknownError("Login Failed".to_string()))
+        }
     }
 
     /// Client GET Request
@@ -138,41 +197,6 @@ impl KonarrClient {
             .send()
             .await
     }
-
-    /// Get Server Information
-    pub async fn server(&self) -> Result<ServerInfo, crate::KonarrError> {
-        debug!("Getting Server Information");
-        self.get("/").await?.json().await.map_err(KonarrError::from)
-    }
-    /// Get the User Information
-    pub async fn user(&self) -> Result<Option<User>, crate::KonarrError> {
-        debug!("Getting User Information");
-        Ok(self.server().await?.user)
-    }
-
-    /// Login to Konarr Server
-    pub async fn login(
-        &mut self,
-        username: impl Into<String>,
-        password: impl Into<String>,
-    ) -> Result<(), KonarrError> {
-        let response = self
-            .post(
-                "/auth/login",
-                &serde_json::json!({
-                    "username": username.into(),
-                    "password": password.into(),
-                }),
-            )
-            .await?;
-
-        if response.status().is_success() {
-            info!("Login Successful");
-            Ok(())
-        } else {
-            Err(KonarrError::UnknownError("Login Failed".to_string()))
-        }
-    }
 }
 
 /// Konarr Client Builder
@@ -211,7 +235,7 @@ impl KonarrClientBuilder {
 
             Ok(KonarrClient {
                 client,
-                base: url,
+                url,
                 token: self.token,
             })
         } else {
