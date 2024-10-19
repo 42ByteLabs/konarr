@@ -67,6 +67,10 @@ pub struct Config {
     /// Project Configuration
     #[serde(default)]
     pub agent: AgentConfig,
+
+    /// Sessions Configuration
+    #[serde(default)]
+    pub sessions: SessionsConfig,
 }
 
 impl Config {
@@ -154,6 +158,11 @@ impl Config {
                 format!("Frontend Path does not exist: {:?}", path),
             )))
         }
+    }
+
+    /// Get Sessions Configuration
+    pub fn sessions<'c>(&'c self) -> &'c SessionsConfig {
+        &self.sessions
     }
 }
 
