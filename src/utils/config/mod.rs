@@ -351,10 +351,15 @@ impl Default for SessionsConfig {
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct AgentConfig {
     /// Agent base Project ID (default to root project of 0)
-    pub id: Option<u32>,
-
+    pub project_id: Option<u32>,
     /// Agent Token
     pub token: Option<String>,
+    /// Monitoring Mode Enabled
+    #[serde(default)]
+    pub monitoring: bool,
+    /// Docker Socket
+    #[serde(default)]
+    pub docker_socket: Option<String>,
 }
 
 impl AgentConfig {

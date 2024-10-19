@@ -77,6 +77,8 @@ fn cors(config: &Config) -> Result<Cors, KonarrError> {
             allow_credentials: true,
             ..Default::default()
         }
+        .to_cors()
+        .map_err(|_| KonarrError::UnknownError("Failed to build CORS".to_string()))?
     };
 
     Ok(cors)
