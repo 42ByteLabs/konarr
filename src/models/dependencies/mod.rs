@@ -107,7 +107,6 @@ impl Dependencies {
         let snapshop = snapshop.into();
         let (mut component, mut version) = Component::from_purl(bom_component.purl.clone())?;
         // Update non-purl fields
-        component.component_type = bom_component.comp_type.clone().into();
         component.find_or_crate(connection).await?;
 
         version.component_id = component.id.into();

@@ -22,7 +22,7 @@ pub enum ComponentType {
     /// Firmware
     Firmware,
     /// Cryptograph Library
-    CryptoLibrary,
+    CryptographyLibrary,
     /// Service
     Service,
     /// Database
@@ -48,7 +48,7 @@ impl Display for ComponentType {
             ComponentType::PackageManager => write!(f, "package_manager"),
             ComponentType::Container => write!(f, "container"),
             ComponentType::Firmware => write!(f, "firmware"),
-            ComponentType::CryptoLibrary => write!(f, "cryptography_library"),
+            ComponentType::CryptographyLibrary => write!(f, "cryptography_library"),
             ComponentType::Service => write!(f, "service"),
             ComponentType::Database => write!(f, "database"),
             ComponentType::OperatingEnvironment => write!(f, "operating_environment"),
@@ -69,7 +69,9 @@ impl From<&String> for ComponentType {
             "package_manager" => ComponentType::PackageManager,
             "container" | "docker" => ComponentType::Container,
             "firmware" => ComponentType::Firmware,
-            "crypto" | "cryptography" | "cryptography_library" => ComponentType::CryptoLibrary,
+            "crypto" | "cryptography" | "cryptography_library" => {
+                ComponentType::CryptographyLibrary
+            }
             "service" => ComponentType::Service,
             "db" | "database" => ComponentType::Database,
             "operatingenvironment" | "operating_environment" => ComponentType::OperatingEnvironment,
@@ -95,7 +97,7 @@ impl From<BomComponentType> for ComponentType {
             BomComponentType::OperatingSystem => ComponentType::OperatingSystem,
             BomComponentType::Container => ComponentType::Container,
             BomComponentType::Firmware => ComponentType::Firmware,
-            BomComponentType::CryptoLibrary => ComponentType::CryptoLibrary,
+            BomComponentType::CryptoLibrary => ComponentType::CryptographyLibrary,
             BomComponentType::Service => ComponentType::Service,
             BomComponentType::Database => ComponentType::Database,
             BomComponentType::OperatingEnvironment => ComponentType::OperatingEnvironment,

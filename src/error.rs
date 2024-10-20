@@ -38,6 +38,11 @@ pub enum KonarrError {
     #[error("Unauthorized")]
     Unauthorized,
 
+    /// KonarrClient API Error
+    #[cfg(feature = "client")]
+    #[error("KonarrClient API Error: {0}")]
+    KonarrClient(String),
+
     /// GeekORM Error
     #[cfg(feature = "models")]
     #[error("GeekORM Error: {0}")]
@@ -70,4 +75,11 @@ pub enum KonarrError {
     /// Unknown Error
     #[error("Unknown Error: {0}")]
     UnknownError(String),
+}
+
+#[cfg(feature = "client")]
+impl From<crate::client::ApiError> for KonarrError {
+    fn from(error: crate::client::ApiError) -> Self {
+        KonarrError::KonarrClient(error.message)
+    }
 }

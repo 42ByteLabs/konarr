@@ -334,7 +334,7 @@ impl ServerConfig {
 
     /// Generate a base64 encoded secret
     pub fn generate_secret() -> String {
-        log::info!("Generating Server Secret...");
+        log::debug!("Generating Server Secret...");
         let secret = generate_random_string(32);
         let secret64 = base64::engine::general_purpose::STANDARD.encode(secret);
         secret64
@@ -390,8 +390,11 @@ impl Default for SessionsConfig {
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct AgentConfig {
     /// Agent base Project ID (default to root project of 0)
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "project-id", skip_serializing_if = "Option::is_none")]
     pub project_id: Option<u32>,
+    /// Auto-Create Projects
+    #[serde(default)]
+    pub create: bool,
     /// Agent Token
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
@@ -399,7 +402,7 @@ pub struct AgentConfig {
     #[serde(default)]
     pub monitoring: bool,
     /// Docker Socket
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "docker-socket", skip_serializing_if = "Option::is_none")]
     pub docker_socket: Option<String>,
 }
 

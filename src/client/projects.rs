@@ -18,20 +18,28 @@ impl KonarrProjects {
             .await?)
     }
     /// Get Project by ID
-    pub async fn by_id(client: &KonarrClient, id: u32) -> Result<KonarrProject, KonarrError> {
+    pub async fn by_id(
+        client: &KonarrClient,
+        id: u32,
+    ) -> Result<Option<KonarrProject>, KonarrError> {
         Ok(client
             .get(&format!("/projects/{}", id))
             .await?
             .json::<KonarrProject>()
-            .await?)
+            .await
+            .ok())
     }
     /// Get Project by Name
-    pub async fn by_name(client: &KonarrClient, name: &str) -> Result<KonarrProject, KonarrError> {
+    pub async fn by_name(
+        client: &KonarrClient,
+        name: &str,
+    ) -> Result<Option<KonarrProject>, KonarrError> {
         Ok(client
             .get(&format!("/projects?search={}", name))
             .await?
             .json::<KonarrProject>()
-            .await?)
+            .await
+            .ok())
     }
 }
 
@@ -39,6 +47,7 @@ impl KonarrProjects {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct KonarrProject {
     /// Project ID
+    #[serde(skip_serializing)]
     pub id: u32,
     /// Project Name
     pub name: String,
@@ -67,19 +76,16 @@ pub struct KonarrProject {
 
 impl KonarrProject {
     /// Create a new Project
-    pub fn new(name: String, r#type: String) -> Self {
+    pub fn new(name: impl Into<String>, r#type: impl Into<String>) -> Self {
         Self {
-            name,
-            r#type,
+            name: name.into(),
+            r#type: r#type.into(),
             ..Default::default()
         }
     }
 
     /// Create new Project
-    pub async fn create(
-        &mut self,
-        client: &KonarrClient,
-    ) -> Result<ApiResponse<Self>, KonarrError> {
+    pub async fn create(&mut self, client: &KonarrClient) -> Result<Self, KonarrError> {
         match client
             .post("/projects", &self)
             .await?
@@ -88,9 +94,9 @@ impl KonarrProject {
         {
             ApiResponse::Ok(project) => {
                 *self = project;
-                Ok(ApiResponse::Ok(self.clone()))
+                Ok(self.clone())
             }
-            ApiResponse::Error(err) => Ok(ApiResponse::Error(err)),
+            ApiResponse::Error(err) => Err(err.into()),
         }
     }
 

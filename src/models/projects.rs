@@ -28,10 +28,10 @@ pub struct Projects {
     #[geekorm(primary_key, auto_increment)]
     pub id: PrimaryKey<i32>,
 
-    /// Project Name
+    /// Project Name acts as a unique identifier for the project
     #[geekorm(unique)]
     pub name: String,
-    /// Project Title
+    /// Project Title is a the human readable name of the project (can be the same as the name)
     pub title: Option<String>,
 
     /// Project Description
@@ -72,6 +72,8 @@ impl Projects {
 
         // Create a Default Project
         let mut main_server = Projects::new("Main Server", ProjectType::Server);
+        main_server.description =
+            Some("This is a sample server to show how Konarr works".to_string());
         main_server.fetch_or_create(connection).await?;
 
         debug!("Server Project Created: {:?}", main_server);
@@ -80,6 +82,8 @@ impl Projects {
             Ok(_) => return Ok(()),
             Err(_) => {
                 let mut container_project = Projects::new("Main Container", ProjectType::Container);
+                container_project.description =
+                    Some("This is a sample container to show how Konarr works".to_string());
                 container_project.parent = main_server.id.into();
 
                 container_project.save(connection).await?;
@@ -414,7 +418,7 @@ pub struct ProjectSnapshots {
 }
 
 /// Project Type
-#[derive(Data, Debug, Default, Clone)]
+#[derive(Data, Debug, Default, Clone, PartialEq)]
 pub enum ProjectType {
     /// Group of Projects
     Group,

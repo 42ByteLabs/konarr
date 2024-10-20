@@ -1,6 +1,6 @@
 //! # Dependency Components Models / Tables
 
-use std::{collections::HashMap, fmt::Display, str::FromStr};
+use std::{fmt::Display, str::FromStr};
 
 use geekorm::prelude::*;
 use log::debug;
@@ -8,10 +8,6 @@ use purl::GenericPurl;
 use serde::{Deserialize, Serialize};
 
 use super::ComponentType;
-
-const COMPONENTS: &str = include_str!("./comps.yml");
-
-type CompYml = HashMap<String, Vec<String>>;
 
 /// Component Model
 #[derive(Table, Debug, Default, Clone, Serialize, Deserialize)]
@@ -40,15 +36,10 @@ impl Component {
         debug!("Creating and Initialising Component Table");
         Component::create_table(connection).await?;
 
-        let comps: CompYml = serde_yaml::from_str(COMPONENTS)?;
-        debug!("Creating Standard Components: {}", comps.len());
-        for (name, purls) in &comps {
-            let comp_type = ComponentType::from(name);
-            for purl in purls {
-                let (mut component, _) = Component::from_purl(purl)?;
-                component.component_type = comp_type.clone();
-                component.fetch_or_create(connection).await?;
-            }
+        let purls = vec!["pkg:deb/debian", "pkg:apk/alpine"];
+        for purl in purls.iter() {
+            let (mut comp, _version) = Component::from_purl(purl.to_string()).unwrap();
+            comp.find_or_crate(connection).await?;
         }
 
         Ok(())
@@ -74,6 +65,7 @@ impl Component {
             .map_err(|e| crate::KonarrError::UnknownError(e.to_string()))?;
 
         let mut component = Component::new(purl.package_type(), purl.name().to_string());
+        Self::set_purl_comptype(&mut component);
 
         if let Some(namespace) = purl.namespace() {
             component.namespace = Some(namespace.to_string());
@@ -87,6 +79,54 @@ impl Component {
         };
 
         Ok((component, version))
+    }
+
+    /// Set the component type based on the name of the component
+    ///
+    /// TODO: This is a little bit of a hack, but it works for now
+    fn set_purl_comptype(component: &mut Component) {
+        if component.manager == ComponentManager::Apk || component.manager == ComponentManager::Deb
+        {
+            // We don't care about the namespace for these package managers
+
+            match component.name.to_lowercase().as_str() {
+                // Operating Systems
+                "alpine" | "alpine-linux" | "debian" | "debian-linux" | "ubuntu"
+                | "ubuntu-linux" | "redhat" | "fedora" | "centos" | "centos-linux" | "arch"
+                | "arch-linux" => {
+                    component.component_type = ComponentType::OperatingSystem;
+                }
+                // Programming Languages (compilers / interpreters / runtimes)
+                "python" | "python3" | "node" | "nodejs" | "ruby" | "rustc" | "rust" | "go"
+                | "java" | "javac" | "kotlinc" | "gcc" | "g++" | "gpp" | "dotnet" | "csharp"
+                | "c" | "cpp" | "perl" | "bash" | "sh" => {
+                    component.component_type = ComponentType::ProgrammingLanguage;
+                }
+                // Package Managers
+                "cargo" | "npm" | "pip" | "composer" | "maven" | "nuget" | "gradle" | "gem"
+                | "apk" | "deb" | "rpm" => {
+                    component.component_type = ComponentType::PackageManager;
+                }
+                // Cryptography Libraries
+                "openssl" | "libssl" | "libcrypto" | "libcrypto3" | "libssl-dev"
+                | "libcrypto-dev" | "argon2-libs" => {
+                    component.component_type = ComponentType::CryptographyLibrary;
+                }
+                // Databases
+                "mysql" | "mariadb" | "postgresql" | "sqlite" | "mongodb" | "redis"
+                | "cassandra" => {
+                    component.component_type = ComponentType::Database;
+                }
+                _ => {
+                    component.component_type = ComponentType::Unknown;
+                }
+            }
+        } else if component.manager == ComponentManager::Golang {
+            if component.name == "go" && component.namespace == Some("cloud.google.com".to_string())
+            {
+                component.component_type = ComponentType::ProgrammingLanguage;
+            }
+        }
     }
 
     /// Find or Create Component
@@ -211,7 +251,7 @@ impl ComponentVersion {
 /// Dependency Manager Enum
 ///
 /// https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst
-#[derive(Data, Debug, Default, Clone)]
+#[derive(Data, Debug, Default, Clone, PartialEq, Eq)]
 pub enum ComponentManager {
     /// Alpine Linux
     Apk,
@@ -281,6 +321,35 @@ impl From<&String> for ComponentManager {
                 log::warn!("Unknown Package Manager: {}", value);
                 ComponentManager::Unknown
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_purl_to_comp() {
+        let purl = "pkg:apk/alpine".to_string();
+
+        let (comp, version) = Component::from_purl(purl).unwrap();
+        assert_eq!(comp.manager, ComponentManager::Apk);
+        assert_eq!(comp.namespace, None);
+        assert_eq!(comp.name, "alpine");
+        assert_eq!(comp.component_type, ComponentType::OperatingSystem);
+
+        // Default version is 0.0.0
+        assert_eq!(version.version, "0.0.0".to_string());
+    }
+
+    #[test]
+    fn test_purls() {
+        let purls = vec!["pkg:deb/debian", "pkg:deb/debian/openssl", "pkg:apk/alpine"];
+
+        for purl in purls.iter() {
+            let (comp, _version) = Component::from_purl(purl.to_string()).unwrap();
+            assert_eq!(comp.purl(), purl.to_string());
         }
     }
 }
