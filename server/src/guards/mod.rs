@@ -45,6 +45,7 @@ impl<'r> FromRequest<'r> for Session {
                         log::error!("Invalid Agent Key");
                         return Outcome::Error((rocket::http::Status::Unauthorized, ()));
                     }
+                    log::info!("Agent performing action");
 
                     // This is a Agent User, no need to check the session
                     // Return a dummy session
@@ -84,6 +85,7 @@ impl<'r> FromRequest<'r> for Session {
         let config = &appstate.config.sessions();
 
         if !user.validate_session(&connection, &config).await {
+            log::warn!("User session is invalid: {}", user.username);
             return Outcome::Error((rocket::http::Status::Unauthorized, ()));
         }
 
@@ -92,6 +94,7 @@ impl<'r> FromRequest<'r> for Session {
             Err(_) => return Outcome::Error((rocket::http::Status::InternalServerError, ())),
         };
 
+        log::info!("User performing action: {}", user.username);
         Outcome::Success(Session { user, session })
     }
 }
@@ -104,11 +107,20 @@ impl<'r> FromRequest<'r> for AdminSession {
         let session: Session = try_outcome!(req.guard::<Session>().await);
 
         match session.user.role {
-            UserRole::Admin => Outcome::Success(AdminSession {
-                user: session.user,
-                session: session.session,
-            }),
-            _ => Outcome::Error((rocket::http::Status::Unauthorized, ())),
+            UserRole::Admin => {
+                log::info!("Admin User performing action: {}", session.user.username);
+                Outcome::Success(AdminSession {
+                    user: session.user,
+                    session: session.session,
+                })
+            }
+            _ => {
+                log::warn!(
+                    "Non-Admin User tried performing action: {}",
+                    session.user.username
+                );
+                Outcome::Error((rocket::http::Status::Unauthorized, ()))
+            }
         }
     }
 }

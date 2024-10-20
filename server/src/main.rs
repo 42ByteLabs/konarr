@@ -28,7 +28,7 @@ pub struct AppState {
 async fn main() -> Result<()> {
     let arguments = cli::init();
 
-    let config = match Config::load(&arguments.config) {
+    let mut config = match Config::load(&arguments.config) {
         Ok(config) => config,
         Err(e) => {
             warn!("Error loading configuration: {}", e);
@@ -39,22 +39,29 @@ async fn main() -> Result<()> {
         }
     };
 
+    // Database
+    create(&mut config).await?;
+
     info!("Saving Configuration to: {}", arguments.config.display());
     config.save(&arguments.config)?;
 
-    // Database
-    create(&config).await?;
     // Server
     server(config).await?;
 
     Ok(())
 }
 
-async fn create(config: &Config) -> Result<()> {
+async fn create(config: &mut Config) -> Result<()> {
     let connection = config.database.connection().await?;
 
     // TODO: Check if the database exists
     models::database_create(&connection).await?;
+
+    // Store the server setting into the config file
+    if let Ok(token) = konarr::models::ServerSettings::fetch_by_name(&connection, "agent.key").await
+    {
+        config.agent.token = Some(token.value);
+    }
 
     Ok(())
 }

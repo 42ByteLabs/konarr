@@ -180,7 +180,7 @@ pub async fn patch_project(
         models::Projects::fetch_by_primary_key(&connection, project_id as i32).await?;
 
     if let Some(title) = &project_req.title {
-        info!("Updating Project (name) :: {}", title);
+        info!("Updating Project (title) :: {}", title);
         project.title = Some(title.clone());
     }
     if let Some(typ) = &project_req.project_type {
@@ -197,6 +197,7 @@ pub async fn patch_project(
     }
     if let Some(parent) = &project_req.parent {
         project.parent = *parent as i32;
+        // TODO: Update the name of the project?
     }
 
     project.update(&connection).await?;
@@ -286,14 +287,41 @@ impl From<models::Projects> for ProjectResp {
 /// Request -> Model
 impl From<ProjectReq> for models::Projects {
     fn from(project: ProjectReq) -> Self {
+        let title = project
+            .name
+            .split('/')
+            .last()
+            .unwrap_or(project.name.as_str())
+            .to_string();
+
         models::Projects {
             name: project.name.clone(),
-            title: Some(project.name),
+            title: Some(title),
             project_type: ProjectType::from(project.r#type),
             description: project.description,
             created_at: chrono::Utc::now(),
             parent: project.parent.unwrap_or(0),
             ..Default::default()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_project_req_to_project() {
+        let req = ProjectReq {
+            name: "server/test".to_string(),
+            r#type: "server".to_string(),
+            description: Some("test".to_string()),
+            parent: Some(1),
+        };
+
+        let project: models::Projects = req.into();
+        assert_eq!(project.name.as_str(), "server/test");
+        assert_eq!(project.title, Some("test".to_string()));
+        assert_eq!(project.project_type, models::ProjectType::Server);
     }
 }

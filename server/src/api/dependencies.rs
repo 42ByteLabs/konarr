@@ -77,13 +77,13 @@ pub(crate) async fn get_dependency(
 }
 
 /// Get all Dependencies (components)
-#[get("/?<search>&<top>&<dtype>&<page>&<limit>")]
+#[get("/?<search>&<top>&<deptype>&<page>&<limit>")]
 pub async fn get_dependencies(
     state: &State<AppState>,
     _session: Session,
     search: Option<String>,
     top: Option<bool>,
-    dtype: Option<String>,
+    deptype: Option<String>,
     page: Option<u32>,
     limit: Option<u32>,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
@@ -94,7 +94,7 @@ pub async fn get_dependencies(
 
     let deps = if let Some(search) = search {
         models::Component::find_by_name(&connection, search, page, limit).await?
-    } else if let Some(dtyp) = dtype {
+    } else if let Some(dtyp) = deptype {
         models::Component::find_by_component_type(
             &connection,
             models::ComponentType::from(dtyp),
@@ -106,9 +106,7 @@ pub async fn get_dependencies(
         models::Component::query(
             &connection,
             models::Component::query_select()
-                .where_eq("component_type", models::ComponentType::OperatingSystem)
-                .or()
-                .where_eq("component_type", models::ComponentType::ProgrammingLanguage)
+                .where_ne("component_type", models::ComponentType::Library)
                 .limit(limit)
                 .offset(page * limit)
                 .build()?,
