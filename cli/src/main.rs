@@ -25,6 +25,7 @@ async fn main() -> Result<()> {
             // HACK: Manually set some stuff for now
             config.agent.docker_socket = docker_socket;
             config.agent.project_id = arguments.project_id;
+            config.agent.create = arguments.auto_create;
             if let Some(token) = arguments.agent_token {
                 config.agent.token = Some(token);
             }

@@ -47,6 +47,9 @@ pub struct Arguments {
     /// Agent Token
     #[clap(short, long, env = "KONARR_AGENT_TOKEN")]
     pub agent_token: Option<String>,
+    /// Auto-Register Projects
+    #[clap(long, env = "KONARR_AGENT_AUTO_CREATE")]
+    pub auto_create: bool,
     /// Root Server Project ID
     #[clap(long, env = "KONARR_AGENT_PROJECT_ID")]
     pub project_id: Option<u32>,
@@ -102,6 +105,7 @@ pub fn init() -> Arguments {
 
     env_logger::builder()
         .parse_default_env()
+        .format_module_path(false)
         .filter_level(log_level)
         .init();
 

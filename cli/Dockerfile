@@ -14,6 +14,7 @@ RUN curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | 
 FROM docker.io/library/alpine:3.20
 
 ENV KONARR_CONTAINER=true
+ENV CONFIG=/config/konarr.yml
 
 WORKDIR /app
 

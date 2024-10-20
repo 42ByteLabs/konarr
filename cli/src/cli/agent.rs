@@ -10,7 +10,7 @@ use konarr::{
 };
 use log::{debug, info};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
-use tokio::spawn;
+use tokio::{spawn, sync::Mutex};
 use tokio_schedule::{every, Job};
 
 pub async fn setup(
@@ -19,24 +19,38 @@ pub async fn setup(
 ) -> Result<(), konarr::KonarrError> {
     // ID -> Hostname -> New Project
     let mut project = if let Some(project_id) = config.agent.project_id {
-        KonarrProjects::by_id(&client, project_id).await?
-    } else if let Ok(hostname) = std::env::var("KONARR_HOST") {
-        match KonarrProjects::by_name(&client, &hostname).await {
-            Ok(project) => project,
-            Err(error) => {
-                log::error!("Failed to get project by name: {}", error);
-                return Err(error.into());
+        log::debug!("Project ID :: {}", project_id);
+
+        match KonarrProjects::by_id(&client, project_id).await {
+            Ok(Some(project)) => project,
+            _ => {
+                log::error!("Failed to get project by id: {}", project_id);
+                return Err(KonarrError::KonarrClient(
+                    "Failed to get project by id".to_string(),
+                ));
             }
         }
-    } else if let Ok(hostname) = std::env::var("HOST") {
+    } else if let Ok(hostname) = std::env::var("KONARR_HOST") {
+        log::debug!("Hostname :: {}", hostname);
+
         match KonarrProjects::by_name(&client, &hostname).await {
-            Ok(project) => project,
-            Err(error) => {
-                log::error!("Failed to get project by name: {}", error);
-                return Err(error.into());
+            Ok(Some(project)) => project,
+            _ => {
+                if !config.agent.create {
+                    log::error!("Failed to get project by name: {}", hostname);
+                    return Err(KonarrError::KonarrClient(
+                        "Failed to get project by name".to_string(),
+                    ));
+                }
+                // Auto-Create Projects
+                log::info!("Auto-Create mode enabled");
+                KonarrProject::new(hostname, "Server")
+                    .create(&client)
+                    .await?
             }
         }
     } else {
+        // TODO: Auto-Create Projects
         log::error!("Failed to get project by ID or Name");
         return Err(KonarrError::UnknownError(
             "Unknown project id / name".to_string(),
@@ -49,18 +63,28 @@ pub async fn setup(
     let config = Arc::new(config.clone());
     let client = Arc::new(client.clone());
 
+    log::info!("Running agent!");
+    run(&config, &client, &mut project).await?;
+
     if config.agent.monitoring {
         info!("Monitoring mode enabled");
 
         let task = every(1).minutes().perform(move || {
+            // Only allow one task to run at a time, skip if already running
+            let active = Mutex::new(false);
+
             // TODO: Multi-threading is hard...
             let config = config.clone();
             let client = client.clone();
             let mut project = project.clone();
 
             async move {
-                info!("Running task...");
+                info!("Running monitoring task...");
 
+                if *active.lock().await {
+                    info!("Task already running... Skipping");
+                    return;
+                }
                 run(&config, &client, &mut project)
                     .await
                     .expect("Panic in monitoring mode...");
@@ -69,12 +93,8 @@ pub async fn setup(
             }
         });
         spawn(task).await.expect("Panic in monitoring mode...");
-
-        Ok(())
-    } else {
-        run(&config, &client, &mut project).await?;
-        Ok(())
     }
+    Ok(())
 }
 
 async fn run(
@@ -130,8 +150,6 @@ async fn run_docker(
     client: &konarr::client::KonarrClient,
     server_project: &KonarrProject,
 ) -> Result<(), konarr::KonarrError> {
-    info!("Docker Monitor Command");
-
     let docker = if let Some(socket) = socket {
         bollard::Docker::connect_with_local(&socket, 120, API_DEFAULT_VERSION)?
     } else {
@@ -139,7 +157,7 @@ async fn run_docker(
     };
     info!("Connected to Docker");
 
-    info!("Getting Docker Version and updating Snapshot Metadata");
+    debug!("Getting Docker Version and updating Snapshot Metadata");
     let version = docker.version().await?;
     let engine = version.platform.unwrap_or_default().name;
 
@@ -172,15 +190,17 @@ async fn run_docker(
         }))
         .await?;
 
+    let prefix = server_project.name.clone();
+
     for container in containers {
         let labels = container.labels.clone().unwrap_or_default();
 
-        let name: String = if let Some(title) = labels.get("org.opencontainers.image.title") {
-            // Name of the container
-            title.clone()
-        } else if let Some(compose_project) = labels.get("com.docker.compose.project") {
+        let name: String = if let Some(compose_project) = labels.get("com.docker.compose.project") {
             // From Compose metadata
-            compose_project.clone()
+            format!("{}/{}", prefix, compose_project.clone())
+        } else if let Some(title) = labels.get("org.opencontainers.image.title") {
+            // Name of the container
+            format!("{}/{}", prefix, title.clone())
         } else if let Some(names) = &container.names {
             names.first().unwrap().replacen("/", "", 1)
         } else if let Some(image) = &container.image {
