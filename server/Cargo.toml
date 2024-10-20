@@ -24,7 +24,7 @@ rocket-governor = "0.2.0-rc.3"
 ws = { package = "rocket_ws", version = "0.1" }
 
 # Database
-geekorm = { version = "^0.6.10", features = ["all", "libsql", "log"] }
+geekorm = { version = "^0.6.10", features = ["all", "libsql"] }
 libsql = "^0.6"
 
 tokio = { version = "1", features = ["full"] }
