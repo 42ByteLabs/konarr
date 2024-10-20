@@ -30,8 +30,8 @@ EXPOSE 9000
 ENV ROCKET_ADDRESS=0.0.0.0
 ENV ROCKET_PORT=9000
 # Make sure the server can find the client
-ENV KONARR_DATABASE_PATH=/data/konarr.db
-ENV KONARR_CLIENT_PATH=/app/dist
+ENV KONARR_DB_PATH=/data/konarr.db
+ENV KONARR_SERVER_FRONTEND=/app/dist
 
 VOLUME [ "/config", "/data" ]
 
