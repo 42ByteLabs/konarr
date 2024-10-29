@@ -26,6 +26,9 @@ pub(crate) struct DependencyResp {
     #[serde(skip_serializing_if = "Option::is_none")]
     version: Option<String>,
 
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    versions: Vec<String>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     projects: Option<Vec<ProjectResp>>,
 }
@@ -64,6 +67,13 @@ pub(crate) async fn get_dependency(
                 .map(|p| p.clone().into())
                 .collect();
 
+        let versions: Vec<String> =
+            models::ComponentVersion::fetch_by_component_id(&connection, dep.id)
+                .await?
+                .iter()
+                .map(|v| v.clone().version)
+                .collect();
+
         Ok(Json(DependencyResp {
             id: dep.id.into(),
             r#type: dep.component_type.to_string(),
@@ -71,6 +81,7 @@ pub(crate) async fn get_dependency(
             name: dep.name.to_string(),
             purl: Some(dep.purl()),
             projects: Some(projects),
+            versions,
             ..Default::default()
         }))
     }
