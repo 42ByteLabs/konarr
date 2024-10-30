@@ -114,15 +114,7 @@ pub async fn get_dependencies(
         )
         .await?
     } else if top.unwrap_or(false) {
-        models::Component::query(
-            &connection,
-            models::Component::query_select()
-                .where_ne("component_type", models::ComponentType::Library)
-                .limit(limit)
-                .offset(page * limit)
-                .build()?,
-        )
-        .await?
+        models::Component::top(&connection, limit, page).await?
     } else {
         // Fetch all
         models::Component::query(

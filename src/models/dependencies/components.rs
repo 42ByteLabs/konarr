@@ -3,7 +3,7 @@
 use std::{fmt::Display, str::FromStr};
 
 use geekorm::prelude::*;
-use log::debug;
+use log::{debug, info};
 use purl::GenericPurl;
 use serde::{Deserialize, Serialize};
 
@@ -28,7 +28,10 @@ pub struct Component {
 }
 
 impl Component {
-    /// Initialise Component
+    /// Initialise Components
+    ///
+    /// This function will also check and automatically set the ComponentType of existing
+    /// components if they are unknown, libraries, or applications.
     pub async fn init<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
@@ -40,6 +43,29 @@ impl Component {
         for purl in purls.iter() {
             let (mut comp, _version) = Component::from_purl(purl.to_string()).unwrap();
             comp.find_or_crate(connection).await?;
+        }
+
+        let mut counter = 0;
+        let mut comps = Component::fetch_all(connection).await?;
+        debug!("Checking component types for `{}` Components", comps.len());
+
+        for mut comp in comps.iter_mut() {
+            match comp.component_type {
+                ComponentType::Unknown | ComponentType::Library | ComponentType::Application => {
+                    let og_type = comp.component_type.clone();
+                    Self::set_purl_comptype(&mut comp);
+
+                    if og_type != comp.component_type {
+                        debug!("Updating component_type: {}", comp.component_type);
+                        comp.update(connection).await?;
+                        counter += 1;
+                    }
+                }
+                _ => {}
+            }
+        }
+        if counter != 0 {
+            info!("Updated `{}` component out of `{}`", counter, comps.len());
         }
 
         Ok(())
@@ -99,17 +125,17 @@ impl Component {
                 // Programming Languages (compilers / interpreters / runtimes)
                 "python" | "python3" | "node" | "nodejs" | "ruby" | "rustc" | "rust" | "go"
                 | "java" | "javac" | "kotlinc" | "gcc" | "g++" | "gpp" | "dotnet" | "csharp"
-                | "c" | "cpp" | "perl" | "bash" | "sh" => {
+                | "c" | "cpp" | "php83" | "perl" | "bash" | "sh" => {
                     component.component_type = ComponentType::ProgrammingLanguage;
                 }
                 // Package Managers
-                "cargo" | "npm" | "pip" | "composer" | "maven" | "nuget" | "gradle" | "gem"
-                | "apk" | "deb" | "rpm" => {
+                "apk" | "apk-tools" | "deb" | "dpkg" | "rpm" | "cargo" | "npm" | "pip"
+                | "composer" | "maven" | "nuget" | "gradle" | "gem" => {
                     component.component_type = ComponentType::PackageManager;
                 }
                 // Cryptography Libraries
-                "openssl" | "libssl" | "libcrypto" | "libcrypto3" | "libssl-dev"
-                | "libcrypto-dev" | "argon2-libs" => {
+                "openssl" | "libssl" | "libssl3" | "libcrypto" | "libcrypto3" | "libssl-dev"
+                | "libcrypto-dev" | "argon2-libs" | "ssl_client" => {
                     component.component_type = ComponentType::CryptographyLibrary;
                 }
                 // Databases
@@ -117,15 +143,28 @@ impl Component {
                 | "cassandra" => {
                     component.component_type = ComponentType::Database;
                 }
+                // Applications
+                "curl" | "wget" | "git" | "grep" | "jq" | "nginx" => {
+                    component.component_type = ComponentType::Application;
+                }
                 _ => {
-                    component.component_type = ComponentType::Unknown;
+                    component.component_type = ComponentType::Library;
                 }
             }
         } else if component.manager == ComponentManager::Golang {
-            if component.name == "go" && component.namespace == Some("cloud.google.com".to_string())
+            // Official Go namespaces
+            if component.namespace == Some("golang.org/x".to_string())
+                || component.namespace == Some("cloud.google.com".to_string())
             {
-                component.component_type = ComponentType::ProgrammingLanguage;
+                if component.name == "go" {
+                    component.component_type = ComponentType::ProgrammingLanguage;
+                } else if component.name == "crypto" {
+                    component.component_type = ComponentType::CryptographyLibrary;
+                }
             }
+        } else if component.manager == ComponentManager::Generic {
+            // Generic manager are typically applications
+            component.component_type = ComponentType::Application;
         }
     }
 
@@ -156,6 +195,31 @@ impl Component {
             }
             Err(_) => self.save(connection).await.map_err(|e| e.into()),
         }
+    }
+
+    /// Get the top components
+    pub async fn top<'a, T>(
+        connection: &'a T,
+        limit: usize,
+        page: usize,
+    ) -> Result<Vec<Self>, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Ok(Component::query(
+            connection,
+            Component::query_select()
+                .where_ne("component_type", ComponentType::Library)
+                .and()
+                .where_ne("component_type", ComponentType::Unknown)
+                .and()
+                .where_ne("component_type", ComponentType::Framework)
+                .limit(limit)
+                .offset(page * limit)
+                .order_by("name", QueryOrder::Asc)
+                .build()?,
+        )
+        .await?)
     }
 
     /// Find Component by Name
@@ -317,10 +381,7 @@ impl From<&String> for ComponentManager {
             "pypi" | "pip" | "python" => ComponentManager::PyPi,
             "nuget" | "csharp" => ComponentManager::Nuget,
             "rpm" | "redhat" => ComponentManager::Rpm,
-            _ => {
-                log::warn!("Unknown Package Manager: {}", value);
-                ComponentManager::Unknown
-            }
+            _ => ComponentManager::Unknown,
         }
     }
 }

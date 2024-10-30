@@ -27,7 +27,11 @@ where
     T: serde::Serialize,
 {
     pub data: T,
+    /// Total amount
     pub total: u32,
+    /// Count of the search results
+    pub count: u32,
+    /// Page count
     pub pages: u32,
 }
 
@@ -36,7 +40,12 @@ where
     T: serde::Serialize,
 {
     pub fn new(data: T, total: u32, pages: u32) -> Self {
-        Self { data, total, pages }
+        Self {
+            data,
+            total,
+            count: total,
+            pages,
+        }
     }
 }
 
