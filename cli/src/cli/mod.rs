@@ -54,7 +54,7 @@ pub struct Arguments {
     #[clap(long, env = "KONARR_AGENT_PROJECT_ID")]
     pub project_id: Option<u32>,
     /// Agent Hostname
-    #[clap(long, env = "HOST")]
+    #[clap(long, env = "KONARR_HOST")]
     pub hostname: Option<String>,
 
     /// If the command is running in a container

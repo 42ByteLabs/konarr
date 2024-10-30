@@ -30,7 +30,7 @@ pub async fn setup(
                 ));
             }
         }
-    } else if let Ok(hostname) = std::env::var("KONARR_HOST") {
+    } else if let Some(hostname) = &config.agent.host {
         log::debug!("Hostname :: {}", hostname);
 
         match KonarrProjects::by_name(&client, &hostname).await {
@@ -102,10 +102,11 @@ async fn run(
     client: &konarr::client::KonarrClient,
     project: &mut KonarrProject,
 ) -> Result<(), konarr::KonarrError> {
+    // The host
     let snapshot = if let Some(snap) = project.snapshot.clone() {
         snap
     } else {
-        info!("Creating Snapshot...");
+        info!("Creating Host Snapshot...");
         match KonarrSnapshot::create(client, project.id).await? {
             ApiResponse::Ok(snap) => snap,
             ApiResponse::Error(e) => {
@@ -195,9 +196,13 @@ async fn run_docker(
     for container in containers {
         let labels = container.labels.clone().unwrap_or_default();
 
-        let name: String = if let Some(compose_project) = labels.get("com.docker.compose.project") {
-            // From Compose metadata
-            format!("{}/{}", prefix, compose_project.clone())
+        let name: String = if let Some(project) = labels.get("com.docker.compose.project") {
+            // From Compose metadata (`project` is folder, `service` is name)
+            if let Some(service) = labels.get("com.docker.compose.service") {
+                format!("{}/{}/{}", prefix, project, service)
+            } else {
+                format!("{}/{}", prefix, project)
+            }
         } else if let Some(title) = labels.get("org.opencontainers.image.title") {
             // Name of the container
             format!("{}/{}", prefix, title.clone())

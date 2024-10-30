@@ -26,6 +26,8 @@ async fn main() -> Result<()> {
             config.agent.docker_socket = docker_socket;
             config.agent.project_id = arguments.project_id;
             config.agent.create = arguments.auto_create;
+            config.agent.host = arguments.hostname;
+
             if let Some(token) = arguments.agent_token {
                 config.agent.token = Some(token);
             }

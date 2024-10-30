@@ -392,6 +392,9 @@ pub struct AgentConfig {
     /// Agent base Project ID (default to root project of 0)
     #[serde(rename = "project-id", skip_serializing_if = "Option::is_none")]
     pub project_id: Option<u32>,
+    /// Agent Hostname
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub host: Option<String>,
     /// Auto-Create Projects
     #[serde(default)]
     pub create: bool,
