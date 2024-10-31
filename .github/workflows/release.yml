@@ -15,7 +15,7 @@ jobs:
   #   secrets: inherit
   #   with:
   #     crate: konarr
-  #     crates: konarr,konarr-cli
+  #     crates: konarr,konarr-server,konarr-cli
 
   container-server:
     # https://github.com/42ByteLabs/.github/blob/main/.github/workflows/container.yml
@@ -26,4 +26,17 @@ jobs:
       contents: write
       packages: write
     with:
+      container-name: "konarr"
       docker-file: "./server/Dockerfile"
+
+  container-cli:
+    # https://github.com/42ByteLabs/.github/blob/main/.github/workflows/container.yml
+    uses: 42ByteLabs/.github/.github/workflows/container.yml@main
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: write
+      packages: write
+    with:
+      container-name: "konarr-cli"
+      docker-file: "./cli/Dockerfile"
