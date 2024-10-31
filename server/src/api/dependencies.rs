@@ -11,7 +11,7 @@ pub fn routes() -> Vec<rocket::Route> {
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
-#[serde(crate = "rocket::serde")]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub(crate) struct DependencyResp {
     id: i32,
     r#type: String,
@@ -34,7 +34,7 @@ pub(crate) struct DependencyResp {
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
-#[serde(crate = "rocket::serde")]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub(crate) struct DependencySummaryResp {
     pub count: i32,
 }

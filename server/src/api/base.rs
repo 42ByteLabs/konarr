@@ -10,6 +10,7 @@ use crate::{guards::Session, AppState};
 use super::ApiResult;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct BaseResponse {
     pub version: String,
     pub commit: String,
@@ -28,12 +29,14 @@ pub struct BaseResponse {
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct ConfigResponse {
     pub initialised: bool,
     pub registration: bool,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct UserResponse {
     pub username: String,
     pub avatar: Option<String>,
@@ -41,6 +44,7 @@ pub struct UserResponse {
 }
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct ProjectsSummary {
     pub total: u32,
     pub servers: u32,
@@ -48,11 +52,13 @@ pub struct ProjectsSummary {
 }
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct DependenciesSummary {
     pub total: u32,
 }
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct SecuritySummary {
     pub advisories: u32,
     pub total: u32,

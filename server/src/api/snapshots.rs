@@ -22,10 +22,10 @@ pub fn routes() -> Vec<rocket::Route> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-#[serde(crate = "rocket::serde")]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub(crate) struct SnapshotResp {
     id: i32,
-    created_at: String,
+    created_at: chrono::DateTime<chrono::Utc>,
     dependencies: i32,
     security: SecuritySummary,
     metadata: HashMap<String, String>,
@@ -47,7 +47,7 @@ pub(crate) async fn get_snapshot(
 }
 
 #[derive(serde::Deserialize)]
-#[serde(crate = "rocket::serde")]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct SnapshotCreateReq {
     project_id: u32,
 }
@@ -195,7 +195,7 @@ pub async fn get_snapshots(
 
         resp.push(SnapshotResp {
             id: snapshot.id.into(),
-            created_at: snapshot.created_at.to_string(),
+            created_at: snapshot.created_at,
             dependencies: count,
             security: SecuritySummary::default(),
             metadata,
@@ -220,7 +220,7 @@ impl From<models::Snapshot> for SnapshotResp {
 
         SnapshotResp {
             id: snapshot.id.into(),
-            created_at: snapshot.created_at.to_string(),
+            created_at: snapshot.created_at,
             dependencies: count,
             security: SecuritySummary::default(),
             metadata,

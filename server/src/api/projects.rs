@@ -23,7 +23,7 @@ pub fn routes() -> Vec<rocket::Route> {
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub(crate) struct ProjectResp {
     id: i32,
     name: String,
@@ -46,14 +46,14 @@ pub(crate) struct ProjectResp {
     #[serde(skip_serializing_if = "Option::is_none")]
     security: Option<super::security::SecuritySummary>,
 
-    created_at: String,
+    created_at: chrono::DateTime<chrono::Utc>,
 
     #[serde(skip_serializing_if = "Vec::is_empty")]
     children: Vec<ProjectResp>,
 }
 
 #[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub(crate) struct ProjectReq {
     name: String,
     #[serde(rename = "type")]
@@ -149,7 +149,7 @@ pub async fn create_project(
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct ProjectUpdateRequest {
     pub(crate) id: Option<u32>,
     pub(crate) title: Option<String>,
@@ -269,7 +269,7 @@ impl From<models::Projects> for ProjectResp {
             status,
             project_type: project.project_type.to_string(),
             description: project.description.clone(),
-            created_at: project.created_at.to_string(),
+            created_at: project.created_at,
             snapshot: snapshot.map(|snap| snap.into()),
             snapshots: project.snapshots.len() as u32,
             security: Some(super::security::SecuritySummary::default()),

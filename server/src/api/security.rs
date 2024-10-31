@@ -2,6 +2,7 @@
 
 /// Security Summary
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct SecuritySummary {
     pub total: u32,
     pub critical: u32,

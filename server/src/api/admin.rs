@@ -20,7 +20,7 @@ pub fn routes() -> Vec<rocket::Route> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct AdminUserSummary {
     id: i32,
     username: String,
@@ -30,6 +30,7 @@ pub struct AdminUserSummary {
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct AdminUserStats {
     total: i64,
     active: i64,
@@ -37,6 +38,7 @@ pub struct AdminUserStats {
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct AdminProjectStats {
     total: i64,
     inactive: i64,
@@ -44,7 +46,7 @@ pub struct AdminProjectStats {
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct AdminResponse {
     pub settings: HashMap<String, String>,
 
