@@ -1,0 +1,29 @@
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # cargo-publish:
+  #   # https://github.com/42ByteLabs/.github/blob/main/.github/workflows/cargo-publish.yml
+  #   uses: 42ByteLabs/.github/.github/workflows/cargo-publish.yml@v0.8
+  #   secrets: inherit
+  #   with:
+  #     crate: konarr
+  #     crates: konarr,konarr-cli
+
+  container-server:
+    # https://github.com/42ByteLabs/.github/blob/main/.github/workflows/container.yml
+    uses: 42ByteLabs/.github/.github/workflows/container.yml@main
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: write
+      packages: write
+    with:
+      docker-file: "./server/Dockerfile"
