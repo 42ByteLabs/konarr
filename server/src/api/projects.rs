@@ -109,7 +109,7 @@ pub(crate) async fn get_projects(
 
     let projects = if let Some(search) = search {
         info!("Searching for projects with name: '{}'", search);
-        models::Projects::search(&connection, search).await?
+        models::Projects::search_title(&connection, search).await?
     } else if parents.unwrap_or(false) {
         info!("Get the parent projects");
         models::Projects::find_parents(&connection).await?

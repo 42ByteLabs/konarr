@@ -196,7 +196,7 @@ impl Projects {
     }
 
     /// Search for Projects
-    pub async fn search<'a, T>(
+    pub async fn search_title<'a, T>(
         connection: &'a T,
         search: impl Into<String>,
     ) -> Result<Vec<Self>, crate::KonarrError>
@@ -210,7 +210,7 @@ impl Projects {
             Projects::query_select()
                 .where_eq("status", ProjectStatus::Active)
                 .and()
-                .where_like("name", format!("%{}%", search))
+                .where_like("title", format!("%{}%", search))
                 .build()?,
         )
         .await?;

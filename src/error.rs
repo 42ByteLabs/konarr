@@ -26,6 +26,9 @@ pub enum KonarrError {
     /// Parsing Bill of Materials Error
     #[error("Failed to parse SBOM: {0}")]
     ParseSBOM(String),
+    /// Parsing PURL
+    #[error("PURL parsing error")]
+    PurlError(#[from] purl::ParseError),
 
     /// Indexing Data
     #[error("Failed to index data: {0}")]
