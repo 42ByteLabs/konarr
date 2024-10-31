@@ -2,21 +2,22 @@
 <div align="center">
 <h1>Konarr</h1>
 
+⚠️  Work in progress and early stages of development ⚠️
+
 [![GitHub](https://img.shields.io/badge/github-%23121011.svg?style=for-the-badge&logo=github&logoColor=white)][github]
 [![Crates.io Version](https://img.shields.io/crates/v/konarr?style=for-the-badge)][crates-io]
 [![Crates.io Downloads (recent)](https://img.shields.io/crates/dr/konarr?style=for-the-badge)][crates-io]
+[![Docs.rs](https://img.shields.io/badge/docs.rs-konarr-66c2a5?style=for-the-badge)][docs]
 [![GitHub Stars](https://img.shields.io/github/stars/42ByteLabs/konarr?style=for-the-badge)][github]
 [![GitHub Issues](https://img.shields.io/github/issues/42ByteLabs/konarr?style=for-the-badge)][github-issues]
 [![Licence](https://img.shields.io/github/license/42ByteLabs/konarr?style=for-the-badge)][license]
-
-⚠️  This is currently a work in progress and still in the early stages of development ⚠️
 
 </div>
 <!-- markdownlint-restore -->
 
 ## Overview
 
-[Konarr][konarr] is a simple, easy-to-use web interface for monitoring your servers, clusters, and containers for supply chain attacks.
+[Konarr][konarr] is a simple, easy-to-use web interface for monitoring your servers, clusters, and containers supply chain for dependencies and vulnerabilities.
 It is designed to be lightweight and fast, with minimal resource usage. 
 
 It is written in [Rust][rust-lang], uses [Rocker][rocket] for the web server, and [Vue.js](https://vuejs.org/) for the front-end.
@@ -44,11 +45,21 @@ Konarr is from the name [Konar quo Maten](https://oldschool.runescape.wiki/w/Kon
 - Software Bill of Materials (SBOM) for your containers
 - Supply chain attack monitoring
 
+## 🚀 Quick Start
+
+This small script will install the Konarr server and agent on your machine using containers.
+
+```bash
+curl https://raw.githubusercontent.com/42ByteLabs/konarr/refs/heads/main/install.sh | bash -s
+```
+
 ## 📚 Documentation
 
-TODO: Update this section with the correct information.
+<div align="center">
+🚧 Work in progress 🚧
+</div>
 
-## 🚀 Quick Start
+## 🛠️ Installation
 
 ### Server
 
@@ -57,8 +68,10 @@ The Konarr Server is a Rust (Server) and VueJS (frontend) that
 #### Konarr Server using Docker Compose
 
 ```bash
-# Download docker-compose config
-curl https://raw.githubusercontent.com/42ByteLabs/konarr/refs/heads/main/docker-compose.yml
+# Clone the Konarr repository from GitHub
+git clone https://github.com/42ByteLabs/konarr.git && cd konarr
+# Update submodules
+git submodule update --init --recursive
 
 # Spin up container using Docker Compose
 docker-compose up -d
@@ -66,16 +79,41 @@ docker-compose up -d
 
 *Note:* Podman-compose also works.
 
+<details>
+<summary>Description</summary>
+
+- `curl https://raw.githubusercontent.com/42ByteLabs/konarr/refs/heads/main/docker-compose.yml` - This command downloads the `docker-compose.yml` file from the Konarr repository on GitHub. This file contains the configuration for the Konarr server and the Konarr agent.
+- `docker-compose up -d` - This command tells Docker Compose to start the containers defined in the `docker-compose.yml` file. The `-d` flag tells Docker Compose to run the containers in the background.
+
+</details>
+
 #### Konarr Server using Docker
 
 ```bash
 docker run -it --rm \
     -p 9000:9000 \
-    -v ./data:/data -v ./config:/config \
-    ghcr.io/42bytelabs/konarr:latest
+    -v ./data:/data \
+    -v ./config:/config \
+    ghcr.io/42bytelabs/konarr:v0.1.0
 ```
 
+<details>
+<summary>Description</summary>
+
+This command does the following:
+
+- `-it --rm` - This is a common set of flags to pass to `docker run`. The `-it` flag is short for `--interactive` and `--tty`, which tells Docker to open an interactive terminal inside the container. The `--rm` flag tells Docker to automatically remove the container when it stops running.
+- `-p 9000:9000` - This tells Docker to map port 9000 on the host machine to port 9000 on the container. This is the port that the Konarr server listens on by default.
+- `-v ./data:/data` - This tells Docker to mount the `./data` directory on the host machine to the `/data` directory on the container. This is where Konarr stores its data by default.
+- `-v ./config:/config` - This tells Docker to mount the `./config` directory on the host machine to the `/config` directory on the container. This is where Konarr looks for its configuration file by default.
+- `ghcr.io/42bytelabs/konarr:v0.1.0` - This is the name of the Docker image that we want to run. The `ghcr.io/42bytelabs/konarr` part is the name of the repository on GitHub Container Registry, and the `v0.1.0` part is the tag of the image that we want to run.
+
+</details>
+
 ### Agent
+
+The Konarr Agent is the Konarr CLI that is used to monitor your containers.
+It is written in Rust and is available as a binary or as a Docker image.
 
 #### Running Agent in Docker
 
@@ -84,7 +122,29 @@ docker run -it --rm \
     -e KONARR_INSTANCE \
     -e KONARR_AGENT_TOKEN \
     -e KONARR_PROJECT_ID \
-    ghcr.io/42bytelabs/konarr-agent:latest
+    ghcr.io/42bytelabs/konarr-agent:v0.1.0
+```
+
+#### Install via Cargo
+
+The konarr-cli is a Rust binary that can be installed via Cargo.
+
+```bash
+cargo install konarr-cli
+```
+
+### From Source
+
+```bash
+# Clone the Konarr repository from GitHub
+git clone https://github.com/42ByteLabs/konarr.git && cd konarr
+# Update submodules (client/frontend is a submodule)
+git submodule update --init --recursive
+
+# Build frontend
+cd client && npm install && npm run build && cd ..
+# Build and run server
+cargo run -p konarr-server --release -- -c ./konarr.yml
 ```
 
 ## ❤️  Maintainers / Contributors
