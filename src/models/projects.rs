@@ -79,7 +79,9 @@ impl Projects {
         debug!("Server Project Created: {:?}", main_server);
 
         match Projects::fetch_by_name(connection, "Main Container").await {
-            Ok(_) => return Ok(()),
+            Ok(_) => {
+                debug!("Server `Main Container` already exists");
+            }
             Err(_) => {
                 let mut container_project = Projects::new("Main Container", ProjectType::Container);
                 container_project.description =
@@ -103,17 +105,24 @@ impl Projects {
     where
         T: GeekConnection<Connection = T> + 'a,
     {
-        Ok(Projects::query(
+        let mut projects = Projects::query(
             connection,
             Projects::query_select()
                 .where_eq("status", ProjectStatus::Active)
                 .and()
-                .order_by("created_at", QueryOrder::Desc)
+                .order_by("name", QueryOrder::Desc)
                 .limit(limit)
                 .offset(offset)
                 .build()?,
         )
-        .await?)
+        .await?;
+
+        for proj in projects.iter_mut() {
+            proj.fetch_children(connection).await?;
+            proj.fetch_snapshots(connection).await?;
+        }
+
+        Ok(projects)
     }
 
     /// Count the active Projects
@@ -236,6 +245,36 @@ impl Projects {
         )
         .await?;
 
+        for proj in projects.iter_mut() {
+            proj.fetch_children(connection).await?;
+            proj.fetch_snapshots(connection).await?;
+        }
+
+        Ok(projects)
+    }
+
+    /// Fetch active projects by type
+    pub async fn fetch_project_type<'a, T>(
+        connection: &'a T,
+        project_type: impl Into<ProjectType>,
+        limit: usize,
+        offset: usize,
+    ) -> Result<Vec<Self>, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        let mut projects = Projects::query(
+            connection,
+            Projects::query_select()
+                .where_eq("status", ProjectStatus::Active)
+                .and()
+                .where_eq("project_type", project_type.into())
+                .order_by("created_at", QueryOrder::Desc)
+                .limit(limit)
+                .offset(offset)
+                .build()?,
+        )
+        .await?;
         for proj in projects.iter_mut() {
             proj.fetch_children(connection).await?;
             proj.fetch_snapshots(connection).await?;
@@ -448,11 +487,11 @@ impl Display for ProjectType {
 impl From<String> for ProjectType {
     fn from(s: String) -> Self {
         match s.to_lowercase().as_str() {
-            "group" => ProjectType::Group,
-            "application" => ProjectType::Application,
-            "server" => ProjectType::Server,
+            "group" | "groups" => ProjectType::Group,
+            "app" | "application" | "applications" => ProjectType::Application,
+            "server" | "servers" => ProjectType::Server,
             "cluster" => ProjectType::Cluster,
-            "container" => ProjectType::Container,
+            "container" | "containers" | "docker" => ProjectType::Container,
             _ => ProjectType::Application,
         }
     }

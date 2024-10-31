@@ -128,6 +128,7 @@ impl Snapshot {
 
         // Container Metadata
         if let Some(image) = &bom.container.image {
+            // TODO: Assume its from docker.io by default? Latest?
             SnapshotMetadata::update_or_create(
                 connection,
                 self.id,
@@ -137,6 +138,7 @@ impl Snapshot {
             .await?;
             // TODO: Parse the image to get the registry, repository, tag
         }
+        // TODO: Assume latest?
         if let Some(version) = &bom.container.version {
             SnapshotMetadata::update_or_create(
                 connection,
@@ -261,6 +263,16 @@ pub struct SnapshotMetadata {
 }
 
 impl SnapshotMetadata {
+    /// Initialise SnapshotMetadata
+    pub async fn init<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Self::create_table(connection).await?;
+
+        Ok(())
+    }
+
     /// Update or Create Metadata
     pub async fn update_or_create<'a, T>(
         connection: &'a T,
@@ -272,13 +284,17 @@ impl SnapshotMetadata {
         T: GeekConnection<Connection = T> + 'a,
     {
         let snapshot = snapshot.into();
+        // TODO: Do we need to validate the key? This is user controlled
         let key = key.into();
         let value = value.into();
         debug!("Updating Metadata for Snapshot({:?}) :: {} ", snapshot, key);
+
         Ok(
             match Self::find_by_key(connection, snapshot, key.clone()).await {
                 Ok(Some(mut meta)) => {
                     meta.value = value;
+                    meta.updated_at = chrono::Utc::now();
+
                     meta.update(connection).await?;
                     meta
                 }

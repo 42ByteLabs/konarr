@@ -147,6 +147,9 @@ impl Component {
                 "curl" | "wget" | "git" | "grep" | "jq" | "nginx" => {
                     component.component_type = ComponentType::Application;
                 }
+                "apr" | "apr-util" | "busybox" | "busybox-binsh" => {
+                    component.component_type = ComponentType::OperatingEnvironment;
+                }
                 _ => {
                     component.component_type = ComponentType::Library;
                 }
@@ -278,7 +281,7 @@ pub struct ComponentVersion {
     #[geekorm(foreign_key = "Component.id")]
     pub component_id: ForeignKey<i32, Component>,
 
-    /// Version
+    /// Version (semver or other format)
     pub version: String,
 }
 

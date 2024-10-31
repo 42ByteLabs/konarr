@@ -44,7 +44,7 @@ where
 
     debug!("Creating Snapshots table...");
     Snapshot::create_table(connection).await?;
-    SnapshotMetadata::create_table(connection).await?;
+    SnapshotMetadata::init(connection).await?;
     debug!("Creating Dependencies table...");
     Dependencies::create_table(connection).await?;
 

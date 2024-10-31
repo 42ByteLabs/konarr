@@ -5,6 +5,7 @@ use konarr::{
     bom::{BomParser, Parsers},
     models,
 };
+use log::info;
 use rocket::{data::ToByteUnit, serde::json::Json, State};
 
 use super::{dependencies::DependencyResp, security::SecuritySummary, ApiResponse, ApiResult};
@@ -47,7 +48,7 @@ pub(crate) async fn get_snapshot(
 }
 
 #[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase", crate = "rocket::serde")]
+#[serde(crate = "rocket::serde")]
 pub struct SnapshotCreateReq {
     project_id: u32,
 }
@@ -62,9 +63,9 @@ pub(crate) async fn create_snapshot(
 
     let mut project =
         models::Projects::fetch_by_primary_key(&connection, snapshot.project_id as i32).await?;
+    info!("Creating snapshot for Project: {}", project.id);
 
     let snapshot = models::Snapshot::create(&connection).await?;
-
     project.add_snapshot(&connection, snapshot.clone()).await?;
 
     Ok(Json(snapshot.into()))

@@ -1,5 +1,6 @@
 use geekorm::prelude::*;
 use konarr::models::{self, ProjectType};
+use log::info;
 use rocket::{serde::json::Json, State};
 
 use super::{ApiResponse, ApiResult};
@@ -87,7 +88,7 @@ pub(crate) async fn get_project(
     }
 }
 
-#[get("/?<page>&<limit>&<search>&<top>&<parents>")]
+#[get("/?<page>&<limit>&<search>&<type>&<top>&<parents>")]
 pub(crate) async fn get_projects(
     state: &State<AppState>,
     _session: Session,
@@ -95,6 +96,7 @@ pub(crate) async fn get_projects(
     limit: Option<u32>,
     search: Option<String>,
     top: Option<bool>,
+    r#type: Option<String>,
     parents: Option<bool>,
 ) -> ApiResult<ApiResponse<Vec<ProjectResp>>> {
     let connection = state.db.connect()?;
@@ -109,10 +111,19 @@ pub(crate) async fn get_projects(
         info!("Searching for projects with name: '{}'", search);
         models::Projects::search(&connection, search).await?
     } else if parents.unwrap_or(false) {
+        info!("Get the parent projects");
         models::Projects::find_parents(&connection).await?
     } else if top.unwrap_or(false) {
         info!("Fetching the top level projects");
         models::Projects::fetch_top_level(&connection, limit, offset).await?
+    } else if let Some(prjtype) = r#type {
+        if prjtype.as_str() == "all" {
+            info!("Fetching all projects");
+            models::Projects::all(&connection, limit, offset).await?
+        } else {
+            info!("Fetching by type: {}", prjtype);
+            models::Projects::fetch_project_type(&connection, prjtype, limit, offset).await?
+        }
     } else {
         models::Projects::query(
             &connection,
@@ -143,7 +154,10 @@ pub async fn create_project(
     let mut project: models::Projects = project_req.into_inner().into();
 
     match project.fetch_or_create(&connection).await {
-        Ok(_) => Ok(Json(project.into())),
+        Ok(_) => {
+            info!("Creating new project: {}", project.id);
+            Ok(Json(project.into()))
+        }
         Err(e) => Err(e.into()),
     }
 }
