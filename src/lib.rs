@@ -5,6 +5,7 @@
 //! Secure your Homelabs and Production environments with Konarr.
 //!
 #![deny(missing_docs)]
+#![doc = include_str!("../README.md")]
 
 pub mod bom;
 #[cfg(feature = "client")]

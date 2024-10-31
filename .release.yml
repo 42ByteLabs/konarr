@@ -1,0 +1,23 @@
+name: "konarr"
+repository: "42ByteLabs/konarr"
+version: 0.1.0
+
+locations:
+  - name: "Containers"
+    paths:
+      - "docker-compose.yml"
+      - "**/*Dockerfile"
+      - "README.md"
+    patterns:
+      - 'ghcr.io/42bytelabs/konarr:v([0-9]\.[0-9]\.[0-9])'
+      - 'ghcr.io/42bytelabs/konarr-cli:v([0-9]\.[0-9]\.[0-9])'
+      - 'ghcr.io/42bytelabs/konarr-agent:v([0-9]\.[0-9]\.[0-9])'
+
+  - name: "Cargo - Workmembers"
+    paths:
+      - "Cargo.toml"
+      - "**/Cargo.toml"
+    patterns:
+      - 'geekorm = \{.*version = "\^([0-9]\.[0-9]\.[0-9])".*\}'
+      - 'geekorm-server = \{.* version = "\^([0-9]\.[0-9]\.[0-9])".*\}'
+

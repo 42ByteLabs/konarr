@@ -4,11 +4,11 @@ services:
   # Konarr Server
   konarr:
     container_name: konarr
+    image: ghcr.io/42bytelabs/konarr:0.1.0
     # Manually build the image
-    build:
-      context: .
-      dockerfile: ./server/Dockerfile
-    # image: ghcr.io/42bytelabs/konarr:latest
+    # build:
+    #   context: .
+    #   dockerfile: ./server/Dockerfile
     restart: unless-stopped
     ports:
       # Expose the server on port 9000
@@ -21,11 +21,11 @@ services:
   # Konarr Agent (CLI)
   konarr-agent:
     container_name: konarr-agent
+    image: ghcr.io/42bytelabs/konarr-cli:0.1.0
     # Manually build the image
-    build:
-      context: .
-      dockerfile: ./cli/Dockerfile
-    # image: ghcr.io/42bytelabs/konarr-cli:latest
+    # build:
+    #   context: .
+    #   dockerfile: ./cli/Dockerfile
     # Run the agent in monitoring mode
     command: agent
     restart: unless-stopped

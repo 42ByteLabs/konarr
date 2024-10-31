@@ -3,6 +3,8 @@
 /examples/samples
 
 /target
+/config
+/data
 
 **.sqlite
 
