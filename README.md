@@ -2,7 +2,7 @@
 <div align="center">
 <h1>Konarr</h1>
 
-⚠️  Work in progress and early stages of development ⚠️
+<img src="./assets/konar-logo.png" width="250" title="Konarr Logo">
 
 [![GitHub](https://img.shields.io/badge/github-%23121011.svg?style=for-the-badge&logo=github&logoColor=white)][github]
 [![Crates.io Version](https://img.shields.io/crates/v/konarr?style=for-the-badge)][crates-io]
@@ -11,6 +11,8 @@
 [![GitHub Stars](https://img.shields.io/github/stars/42ByteLabs/konarr?style=for-the-badge)][github]
 [![GitHub Issues](https://img.shields.io/github/issues/42ByteLabs/konarr?style=for-the-badge)][github-issues]
 [![Licence](https://img.shields.io/github/license/42ByteLabs/konarr?style=for-the-badge)][license]
+
+⚠️  Work in progress and early stages of development ⚠️
 
 </div>
 <!-- markdownlint-restore -->
@@ -37,13 +39,42 @@ Konarr is from the name [Konar quo Maten](https://oldschool.runescape.wiki/w/Kon
 
 </details>
 
+## 🖼️ Screenshots
+
+<div align="center">
+
+![project-view](./assets/screenshots/projects-view.png)
+
+![project-view-dark](./assets/screenshots/dark-mode.png)
+
+<details>
+<summary>More screenshots</summary>
+
+**Single Project Summary** 
+![server-view](./assets/screenshots/server-view.png)
+
+**Container Summary**
+![container-view](./assets/screenshots/container-view.png)
+
+**Dependencies View**
+![dependencies-view](./assets/screenshots/dependencies-view.png)
+
+</details>
+
+</div>
+
 ## ✨ Features
 
 - Simple, easy-to-use web interface
 - Blazing fast performance with minimal resource usage (written in [Rust][rust-lang] 🦀)
 - Real-time monitoring of your containers
+  - Uses [Syft][syft] for image scanning (with more scanners to come)
+- Orchestration support
+  - Docker / Podman
+  - Docker Compose / Docker Swarm
+  - 🚧 Kubernetes support is planned
 - Software Bill of Materials (SBOM) for your containers
-- Supply chain attack monitoring
+- 🚧 Supply chain attack monitoring
 
 ## 🚀 Quick Start
 
@@ -61,31 +92,34 @@ curl https://raw.githubusercontent.com/42ByteLabs/konarr/refs/heads/main/install
 
 ## 🛠️ Installation
 
-### Server
+Konarr can be installed using Docker, Podman, or Cargo (native).
 
-The Konarr Server is a Rust (Server) and VueJS (frontend) that 
+### Konarr using Compose
 
-#### Konarr Server using Docker Compose
+When using Docker/Podman Compose, the Konarr server and agent will be installed on your machine using containers.
+
+<details>
+<summary>Cloning the repository</summary>
 
 ```bash
 # Clone the Konarr repository from GitHub
 git clone https://github.com/42ByteLabs/konarr.git && cd konarr
 # Update submodules
 git submodule update --init --recursive
+```
 
-# Spin up container using Docker Compose
+</details>
+
+**Starting the server and agent:**
+
+```bash
 docker-compose up -d
 ```
 
-*Note:* Podman-compose also works.
+### 💻 Konarr Server
 
-<details>
-<summary>Description</summary>
-
-- `curl https://raw.githubusercontent.com/42ByteLabs/konarr/refs/heads/main/docker-compose.yml` - This command downloads the `docker-compose.yml` file from the Konarr repository on GitHub. This file contains the configuration for the Konarr server and the Konarr agent.
-- `docker-compose up -d` - This command tells Docker Compose to start the containers defined in the `docker-compose.yml` file. The `-d` flag tells Docker Compose to run the containers in the background.
-
-</details>
+The Konarr Server is the API and web interface that is used to monitor your containers.
+It can be installed using Docker/Podman or Cargo (native).
 
 #### Konarr Server using Docker
 
@@ -110,7 +144,15 @@ This command does the following:
 
 </details>
 
-### Agent
+#### Install Server via Cargo
+
+The `konarr-server` can be installed using Cargo but it is not recommended for production use.
+
+```bash
+cargo install konarr-server
+```
+
+### 🕵️ Konarr Agent
 
 The Konarr Agent is the Konarr CLI that is used to monitor your containers.
 It is written in Rust and is available as a binary or as a Docker image.
@@ -125,7 +167,7 @@ docker run -it --rm \
     ghcr.io/42bytelabs/konarr-agent:v0.1.0
 ```
 
-#### Install via Cargo
+#### Install Agent via Cargo
 
 The konarr-cli is a Rust binary that can be installed via Cargo.
 
@@ -189,4 +231,5 @@ Please refer to [Apache2][license] for the full terms.
 [github]: https://github.com/42ByteLabs/konarr
 [github-issues]: https://github.com/42ByteLabs/konarr/issues
 
+[syft]: https://github.com/anchore/syft
 
