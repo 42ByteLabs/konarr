@@ -1,23 +1,26 @@
 //! Snapshot Request
+use log::debug;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use log::debug;
-
-use serde::{Deserialize, Serialize};
-
+use super::security::SecuritySummary;
 use super::{ApiResponse, KonarrClient};
 
 /// Snapshot Request
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct KonarrSnapshot {
     /// Snapshot ID
     pub id: u32,
-    /// Created At
-    pub created_at: chrono::DateTime<chrono::Utc>,
     /// Dependencies Count
     pub dependencies: u32,
+    /// Security Summary
+    #[serde(default)]
+    pub security: SecuritySummary,
     /// Snapshot Metadata
     pub metadata: HashMap<String, String>,
+    /// Created At
+    pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl KonarrSnapshot {
@@ -26,6 +29,7 @@ impl KonarrSnapshot {
         client: &KonarrClient,
         project_id: u32,
     ) -> Result<ApiResponse<Self>, crate::KonarrError> {
+        debug!("Creating snapshot for project `{}`", project_id);
         Ok(client
             .post(
                 "/snapshots",

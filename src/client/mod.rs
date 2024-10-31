@@ -21,6 +21,7 @@ use server::User;
 use url::Url;
 
 pub mod projects;
+pub mod security;
 pub mod server;
 pub mod snapshot;
 

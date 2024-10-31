@@ -3,7 +3,7 @@ use konarr::{
     client::{
         projects::{KonarrProject, KonarrProjects},
         snapshot::KonarrSnapshot,
-        ApiResponse,
+        ApiResponse, Pagination,
     },
     tools::{syft::Syft, Tool},
     Config, KonarrError,
@@ -33,9 +33,18 @@ pub async fn setup(
     } else if let Some(hostname) = &config.agent.host {
         log::debug!("Hostname :: {}", hostname);
 
-        match KonarrProjects::by_name(&client, &hostname).await {
-            Ok(Some(project)) => project,
-            _ => {
+        // Look at top projects
+        let project: Option<KonarrProject> = match KonarrProjects::list_top(&client).await {
+            Ok(Pagination { data: projects, .. }) => projects
+                .iter()
+                .find(|p| p.title == *hostname || p.name == *hostname)
+                .cloned(),
+            _ => None,
+        };
+
+        match project {
+            Some(p) => p,
+            None => {
                 if !config.agent.create {
                     log::error!("Failed to get project by name: {}", hostname);
                     return Err(KonarrError::KonarrClient(
@@ -58,6 +67,7 @@ pub async fn setup(
     };
 
     info!("Project :: {}", project.id);
+    debug!("Project Snapshot :: {:?}", project.snapshot);
 
     // TODO: Multi-threading is hard...
     let config = Arc::new(config.clone());
@@ -103,6 +113,7 @@ async fn run(
     project: &mut KonarrProject,
 ) -> Result<(), konarr::KonarrError> {
     // The host
+    debug!("Host Project :: {:?}", project);
     let snapshot = if let Some(snap) = project.snapshot.clone() {
         snap
     } else {
@@ -181,6 +192,7 @@ async fn run_docker(
             ]),
         )
         .await?;
+    info!("Updated server snapshot metadata...");
 
     info!("Getting Docker Containers...");
     let containers = docker
@@ -244,7 +256,7 @@ async fn run_docker(
         };
 
         project.get(client).await?;
-        info!("Project: {} - {}", project.name, project.r#type);
+        info!("Project: {} - {}", project.name, project.project_type);
 
         let container_sha = container.image_id.clone().unwrap_or_default();
         let container_image = container.image.clone().unwrap_or_default();
@@ -339,7 +351,7 @@ async fn run_docker(
             info!("Running Syft on Container: {}", name);
 
             let results = tool.run(container_image).await?;
-            debug!("Syft Results: {:#?}", results);
+            debug!("Syft Results :: {}", results);
 
             info!("Uploading BOM to Server");
             container_snapshot.upload_bom(client, results).await?;

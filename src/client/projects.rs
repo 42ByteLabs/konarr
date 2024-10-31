@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::KonarrError;
 
-use super::{snapshot::KonarrSnapshot, ApiResponse, KonarrClient, Pagination};
+use super::{
+    security::SecuritySummary, snapshot::KonarrSnapshot, ApiResponse, KonarrClient, Pagination,
+};
 
 /// List of Konarr Projects
 pub struct KonarrProjects;
@@ -17,6 +19,16 @@ impl KonarrProjects {
             .json::<Pagination<KonarrProject>>()
             .await?)
     }
+
+    /// List Top Projects
+    pub async fn list_top(client: &KonarrClient) -> Result<Pagination<KonarrProject>, KonarrError> {
+        Ok(client
+            .get("/projects?top=true")
+            .await?
+            .json::<Pagination<KonarrProject>>()
+            .await?)
+    }
+
     /// Get Project by ID
     pub async fn by_id(
         client: &KonarrClient,
@@ -45,33 +57,48 @@ impl KonarrProjects {
 
 /// Project Request
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct KonarrProject {
     /// Project ID
     #[serde(skip_serializing)]
     pub id: u32,
     /// Project Name
     pub name: String,
-    /// Project Type
-    pub r#type: String,
+    /// Project title
+    #[serde(skip_serializing)]
+    pub title: String,
     /// Project Description
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Project Type
+    #[serde(rename = "type")]
+    pub project_type: String,
+    /// Project Status
+    #[serde(skip_serializing)]
+    pub status: Option<bool>,
+
+    /// Latest Snapshot
+    #[serde(skip_serializing)]
+    pub snapshot: Option<KonarrSnapshot>,
+    /// Number of Snapshots
+    #[serde(skip_serializing)]
+    pub snapshots: u32,
+
+    /// Security
+    #[serde(skip_serializing)]
+    pub security: SecuritySummary,
 
     /// Parent Project
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent: Option<i32>,
+
     /// Project Children
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing)]
     pub children: Option<Vec<KonarrProject>>,
 
     /// Created At
-    #[serde(rename = "createdAt")]
+    #[serde(skip_serializing)]
     pub created_at: chrono::DateTime<chrono::Utc>,
-
-    /// Latest Snapshot
-    pub snapshot: Option<KonarrSnapshot>,
-    /// Number of Snapshots
-    pub snapshots: u32,
 }
 
 impl KonarrProject {
@@ -79,7 +106,7 @@ impl KonarrProject {
     pub fn new(name: impl Into<String>, r#type: impl Into<String>) -> Self {
         Self {
             name: name.into(),
-            r#type: r#type.into(),
+            project_type: r#type.into(),
             ..Default::default()
         }
     }

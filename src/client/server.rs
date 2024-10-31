@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 /// Server Information
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ServerInfo {
     /// Server Version
     pub version: String,
@@ -16,6 +17,7 @@ pub struct ServerInfo {
 
 /// Server Configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ServerConfig {
     /// Is Server Initialised
     pub initialised: bool,
@@ -25,6 +27,7 @@ pub struct ServerConfig {
 
 /// User Information
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct User {
     /// Username
     pub username: String,
