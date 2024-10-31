@@ -3,12 +3,12 @@ version: "3.8"
 services:
   # Konarr Server
   konarr:
+    container_name: konarr
     # Manually build the image
     build:
       context: .
       dockerfile: ./server/Dockerfile
     # image: ghcr.io/42bytelabs/konarr:latest
-    container_name: konarr
     restart: unless-stopped
     ports:
       # Expose the server on port 9000
@@ -17,6 +17,29 @@ services:
       # Mount the data and config volumes
       - data:/data
       - config:/config
+
+  # Konarr Agent (CLI)
+  konarr-agent:
+    container_name: konarr-agent
+    # Manually build the image
+    build:
+      context: .
+      dockerfile: ./cli/Dockerfile
+    # image: ghcr.io/42bytelabs/konarr-cli:latest
+    # Run the agent in monitoring mode
+    command: agent
+    restart: unless-stopped
+    # Wait for the server to be ready
+    depends_on:
+      - konarr
+    environment:
+      # Project name of the Konarr server
+      KONARR_HOST: konarr-server
+    volumes:
+      # Share the configuration with the server
+      - config:/config
+      # Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
 volumes:
   data:
