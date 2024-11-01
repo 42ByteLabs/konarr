@@ -15,7 +15,7 @@ authors.workspace = true
 build = "build.rs"
 
 [dependencies]
-konarr = { path = "../", features = ["models"] }
+konarr = { path = "../", version = "^0.1", features = ["models"] }
 
 # Rocket web framework
 rocket = { version = "^0.5", features = ["serde_json", "json", "secrets"] }
