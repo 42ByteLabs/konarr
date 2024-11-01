@@ -5,6 +5,7 @@ members = [".", "server", "cli"]
 [workspace.package]
 version = "0.1.0"
 license = "Apache-2.0"
+description = "Konarr"
 
 edition = "2021"
 
@@ -26,7 +27,7 @@ opt-level = 3
 
 [package]
 name = "konarr"
-
+description.workspace = true
 version.workspace = true
 documentation.workspace = true
 repository.workspace = true
