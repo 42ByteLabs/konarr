@@ -4,7 +4,7 @@ services:
   # Konarr Server
   konarr:
     container_name: konarr
-    image: ghcr.io/42bytelabs/konarr:0.1.0
+    image: ghcr.io/42bytelabs/konarr:latest
     # Manually build the image
     # build:
     #   context: .
@@ -21,7 +21,7 @@ services:
   # Konarr Agent (CLI)
   konarr-agent:
     container_name: konarr-agent
-    image: ghcr.io/42bytelabs/konarr-cli:0.1.0
+    image: ghcr.io/42bytelabs/konarr-cli:latest
     # Manually build the image
     # build:
     #   context: .
