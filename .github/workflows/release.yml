@@ -26,7 +26,7 @@ jobs:
       contents: write
       packages: write
     with:
-      container-name: "43bytelabs/konarr"
+      container-name: "42bytelabs/konarr"
       docker-file: "./server/Dockerfile"
 
   container-cli:
@@ -38,5 +38,5 @@ jobs:
       contents: write
       packages: write
     with:
-      container-name: "43bytelabs/konarr-cli"
+      container-name: "42bytelabs/konarr-cli"
       docker-file: "./cli/Dockerfile"
