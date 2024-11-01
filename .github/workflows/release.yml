@@ -9,13 +9,13 @@ permissions:
   contents: write
 
 jobs:
-  # cargo-publish:
-  #   # https://github.com/42ByteLabs/.github/blob/main/.github/workflows/cargo-publish.yml
-  #   uses: 42ByteLabs/.github/.github/workflows/cargo-publish.yml@v0.8
-  #   secrets: inherit
-  #   with:
-  #     crate: konarr
-  #     crates: konarr,konarr-server,konarr-cli
+  cargo-publish:
+    # https://github.com/42ByteLabs/.github/blob/main/.github/workflows/cargo-publish.yml
+    uses: 42ByteLabs/.github/.github/workflows/cargo-publish.yml@main
+    secrets: inherit
+    with:
+      crate: konarr
+      crates: konarr,konarr-server,konarr-cli
 
   container-server:
     # https://github.com/42ByteLabs/.github/blob/main/.github/workflows/container.yml
@@ -26,7 +26,7 @@ jobs:
       contents: write
       packages: write
     with:
-      container-name: "konarr"
+      container-name: "43bytelabs/konarr"
       docker-file: "./server/Dockerfile"
 
   container-cli:
@@ -38,5 +38,5 @@ jobs:
       contents: write
       packages: write
     with:
-      container-name: "konarr-cli"
+      container-name: "43bytelabs/konarr-cli"
       docker-file: "./cli/Dockerfile"
