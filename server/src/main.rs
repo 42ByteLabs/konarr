@@ -121,6 +121,9 @@ async fn server(config: Config) -> Result<()> {
     let init: bool = ServerSettings::fetch_by_name(&connection, "initialized")
         .await?
         .boolean();
+    if !frontend.exists() {
+        std::fs::create_dir_all(&frontend)?;
+    }
 
     let state = AppState {
         db: database,
