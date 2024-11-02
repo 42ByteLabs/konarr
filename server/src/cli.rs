@@ -18,7 +18,7 @@ pub struct Arguments {
     pub disable_banner: bool,
 
     /// Path to the configuration file
-    #[clap(short, long, default_value = "konarr.yml")]
+    #[clap(short, long, default_value = "config/konarr.yml")]
     pub config: PathBuf,
 }
 

@@ -116,6 +116,9 @@ impl Config {
     /// Save the Configuration
     pub fn save(&self, path: &PathBuf) -> Result<(), Error> {
         debug!("Saving Configuration: {:?}", path);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(&parent)?;
+        }
         let config = serde_yaml::to_string(self)?;
         std::fs::write(path, config)?;
         Ok(())
@@ -161,14 +164,11 @@ impl Config {
     /// Get the Frontend Path
     pub fn frontend_path(&self) -> Result<PathBuf, Error> {
         let path = self.server.frontend.clone();
-        if path.exists() {
-            Ok(path)
-        } else {
-            Err(Error::IOError(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("Frontend Path does not exist: {:?}", path),
-            )))
+        if !path.exists() {
+            log::debug!("Creating frontend path");
+            std::fs::create_dir_all(&path)?;
         }
+        Ok(path)
     }
 
     /// Get Sessions Configuration
@@ -223,7 +223,9 @@ impl Default for DatabaseConfig {
     fn default() -> Self {
         let path = match std::env::var("KONARR_DATABASE_PATH") {
             Ok(path) => PathBuf::from(path),
-            Err(_) => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("konarr.db"),
+            Err(_) => PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("data")
+                .join("konarr.db"),
         };
 
         Self { path: Some(path) }
