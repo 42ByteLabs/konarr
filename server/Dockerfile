@@ -19,7 +19,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN cd client && \
+RUN cd frontend && \
     npm install && \
     npm run build || true
 
@@ -39,7 +39,7 @@ WORKDIR /app
 
 COPY --from=server /app/target/x86_64-unknown-linux-musl/release/konarr-server /app/konarr-server
 COPY --from=server /app/server/Rocket.toml /app/Rocket.toml
-COPY --from=web /app/client/dist /app/dist
+COPY --from=web /app/frontend/dist /app/dist
 
 ENTRYPOINT ["/app/konarr-server"]
 
