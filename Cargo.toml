@@ -82,7 +82,7 @@ reqwest = { version = "^0.12", features = ["json", "cookies"], optional = true }
 openssl = { version = "0.10", features = ["vendored"], optional = true }
 
 # Docker
-bollard = { version = "^0.17", optional = true }
+bollard = { version = "^0.18", optional = true }
 figment = { version = "0.10.19", features = ["env", "serde_yaml", "yaml"] }
 tokio-tungstenite = { version = "0.24.0", features = ["url", "native-tls"] }
 
