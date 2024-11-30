@@ -1,5 +1,5 @@
 # Build the Agent 
-FROM docker.io/library/rust:1.80-alpine as agent
+FROM docker.io/library/rust:1.82-alpine as agent
 
 WORKDIR /app
 
