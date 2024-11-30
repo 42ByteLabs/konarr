@@ -1,14 +1,14 @@
-//! CycloneDX 1.5 spec implementation
+//! CycloneDX 1.6 spec implementation
 
 use log::warn;
 use serde::{Deserialize, Serialize};
 
 use crate::bom::{
-    sbom::{BomComponent, BomComponentType, BomTool, BomType, Container},
+    sbom::{BomComponent, BomComponentType, BomTool, BomType, BomVulnerability, Container},
     BillOfMaterials, BomParser,
 };
 
-/// CycloneDX SBOM v1.5
+/// CycloneDX SBOM v1.6
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Bom {
     #[serde(rename = "$schema")]
@@ -22,29 +22,31 @@ pub struct Bom {
     pub(crate) metadata: Option<Metadata>,
 
     pub(crate) components: Option<Vec<Component>>,
+
+    pub(crate) vulnerabilities: Option<Vec<Vulnerability>>,
 }
 
 impl BomParser for Bom {
     fn parse(data: &[u8]) -> Result<BillOfMaterials, crate::KonarrError> {
         // Parse JSON data
-        let spec_v1_5: Bom = serde_json::from_slice(data)?;
+        let spec_v1_6: Bom = serde_json::from_slice(data)?;
 
-        if spec_v1_5.spec_version != "1.5" {
+        if spec_v1_6.spec_version != "1.6" {
             return Err(crate::KonarrError::ParseSBOM(
                 "Invalid CycloneDX version".to_string(),
             ));
         }
 
-        Ok(spec_v1_5.into())
+        Ok(spec_v1_6.into())
     }
 
     fn parse_path(path: std::path::PathBuf) -> Result<BillOfMaterials, crate::KonarrError> {
         // Load JSON file
         let reader = std::fs::File::open(path)?;
         // Parse JSON file
-        let spec_v1_5: Bom = serde_json::from_reader(reader)?;
+        let spec_v1_6: Bom = serde_json::from_reader(reader)?;
 
-        Ok(spec_v1_5.into())
+        Ok(spec_v1_6.into())
     }
 }
 
@@ -100,6 +102,41 @@ impl From<Bom> for BillOfMaterials {
             }
         }
 
+        if let Some(vulns) = value.vulnerabilities {
+            for vulnerability in vulns.iter() {
+                let severity = vulnerability
+                    .ratings
+                    .as_ref()
+                    .map_or("Unknown".to_string(), |r| {
+                        r.iter()
+                            .max_by_key(|rating| rating.severity.len())
+                            .map_or("Unknown".to_string(), |rating| rating.severity.clone())
+                    });
+                let source = vulnerability
+                    .source
+                    .as_ref()
+                    .map_or("Unknown".to_string(), |s| s.name.clone());
+
+                let mut vuln = BomVulnerability::new(vulnerability.id.clone(), source, severity);
+
+                if let Some(desc) = &vuln.description {
+                    vuln.description = Some(desc.clone());
+                }
+                if let Some(source) = &vulnerability.source {
+                    vuln.url = Some(source.url.clone());
+                }
+
+                if let Some(affects) = &vulnerability.affects {
+                    for v in affects {
+                        vuln.components
+                            .push(BomComponent::from_purl(v.reference.clone()));
+                    }
+                }
+
+                sbom.vulnerabilities.push(vuln);
+            }
+        }
+
         sbom
     }
 }
@@ -138,4 +175,39 @@ pub(crate) struct ToolService {
     pub(crate) vendor: Option<String>,
     pub(crate) name: Option<String>,
     pub(crate) version: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct Vulnerability {
+    #[serde(rename = "bom-ref")]
+    pub(crate) bom_ref: String,
+    pub(crate) id: String,
+    pub(crate) source: Option<VulnerabilitySource>,
+    pub(crate) references: Option<Vec<VulnerabilityRef>>,
+    pub(crate) ratings: Option<Vec<VulnerabilityRating>>,
+    pub(crate) description: Option<String>,
+    pub(crate) affects: Option<Vec<VulnerabilityCompRef>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct VulnerabilitySource {
+    pub(crate) name: String,
+    pub(crate) url: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct VulnerabilityRating {
+    pub(crate) severity: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct VulnerabilityRef {
+    pub id: String,
+    pub source: VulnerabilitySource,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct VulnerabilityCompRef {
+    #[serde(rename = "ref")]
+    pub(crate) reference: String,
 }
