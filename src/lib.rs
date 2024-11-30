@@ -5,12 +5,15 @@
 //! Secure your Homelabs and Production environments with Konarr.
 //!
 #![deny(missing_docs)]
+#![deny(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
 pub mod bom;
 #[cfg(feature = "client")]
 pub mod client;
 pub mod error;
+// #[cfg(feature = "tasks")]
+// pub mod tasks;
 #[cfg(feature = "tools")]
 pub mod tools;
 pub mod utils;

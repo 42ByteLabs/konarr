@@ -124,6 +124,16 @@ impl Config {
         Ok(())
     }
 
+    /// Data directory path
+    pub fn data_path(&self) -> Result<PathBuf, Error> {
+        let path = PathBuf::from("./data");
+        if !path.exists() {
+            log::debug!("Creating data path");
+            std::fs::create_dir_all(&path)?;
+        }
+        Ok(path)
+    }
+
     #[cfg(feature = "models")]
     /// Get Database Connection
     pub async fn database(&self) -> Result<libsql::Database, Error> {
