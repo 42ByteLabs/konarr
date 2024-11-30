@@ -6,7 +6,8 @@ extern crate geekorm;
 
 use anyhow::Result;
 use konarr::{
-    models::{self, ServerSettings},
+    models::{self, Projects, ServerSettings},
+    utils::grypedb::GrypeDatabase,
     Config, KonarrError,
 };
 use log::{error, info, warn};
@@ -22,6 +23,7 @@ mod routes;
 /// Application State
 pub struct AppState {
     db: libsql::Database,
+    // advisories: Option<libsql::Database>,
     config: Config,
     init: bool,
 }
@@ -66,6 +68,46 @@ async fn create(config: &mut Config) -> Result<()> {
     }
 
     Ok(())
+}
+
+async fn advisories(
+    config: &Config,
+    connection: &libsql::Connection,
+) -> Result<Option<libsql::Connection>, KonarrError> {
+    let grype_path = config.data_path()?.join("grypedb");
+    info!("Grype Path: {:?}", grype_path);
+
+    if ServerSettings::get_bool(connection, "security.advisories.polling").await? {
+        info!("Starting Advisory DB Polling");
+        match GrypeDatabase::sync(&grype_path).await {
+            Ok(_) => {
+                info!("Advisory Sync Complete");
+            }
+            Err(e) => {
+                warn!("Advisory Sync Error: {}", e);
+            }
+        };
+        ServerSettings::fetch_by_name(connection, "security.advisories.updated")
+            .await?
+            .set_update(connection, chrono::Utc::now().to_rfc3339())
+            .await?;
+    }
+
+    let grype_conn: libsql::Connection = match GrypeDatabase::connect(&grype_path).await {
+        Ok(conn) => conn,
+        Err(_) => {
+            return Ok(None);
+        }
+    };
+
+    // Set Version
+    let grype_id = GrypeDatabase::fetch_grype(&grype_conn).await?;
+    ServerSettings::fetch_by_name(connection, "security.advisories.version")
+        .await?
+        .set_update(connection, grype_id.build_timestamp.to_string().as_str())
+        .await?;
+
+    Ok(Some(grype_conn))
 }
 
 fn cors(config: &Config) -> Result<Cors, KonarrError> {
@@ -118,9 +160,16 @@ async fn server(config: Config) -> Result<()> {
     let connection = database.connect()?;
 
     // Check if we have init Konarr
-    let init: bool = ServerSettings::fetch_by_name(&connection, "initialized")
-        .await?
-        .boolean();
+    let init: bool = ServerSettings::get_bool(&connection, "initialized").await?;
+
+    // Initialise Security
+    if ServerSettings::get_bool(&connection, "security").await? {
+        advisories(&config, &connection).await?;
+        // Calculate Alerts
+        let mut top_projects = Projects::all(&connection, 10_000, 0).await?;
+        Projects::calculate_alerts(&connection, &mut top_projects).await?;
+    }
+
     if !frontend.exists() {
         std::fs::create_dir_all(&frontend)?;
     }
@@ -147,6 +196,7 @@ async fn server(config: Config) -> Result<()> {
         .mount("/api/projects", api::projects::routes())
         .mount("/api/snapshots", api::snapshots::routes())
         .mount("/api/dependencies", api::dependencies::routes())
+        .mount("/api/security", api::security::routes())
         .mount("/api/admin", api::admin::routes())
         .mount("/api", api::websock::routes());
 

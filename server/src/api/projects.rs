@@ -3,7 +3,7 @@ use konarr::models::{self, ProjectType};
 use log::info;
 use rocket::{serde::json::Json, State};
 
-use super::{ApiResponse, ApiResult};
+use super::{security::SecuritySummary, ApiResponse, ApiResult};
 use crate::{
     error::KonarrServerError,
     guards::{AdminSession, Session},
@@ -263,6 +263,11 @@ impl From<models::Projects> for ProjectResp {
     fn from(project: models::Projects) -> Self {
         // Get the latest snapshot (last)
         let snapshot: Option<models::Snapshot> = project.snapshots.last().cloned();
+        let security: SecuritySummary = if let Some(snap) = &snapshot {
+            snap.into()
+        } else {
+            SecuritySummary::default()
+        };
         let parent: Option<i32> = if project.parent > 0 {
             Some(project.parent)
         } else {
@@ -286,7 +291,7 @@ impl From<models::Projects> for ProjectResp {
             created_at: project.created_at,
             snapshot: snapshot.map(|snap| snap.into()),
             snapshots: project.snapshots.len() as u32,
-            security: Some(super::security::SecuritySummary::default()),
+            security: Some(security),
             parent,
             children: project
                 .children

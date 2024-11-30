@@ -3,12 +3,19 @@ use std::collections::HashMap;
 use geekorm::prelude::*;
 use konarr::{
     bom::{BomParser, Parsers},
-    models,
+    models::{
+        self,
+        security::{Advisories, Alerts, SecuritySeverity},
+    },
 };
 use log::info;
 use rocket::{data::ToByteUnit, serde::json::Json, State};
 
-use super::{dependencies::DependencyResp, security::SecuritySummary, ApiResponse, ApiResult};
+use super::{
+    dependencies::DependencyResp,
+    security::{AlertResp, SecuritySummary},
+    ApiResponse, ApiResult,
+};
 use crate::{guards::Session, AppState};
 
 pub fn routes() -> Vec<rocket::Route> {
@@ -16,6 +23,7 @@ pub fn routes() -> Vec<rocket::Route> {
         get_snapshot,
         get_snapshots,
         get_snapshot_dependencies,
+        get_snapshot_alerts,
         create_snapshot,
         upload_bom,
         patch_snapshot_metadata,
@@ -154,6 +162,61 @@ pub(crate) async fn get_snapshot_dependencies(
         deps.into_iter().map(|d| d.into()).collect(),
         total as u32,
         (total / limit) as u32,
+    )))
+}
+
+#[get("/<id>/alerts?<search>&<severity>&<page>&<limit>")]
+pub(crate) async fn get_snapshot_alerts(
+    state: &State<AppState>,
+    _session: Session,
+    id: u32,
+    search: Option<String>,
+    severity: Option<String>,
+    page: Option<u32>,
+    limit: Option<u32>,
+) -> ApiResult<ApiResponse<Vec<AlertResp>>> {
+    let connection = state.db.connect()?;
+
+    let snapshot = models::Snapshot::fetch_by_primary_key(&connection, id as i32).await?;
+    let total = snapshot.fetch_alerts_count(&connection).await?;
+
+    let page = Pagination::from((page, limit));
+    let pages = (total as f32 / page.limit() as f32).ceil() as u32;
+
+    let alerts: Vec<Alerts> = if let Some(_search) = search {
+        vec![] // TODO: Implement search
+    } else if let Some(severity) = severity {
+        let severity = SecuritySeverity::from(severity);
+
+        info!("Filtering alerts by severity: {:?}", severity);
+        let mut alerts = Alerts::query(
+            &connection,
+            Alerts::query_select()
+                .join(Advisories::table())
+                .where_eq("snapshot_id", snapshot.id)
+                .and()
+                .where_eq("Advisories.severity", severity)
+                .page(&page)
+                .build()?,
+        )
+        .await?;
+        for alert in alerts.iter_mut() {
+            alert.fetch(&connection).await?;
+        }
+        alerts
+    } else {
+        snapshot.fetch_alerts_page(&connection, &page).await?
+    };
+    info!(
+        "Found `{}` alerts in snapshot `{}`",
+        alerts.len(),
+        snapshot.id
+    );
+
+    Ok(Json(ApiResponse::new(
+        alerts.into_iter().map(|a| a.into()).collect(),
+        total as u32,
+        pages,
     )))
 }
 
