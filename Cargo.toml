@@ -50,7 +50,7 @@ tasks = ["dep:tokio", "dep:tokio_schedule"]
 models = ["dep:geekorm", "dep:libsql"]
 # Tools
 tools = ["dep:tokio", "client"]
-tools-grypedb = ["tools", "dep:hex", "dep:flate2", "dep:tar"]
+tools-grypedb = ["tools", "models", "dep:hex", "dep:flate2", "dep:tar"]
 # Client
 client = ["dep:reqwest", "dep:openssl", "dep:tokio"]
 websocket = []
