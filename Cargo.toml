@@ -94,6 +94,7 @@ tokio-tungstenite = { version = "0.24.0", features = ["url", "native-tls"] }
 
 [dev-dependencies]
 konarr = { path = ".", features = ["client"] }
+geekorm = { version = "^0.7", features = ["all", "semver", "libsql"] }
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
 
