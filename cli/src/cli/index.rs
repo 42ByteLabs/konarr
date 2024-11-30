@@ -11,9 +11,6 @@ use std::path::PathBuf;
 #[derive(Subcommand, Debug, Clone)]
 pub enum IndexCommand {
     Sbom {
-        #[clap(short, long)]
-        project_name: String,
-
         #[clap(long)]
         path: PathBuf,
     },
@@ -37,7 +34,7 @@ pub async fn run(
     info!("Connected to database!");
 
     match subcommands {
-        Some(IndexCommand::Sbom { project_name, path }) => {
+        Some(IndexCommand::Sbom { path }) => {
             info!("Running SBOM Command");
 
             if !path.exists() {
@@ -47,11 +44,19 @@ pub async fn run(
             }
 
             if path.is_file() {
-                info!("Project Name :: {:?}", project_name);
-
                 // Find or Create the project
-                let mut project = Projects::new(project_name, ProjectType::Container);
-                project.fetch_or_create(&connection).await?;
+                let mut project = if let Some(project_id) = config.agent.project_id {
+                    Projects::fetch_by_primary_key(&connection, project_id as i32).await?
+                } else if let Some(project_name) = &config.agent.host {
+                    Projects::fetch_by_name(&connection, project_name).await?
+                } else {
+                    let input = crate::utils::interactive::prompt_input("Project Name")
+                        .expect("Failed to get input");
+                    let mut proj = Projects::new(input, ProjectType::Container);
+                    proj.fetch_or_create(&connection).await?;
+                    proj
+                };
+                info!("Project Name :: {:?}", project);
 
                 info!("File Path: {:?}", path);
                 let bom = konarr::bom::Parsers::parse_path(path)?;
@@ -61,14 +66,14 @@ pub async fn run(
                 info!("BOM SHA             :: {}", bom.sha);
                 for (index, tool) in bom.tools.iter().enumerate() {
                     info!(
-                        "BOM Tool [{}]         :: {} ({})",
+                        "BOM Tool [{}]        :: {} ({})",
                         index, tool.name, tool.version
                     );
                 }
                 info!("BOM Dependencies    :: {}", bom.components.len());
+                info!("BOM Vulnerabilities :: {}", bom.vulnerabilities.len());
 
                 let snapshot = Snapshot::from_bom(&connection, &bom).await?;
-
                 info!("Snapshot ID: {:?}", snapshot.id);
 
                 project.add_snapshot(&connection, snapshot).await?;

@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
         }
         #[cfg(feature = "database")]
         Some(cli::ArgumentCommands::Database { subcommands }) => {
-            if let Some(url) = database_url {
+            if let Some(url) = arguments.database_url {
                 config.database.path = Some(url.into());
             }
             cli::database::run(&config, subcommands).await
@@ -74,6 +74,10 @@ async fn main() -> Result<()> {
         #[cfg(feature = "database")]
         Some(cli::ArgumentCommands::Search { subcommands }) => {
             Ok(cli::search::run(&config, subcommands).await?)
+        }
+        #[cfg(feature = "tasks")]
+        Some(cli::ArgumentCommands::Tasks { subcommands }) => {
+            Ok(cli::tasks::run(&config, subcommands).await?)
         }
         None => Err(anyhow!("No subcommand provided")),
     }
