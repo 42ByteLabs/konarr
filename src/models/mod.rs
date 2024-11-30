@@ -5,6 +5,7 @@ use log::debug;
 pub mod auth;
 pub mod dependencies;
 pub mod projects;
+pub mod security;
 pub mod settings;
 
 pub use auth::sessions::{SessionState, SessionType, Sessions};
@@ -14,6 +15,8 @@ pub use dependencies::components_type::ComponentType;
 pub use dependencies::snapshots::{Snapshot, SnapshotMetadata};
 pub use dependencies::Dependencies;
 pub use projects::{ProjectSnapshots, ProjectStatus, ProjectType, Projects};
+use security::advisories::AdvisoriesMetadata;
+use security::{Advisories, Alerts};
 pub use settings::ServerSettings;
 
 use crate::KonarrError;
@@ -47,6 +50,11 @@ where
     SnapshotMetadata::init(connection).await?;
     debug!("Creating Dependencies table...");
     Dependencies::create_table(connection).await?;
+
+    debug!("Security tables...");
+    Advisories::create_table(connection).await?;
+    AdvisoriesMetadata::create_table(connection).await?;
+    Alerts::create_table(connection).await?;
 
     debug!("Creating Projects tables...");
     Projects::init(connection).await?;

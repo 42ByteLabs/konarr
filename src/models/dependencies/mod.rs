@@ -86,7 +86,7 @@ impl Dependencies {
     {
         let (mut component, mut version) = Component::from_purl(value)?;
 
-        component.find_or_crate(connection).await?;
+        component.find_or_create(connection).await?;
 
         // Version needs to point to the component
         version.component_id = component.id.into();
@@ -107,7 +107,7 @@ impl Dependencies {
         let snapshop = snapshop.into();
         let (mut component, mut version) = Component::from_purl(bom_component.purl.clone())?;
         // Update non-purl fields
-        component.find_or_crate(connection).await?;
+        component.find_or_create(connection).await?;
 
         version.component_id = component.id.into();
         version.find_or_crate(connection).await?;

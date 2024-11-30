@@ -3,7 +3,7 @@
 use geekorm::prelude::*;
 
 use chrono::{DateTime, Utc};
-use log::debug;
+use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
@@ -109,7 +109,6 @@ impl Projects {
             connection,
             Projects::query_select()
                 .where_eq("status", ProjectStatus::Active)
-                .and()
                 .order_by("name", QueryOrder::Desc)
                 .limit(limit)
                 .offset(offset)
@@ -425,6 +424,33 @@ impl Projects {
 
             self.snapshots.push(snaps);
         }
+        Ok(())
+    }
+
+    /// Calculate Alerts for all projects with snapshots
+    pub async fn calculate_alerts<'a, T>(
+        connection: &'a T,
+        projects: &mut Vec<Self>,
+    ) -> Result<(), crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        for project in projects.iter_mut() {
+            if let Some(mut snapshot) = project.fetch_latest_snapshot(connection).await? {
+                match project.project_type {
+                    ProjectType::Container => {
+                        snapshot.calculate_alert_totals(connection).await?;
+                    }
+                    _ => {
+                        warn!(
+                            "Project Type not supported for alerts: {:?}",
+                            project.project_type
+                        );
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 

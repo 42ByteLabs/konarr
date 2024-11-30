@@ -7,7 +7,14 @@ use geekorm::prelude::*;
 use log::debug;
 use serde::{Deserialize, Serialize};
 
-use crate::{bom::BillOfMaterials, models::Dependencies};
+#[cfg(feature = "tools-grypedb")]
+#[cfg(feature = "tools-grypedb")]
+use crate::utils::grypedb::GrypeVulnerability;
+use crate::{
+    bom::BillOfMaterials,
+    models::{security::SecuritySeverity, Alerts, Dependencies, ServerSettings},
+    KonarrError,
+};
 
 /// Snapshot Model
 #[derive(Table, Debug, Default, Clone, Serialize, Deserialize)]
@@ -33,6 +40,11 @@ pub struct Snapshot {
     #[geekorm(skip)]
     #[serde(skip)]
     pub metadata: HashMap<String, SnapshotMetadata>,
+
+    /// Snapshot Alerts
+    #[geekorm(skip)]
+    #[serde(skip)]
+    pub alerts: Vec<Alerts>,
 }
 
 impl Snapshot {
@@ -154,6 +166,23 @@ impl Snapshot {
             Dependencies::from_bom_compontent(connection, self.id, comp).await?;
         }
 
+        if ServerSettings::get_bool(connection, "security.tools.alerts").await? {
+            debug!("Indexing Security Alerts from BillOfMaterials");
+
+            for vuln in bom.vulnerabilities.iter() {
+                Alerts::from_bom_vulnerability(connection, self, vuln).await?;
+            }
+            SnapshotMetadata::update_or_create(
+                connection,
+                self.id,
+                "security.tools.alerts",
+                "true",
+            )
+            .await?;
+
+            // Calculate the totals
+        }
+
         Ok(())
     }
 
@@ -219,6 +248,184 @@ impl Snapshot {
         .await?;
 
         self.metadata = metadata.into_iter().map(|m| (m.key.clone(), m)).collect();
+
+        self.calculate_alert_totals(connection).await?;
+
+        Ok(())
+    }
+
+    /// Fetch Alerts for the Snapshot
+    pub async fn fetch_alerts<'a, T>(
+        &mut self,
+        connection: &'a T,
+    ) -> Result<&Vec<Alerts>, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        let mut alerts = Alerts::fetch_by_snapshot_id(connection, self.id).await?;
+        for alert in alerts.iter_mut() {
+            alert.fetch_advisory_id(connection).await?;
+        }
+
+        self.alerts = alerts;
+
+        Ok(&self.alerts)
+    }
+
+    /// Count the number of Alerts for the Snapshot
+    pub async fn fetch_alerts_count<'a, T>(
+        &self,
+        connection: &'a T,
+    ) -> Result<usize, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Ok(Alerts::row_count(
+            connection,
+            Alerts::query_count()
+                .where_eq("snapshot_id", self.id)
+                .build()?,
+        )
+        .await? as usize)
+    }
+
+    /// Fetch Alerts for the Snapshot with Pagination
+    pub async fn fetch_alerts_page<'a, T>(
+        &self,
+        connection: &'a T,
+        page: &Pagination,
+    ) -> Result<Vec<Alerts>, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        let mut alerts = Alerts::query(
+            connection,
+            Alerts::query_select()
+                .where_eq("snapshot_id", self.id)
+                .page(page)
+                .build()?,
+        )
+        .await?;
+
+        for alert in alerts.iter_mut() {
+            alert.fetch(connection).await?;
+        }
+        Ok(alerts)
+    }
+
+    /// Fetch Grype Results for the Snapshot
+    #[cfg(feature = "tools-grypedb")]
+    pub async fn scan_with_grype<'a, T>(
+        &mut self,
+        connection: &'a T,
+        grypedb_connection: &'a T,
+    ) -> Result<Vec<Alerts>, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        use crate::{
+            models::security::{Advisories, AdvisorySource, SecuritySeverity},
+            utils::grypedb::GrypeVulnerabilityMetadata,
+        };
+
+        let mut results = Vec::new();
+
+        if self.components.is_empty() {
+            self.components = Dependencies::fetch_by_snapshot_id(connection, self.id).await?;
+            for comp in self.components.iter_mut() {
+                comp.fetch(connection).await?;
+            }
+        }
+        debug!("Dependencies Count: {}", self.components.len());
+
+        let mut summary: HashMap<SecuritySeverity, u16> = HashMap::new();
+
+        for dependency in self.components.iter_mut() {
+            log::debug!(
+                "Scanning Dependency: {}",
+                dependency.component_id.data.purl()
+            );
+            let vulns = GrypeVulnerability::find_vulnerabilities(
+                grypedb_connection,
+                &dependency.component_id.data,
+                &dependency.component_version_id.data,
+            )
+            .await?;
+            log::debug!(
+                "Grype Results for {}@{} :: {}",
+                dependency.component_id.data.purl(),
+                dependency.component_version_id.data.version,
+                vulns.len()
+            );
+
+            for vuln in &vulns {
+                let vuln_metadata =
+                    GrypeVulnerabilityMetadata::fetch_by_id(grypedb_connection, vuln.id.clone())
+                        .await?;
+
+                let severity = SecuritySeverity::from(vuln_metadata.severity.clone());
+                let mut advisory =
+                    Advisories::new(vuln.id.clone(), AdvisorySource::Anchore, severity.clone());
+                advisory.fetch_or_create(connection).await?;
+
+                let mut alert = Alerts::new(vuln.id.clone(), self.id, dependency.id, advisory.id);
+                alert.find_or_create(connection).await?;
+
+                // Summary
+                *summary.entry(severity).or_insert(0) += 1;
+
+                results.push(alert);
+            }
+        }
+
+        log::debug!("Grype Summary for Snapshot({}): {:?}", self.id, summary);
+
+        let mut total = 0;
+        for (severity, count) in summary {
+            self.set_metadata(
+                connection,
+                &format!("security.counts.{}", severity.to_string().to_lowercase()),
+                &count.to_string(),
+            )
+            .await?;
+            total += count;
+        }
+        self.set_metadata(connection, "security.counts.total", &total.to_string())
+            .await?;
+
+        Ok(results)
+    }
+
+    /// Calculate the Alert Totals
+    pub async fn calculate_alert_totals<'a, T>(
+        &mut self,
+        connection: &'a T,
+    ) -> Result<(), KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        let mut summary: HashMap<SecuritySeverity, u16> = HashMap::new();
+
+        let mut alerts = Alerts::fetch_by_snapshot_id(connection, self.id).await?;
+        for alert in alerts.iter_mut() {
+            let advisory = alert.fetch_advisory_id(connection).await?;
+            let severity = advisory.severity.clone();
+
+            *summary.entry(severity).or_insert(0) += 1;
+        }
+
+        let mut total = 0;
+        for (severity, count) in summary {
+            self.set_metadata(
+                connection,
+                &format!("security.counts.{}", severity.to_string().to_lowercase()),
+                &count.to_string(),
+            )
+            .await?;
+            total += count;
+        }
+        self.set_metadata(connection, "security.counts.total", &total.to_string())
+            .await?;
 
         Ok(())
     }
@@ -378,6 +585,11 @@ impl SnapshotMetadata {
 
     /// Convert the bytes value to i32
     pub fn as_i32(&self) -> i32 {
+        self.as_string().parse().unwrap_or_default()
+    }
+
+    /// Convert the value into a u32
+    pub fn as_u32(&self) -> u32 {
         self.as_string().parse().unwrap_or_default()
     }
 }
