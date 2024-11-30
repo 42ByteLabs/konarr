@@ -21,6 +21,8 @@ pub struct BillOfMaterials {
     pub container: Container,
     /// The dependencies of the software
     pub components: Vec<BomComponent>,
+    /// List of vulnerabilities
+    pub vulnerabilities: Vec<BomVulnerability>,
 }
 
 impl BillOfMaterials {
@@ -34,6 +36,7 @@ impl BillOfMaterials {
             timestamp: chrono::Utc::now(),
             container: Container::default(),
             components: Vec::new(),
+            vulnerabilities: Vec::new(),
         }
     }
 }
@@ -76,6 +79,66 @@ impl BomComponent {
         Self {
             purl,
             ..Default::default()
+        }
+    }
+}
+
+/// Bill of Materials Vulnerability
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct BomVulnerability {
+    /// CVE/GHA/etc.
+    pub name: String,
+    /// Advisory Source
+    pub source: String,
+    /// Severity of the vulnerability
+    pub severity: BomVulnerabilitySeverity,
+    /// Description of the vulnerability
+    pub description: Option<String>,
+    /// URL to the advisory
+    pub url: Option<String>,
+    /// Affects packages
+    pub components: Vec<BomComponent>,
+}
+
+impl BomVulnerability {
+    /// Create a new BOM Vulnerability
+    pub fn new(name: String, source: String, severity: String) -> Self {
+        BomVulnerability {
+            name,
+            source,
+            severity: BomVulnerabilitySeverity::from(severity),
+            ..Default::default()
+        }
+    }
+}
+
+/// Vulnerability Severity
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub enum BomVulnerabilitySeverity {
+    /// Critical severity
+    Critical,
+    /// High severity
+    High,
+    /// Medium severity
+    Medium,
+    /// Low severity
+    Low,
+    /// Informational severity
+    Informational,
+    /// Unknown severity
+    #[default]
+    Unknown,
+}
+
+impl From<String> for BomVulnerabilitySeverity {
+    fn from(value: String) -> Self {
+        match value.to_lowercase().as_str() {
+            "critical" | "very-high" => BomVulnerabilitySeverity::Critical,
+            "high" => BomVulnerabilitySeverity::High,
+            "medium" | "moderate" => BomVulnerabilitySeverity::Medium,
+            "low" => BomVulnerabilitySeverity::Low,
+            "informational" | "very-low" => BomVulnerabilitySeverity::Informational,
+            _ => BomVulnerabilitySeverity::Unknown,
         }
     }
 }
