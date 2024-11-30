@@ -42,7 +42,7 @@ impl Component {
         let purls = vec!["pkg:deb/debian", "pkg:apk/alpine"];
         for purl in purls.iter() {
             let (mut comp, _version) = Component::from_purl(purl.to_string()).unwrap();
-            comp.find_or_crate(connection).await?;
+            comp.find_or_create(connection).await?;
         }
 
         let mut counter = 0;
@@ -172,7 +172,7 @@ impl Component {
     }
 
     /// Find or Create Component
-    pub async fn find_or_crate<'a, T>(
+    pub async fn find_or_create<'a, T>(
         &mut self,
         connection: &'a T,
     ) -> Result<(), crate::KonarrError>
