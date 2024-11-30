@@ -12,6 +12,8 @@ pub mod display;
 pub mod index;
 #[cfg(feature = "database")]
 pub mod search;
+#[cfg(feature = "tasks")]
+pub mod tasks;
 
 pub const AUTHOR: &str = env!("CARGO_PKG_AUTHORS");
 
@@ -92,6 +94,11 @@ pub enum ArgumentCommands {
     Search {
         #[clap(subcommand)]
         subcommands: Option<search::SearchCommands>,
+    },
+    #[cfg(feature = "tasks")]
+    Tasks {
+        #[clap(subcommand)]
+        subcommands: Option<tasks::TaskCommands>,
     },
 }
 
