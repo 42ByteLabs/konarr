@@ -66,6 +66,9 @@ pub struct SecuritySummary {
     pub high: u32,
     pub medium: u32,
     pub low: u32,
+    pub informational: u32,
+    pub malware: u32,
+    pub unmaintained: u32,
     pub other: u32,
 }
 
@@ -104,6 +107,16 @@ pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResul
 
         let projects_total = Projects::count_active(&connection).await? as u32;
 
+        let security: Option<SecuritySummary> =
+            if ServerSettings::get_bool(&connection, "security").await? {
+                let security_counts =
+                    ServerSettings::get_namespace(&connection, "security.alerts").await?;
+
+                Some(SecuritySummary::from(security_counts))
+            } else {
+                None
+            };
+
         Ok(Json(BaseResponse {
             config: ConfigResponse {
                 initialised: !init,
@@ -124,7 +137,7 @@ pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResul
                 total: dependencies_total,
                 ..Default::default()
             }),
-            security: None,
+            security,
             ..Default::default()
         }))
     } else {
@@ -136,5 +149,35 @@ pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResul
             },
             ..Default::default()
         }))
+    }
+}
+
+impl From<Vec<ServerSettings>> for SecuritySummary {
+    fn from(value: Vec<ServerSettings>) -> Self {
+        let mut summary = SecuritySummary::default();
+
+        for setting in value.iter() {
+            if setting.name.as_str() == "security.alerts.total" {
+                summary.total = setting.value.parse().unwrap_or(0);
+            } else if setting.name.as_str() == "security.alerts.critical" {
+                summary.critical = setting.value.parse().unwrap_or(0);
+            } else if setting.name.as_str() == "security.alerts.high" {
+                summary.high = setting.value.parse().unwrap_or(0);
+            } else if setting.name.as_str() == "security.alerts.medium" {
+                summary.medium = setting.value.parse().unwrap_or(0);
+            } else if setting.name.as_str() == "security.alerts.low" {
+                summary.low = setting.value.parse().unwrap_or(0);
+            } else if setting.name.as_str() == "security.alerts.informational" {
+                summary.informational = setting.value.parse().unwrap_or(0);
+            } else if setting.name.as_str() == "security.alerts.malware" {
+                summary.malware = setting.value.parse().unwrap_or(0);
+            } else if setting.name.as_str() == "security.alerts.unmaintained" {
+                summary.unmaintained = setting.value.parse().unwrap_or(0);
+            } else if setting.name.as_str() == "security.alerts.other" {
+                summary.other = setting.value.parse().unwrap_or(0);
+            }
+        }
+
+        summary
     }
 }
