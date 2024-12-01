@@ -373,7 +373,7 @@ impl Projects {
             connection,
             ProjectSnapshots::query_select()
                 .where_eq("project_id", self.id)
-                .order_by("created_at", QueryOrder::Desc)
+                .order_by("id", QueryOrder::Desc)
                 .limit(1)
                 .build()?,
         )
