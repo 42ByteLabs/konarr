@@ -37,6 +37,10 @@ pub(crate) struct AlertResp {
     id: i32,
     name: String,
     severity: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    url: Option<String>,
 }
 
 #[get("/?<page>&<limit>&<search>&<state>&<severity>")]
@@ -95,6 +99,10 @@ pub(crate) async fn get_alert(
 
     let mut alert = Alerts::fetch_by_primary_key(&connection, id).await?;
     alert.fetch(&connection).await?;
+    alert.fetch_advisory_id(&connection).await?;
+    alert.fetch_metadata(&connection).await?;
+
+    info!("Metadata: {:?}", alert.metadata);
 
     Ok(Json(alert.into()))
 }
@@ -102,10 +110,14 @@ pub(crate) async fn get_alert(
 impl From<Alerts> for AlertResp {
     fn from(value: Alerts) -> Self {
         let severity = value.advisory_id.data.severity.to_string();
+
         Self {
             id: value.id.into(),
             name: value.name.clone(),
             severity,
+            description: value.description(),
+            url: value.url(),
+            ..Default::default()
         }
     }
 }
