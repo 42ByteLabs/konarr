@@ -112,15 +112,15 @@ impl From<Alerts> for AlertResp {
 
 impl From<&Snapshot> for SecuritySummary {
     fn from(snapshot: &Snapshot) -> Self {
-        let total = snapshot.find_metadata_usize("security.counts.total") as u32;
-        let critical = snapshot.find_metadata_usize("security.counts.critical") as u32;
-        let high = snapshot.find_metadata_usize("security.counts.high") as u32;
-        let medium = snapshot.find_metadata_usize("security.counts.medium") as u32;
-        let low = snapshot.find_metadata_usize("security.counts.low") as u32;
-        let informational = snapshot.find_metadata_usize("security.counts.informational") as u32;
-        let unmaintained = snapshot.find_metadata_usize("security.counts.unmaintained") as u32;
-        let malware = snapshot.find_metadata_usize("security.counts.malware") as u32;
-        let unknown = snapshot.find_metadata_usize("security.counts.unknown") as u32;
+        let total = snapshot.find_metadata_usize("security.alerts.total") as u32;
+        let critical = snapshot.find_metadata_usize("security.alerts.critical") as u32;
+        let high = snapshot.find_metadata_usize("security.alerts.high") as u32;
+        let medium = snapshot.find_metadata_usize("security.alerts.medium") as u32;
+        let low = snapshot.find_metadata_usize("security.alerts.low") as u32;
+        let informational = snapshot.find_metadata_usize("security.alerts.informational") as u32;
+        let unmaintained = snapshot.find_metadata_usize("security.alerts.unmaintained") as u32;
+        let malware = snapshot.find_metadata_usize("security.alerts.malware") as u32;
+        let unknown = snapshot.find_metadata_usize("security.alerts.unknown") as u32;
 
         Self {
             total,

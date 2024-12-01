@@ -69,7 +69,7 @@ pub struct SecuritySummary {
     pub informational: u32,
     pub malware: u32,
     pub unmaintained: u32,
-    pub other: u32,
+    pub unknown: u32,
 }
 
 impl Default for BaseResponse {
@@ -173,8 +173,8 @@ impl From<Vec<ServerSettings>> for SecuritySummary {
                 summary.malware = setting.value.parse().unwrap_or(0);
             } else if setting.name.as_str() == "security.alerts.unmaintained" {
                 summary.unmaintained = setting.value.parse().unwrap_or(0);
-            } else if setting.name.as_str() == "security.alerts.other" {
-                summary.other = setting.value.parse().unwrap_or(0);
+            } else if setting.name.as_str() == "security.alerts.unknown" {
+                summary.unknown = setting.value.parse().unwrap_or(0);
             }
         }
 
