@@ -439,7 +439,7 @@ impl Projects {
             if let Some(mut snapshot) = project.fetch_latest_snapshot(connection).await? {
                 match project.project_type {
                     ProjectType::Container => {
-                        snapshot.calculate_alert_totals(connection).await?;
+                        snapshot.calculate_alerts_summary(connection).await?;
                     }
                     _ => {
                         warn!(
