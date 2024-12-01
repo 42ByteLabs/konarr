@@ -41,6 +41,11 @@ COPY --from=server /app/target/x86_64-unknown-linux-musl/release/konarr-server /
 COPY --from=server /app/server/Rocket.toml /app/Rocket.toml
 COPY --from=web /app/frontend/dist /app/dist
 
+# Create Konarr User
+RUN adduser -m -h /app konarr && \
+    chown -R konarr:konarr /app /config /data
+USER konarr
+
 ENTRYPOINT ["/app/konarr-server"]
 
 CMD ["--config", "/config/konarr.yml"]
