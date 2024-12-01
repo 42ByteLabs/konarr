@@ -183,6 +183,26 @@ impl Alerts {
                 SecuritySeverity::from(&vulnerability.severity),
             );
             advisory.fetch_or_create(connection).await?;
+            advisory.fetch_metadata(connection).await?;
+
+            if !advisory.has_metadata("description") {
+                if let Some(desc) = &vulnerability.description {
+                    advisory
+                        .add_metadata(connection, "description", desc)
+                        .await?;
+                }
+            }
+            if !advisory.has_metadata("url") {
+                if let Some(url) = &vulnerability.url {
+                    advisory.add_metadata(connection, "url", url).await?;
+                }
+            }
+            if !advisory.has_metadata("source") {
+                advisory
+                    .add_metadata(connection, "source", &vulnerability.source)
+                    .await?;
+            }
+
             // TODO: Metadata for the advisory
             debug!("Alert Advisory: {:?}", advisory);
 
@@ -197,6 +217,26 @@ impl Alerts {
         }
 
         Ok(())
+    }
+
+    /// Get the description of the alert (if available in the metadata)
+    pub fn description(&self) -> Option<String> {
+        self.advisory_id
+            .data
+            .metadata
+            .iter()
+            .find(|m| m.key == "description")
+            .map(|m| m.value.clone())
+    }
+
+    /// Get the URL of the alert (if available in the metadata)
+    pub fn url(&self) -> Option<String> {
+        self.advisory_id
+            .data
+            .metadata
+            .iter()
+            .find(|m| m.key == "url")
+            .map(|m| m.value.clone())
     }
 }
 

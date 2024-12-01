@@ -168,7 +168,7 @@ impl Snapshot {
             Dependencies::from_bom_compontent(connection, self.id, comp).await?;
         }
 
-        if ServerSettings::get_bool(connection, "security.tools.alerts").await? {
+        if ServerSettings::feature_security(connection).await? {
             debug!("Indexing Security Alerts from BillOfMaterials");
 
             for vuln in bom.vulnerabilities.iter() {

@@ -100,9 +100,15 @@ impl Advisories {
     where
         T: geekorm::GeekConnection<Connection = T> + 'a,
     {
-        self.metadata = AdvisoriesMetadata::fetch_by_vulnerability_id(connection, self.id).await?;
+        self.metadata = AdvisoriesMetadata::fetch_by_advisory_id(connection, self.id).await?;
 
         Ok(())
+    }
+
+    /// Check if the advisory has metadata (assumes metadata is fetched)
+    pub fn has_metadata(&self, key: impl Into<String>) -> bool {
+        let key = key.into();
+        self.metadata.iter().any(|m| m.key == key)
     }
 
     /// Add Advisory metadata
@@ -181,7 +187,7 @@ pub struct AdvisoriesMetadata {
     pub value: String,
     /// Foreign key to the security vulnerabilities table
     #[geekorm(foreign_key = "Advisories.id")]
-    pub vulnerability_id: ForeignKey<i32, Advisories>,
+    pub advisory_id: ForeignKey<i32, Advisories>,
     /// Updated last the metadata
     #[geekorm(new = "chrono::Utc::now()")]
     pub updated_at: chrono::DateTime<chrono::Utc>,
