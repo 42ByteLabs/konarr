@@ -6,7 +6,7 @@ extern crate geekorm;
 
 use anyhow::Result;
 use konarr::{
-    models::{self, Projects, ServerSettings},
+    models::{self, ServerSettings},
     utils::grypedb::GrypeDatabase,
     Config, KonarrError,
 };
@@ -23,7 +23,6 @@ mod routes;
 /// Application State
 pub struct AppState {
     db: libsql::Database,
-    // advisories: Option<libsql::Database>,
     config: Config,
     init: bool,
 }
@@ -166,8 +165,7 @@ async fn server(config: Config) -> Result<()> {
     if ServerSettings::get_bool(&connection, "security").await? {
         advisories(&config, &connection).await?;
         // Calculate Alerts
-        let mut top_projects = Projects::all(&connection, 10_000, 0).await?;
-        Projects::calculate_alerts(&connection, &mut top_projects).await?;
+        konarr::tasks::alerts::alert_calculator(&connection).await?;
     }
 
     if !frontend.exists() {
