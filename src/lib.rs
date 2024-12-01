@@ -12,8 +12,8 @@ pub mod bom;
 #[cfg(feature = "client")]
 pub mod client;
 pub mod error;
-// #[cfg(feature = "tasks")]
-// pub mod tasks;
+#[cfg(feature = "tasks")]
+pub mod tasks;
 #[cfg(feature = "tools")]
 pub mod tools;
 pub mod utils;
