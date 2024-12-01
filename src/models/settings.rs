@@ -232,4 +232,12 @@ impl ServerSettings {
     pub fn regenerate(&mut self) {
         self.value = geekorm::utils::generate_random_string(42, "kagent_")
     }
+
+    /// Check if security features are enabled
+    pub async fn feature_security<'a, T>(connection: &'a T) -> Result<bool, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Ok(Self::get_bool(connection, "security").await?)
+    }
 }

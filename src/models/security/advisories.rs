@@ -138,6 +138,35 @@ impl Advisories {
         self.metadata.push(meta);
         Ok(())
     }
+
+    /// Fetch the metadata by key
+    pub async fn get_metadata<'a, T>(
+        &mut self,
+        connection: &'a T,
+        key: impl Into<String>,
+    ) -> Result<Option<AdvisoriesMetadata>, geekorm::Error>
+    where
+        T: geekorm::GeekConnection<Connection = T> + 'a,
+    {
+        let key = key.into();
+        let meta = self.metadata.iter().find(|m| m.key == key);
+
+        if let Some(meta) = meta {
+            return Ok(Some(meta.clone()));
+        }
+
+        let meta = AdvisoriesMetadata::query_first(
+            connection,
+            AdvisoriesMetadata::query_select()
+                .where_eq("key", key)
+                .and()
+                .where_eq("vulnerability_id", self.id)
+                .build()?,
+        )
+        .await?;
+        self.metadata.push(meta.clone());
+        Ok(Some(meta))
+    }
 }
 
 /// Security vulnerability metadata table

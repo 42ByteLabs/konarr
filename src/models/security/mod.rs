@@ -20,26 +20,37 @@ pub enum SecuritySeverity {
     /// Low
     Low,
     /// Informational
-    #[default]
     Informational,
     /// Unmantained
     Unmantained,
     /// Malware
     Malware,
     /// Unknown
+    #[default]
     Unknown,
 }
 
 impl From<String> for SecuritySeverity {
     fn from(value: String) -> Self {
         match value.to_lowercase().as_str() {
-            "critical" | "very-high" => SecuritySeverity::Critical,
-            "high" => SecuritySeverity::High,
-            "medium" | "moderate" => SecuritySeverity::Medium,
-            "low" => SecuritySeverity::Low,
-            "unmantained" => SecuritySeverity::Unmantained,
-            "malware" => SecuritySeverity::Malware,
-            _ => SecuritySeverity::Informational,
+            "crit" | "critical" | "very-high" | "security.alerts.critical" => {
+                SecuritySeverity::Critical
+            }
+            "high" | "security.alerts.high" => SecuritySeverity::High,
+            "med" | "medium" | "moderate" | "security.alerts.medium" => SecuritySeverity::Medium,
+            "low" | "security.alerts.low" => SecuritySeverity::Low,
+            "info" | "information" | "informational" | "security.alerts.infomational" => {
+                SecuritySeverity::Informational
+            }
+            "mal" | "malware" | "security.alerts.malware" => SecuritySeverity::Malware,
+            "unmaintained" | "security.alerts.unmaintained" => SecuritySeverity::Unmantained,
+            "unknown" | "none" | "other" | "security.alerts.unknown" | "security.alerts.other" => {
+                SecuritySeverity::Unknown
+            }
+            _ => {
+                log::warn!("Unknown Security Severity: '{}'", value);
+                SecuritySeverity::Unknown
+            }
         }
     }
 }
