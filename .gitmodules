@@ -1,4 +1,4 @@
 [submodule "client"]
 	path = frontend 
 	url = https://github.com/42ByteLabs/konarr-client
-    branch = "security"
+    branch = "main"
