@@ -22,7 +22,7 @@ default = ["agent"]
 # Database
 database = ["dep:geekorm", "dep:libsql", "konarr/models"]
 # Tasks
-tasks = ["konarr/tools-grypedb"]
+tasks = ["database", "konarr/tasks", "konarr/tools-grypedb"]
 # Agent
 agent = ["dep:bollard", "dep:openssl", "konarr/client", "konarr/docker", "konarr/tools"]
 
