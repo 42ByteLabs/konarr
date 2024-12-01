@@ -5,6 +5,7 @@ use log::{debug, info};
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum TaskCommands {
+    Alerts {},
     Grype {
         #[clap(short, long, default_value = "false")]
         alerts: bool,
@@ -18,6 +19,11 @@ pub async fn run(
     let connection = config.database().await?.connect()?;
 
     match subcommands {
+        Some(TaskCommands::Alerts {}) => {
+            konarr::tasks::alerts::alert_calculator(&connection).await?;
+
+            info!("Completed!");
+        }
         Some(TaskCommands::Grype { alerts }) => {
             info!("Running Grype Sync Task");
 
