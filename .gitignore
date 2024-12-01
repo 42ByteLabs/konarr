@@ -1,6 +1,8 @@
 # Konarr Configuration File
 /config
 /data
+/Rocket.toml
+/konarr.yml
 
 /examples/samples
 /target
