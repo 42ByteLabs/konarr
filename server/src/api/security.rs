@@ -8,9 +8,8 @@ use konarr::models::{
 use log::info;
 use rocket::{serde::json::Json, State};
 
+use super::{dependencies::DependencyResp, ApiResponse, ApiResult};
 use crate::{guards::Session, AppState};
-
-use super::{ApiResponse, ApiResult};
 
 /// Security Summary
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
@@ -41,6 +40,9 @@ pub(crate) struct AlertResp {
     description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     url: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    dependency: Option<DependencyResp>,
 }
 
 #[get("/?<page>&<limit>&<search>&<state>&<severity>")]
@@ -98,11 +100,20 @@ pub(crate) async fn get_alert(
     let connection = state.db.connect()?;
 
     let mut alert = Alerts::fetch_by_primary_key(&connection, id).await?;
-    alert.fetch(&connection).await?;
+
     alert.fetch_advisory_id(&connection).await?;
     alert.fetch_metadata(&connection).await?;
 
-    info!("Metadata: {:?}", alert.metadata);
+    alert.fetch_snapshot_id(&connection).await?;
+
+    // Fetch the dependency
+    alert.fetch_dependency_id(&connection).await?;
+    alert.dependency_id.data.fetch(&connection).await?;
+
+    info!(
+        "Fetched alert: {} (dep: {})",
+        alert.name, alert.dependency_id
+    );
 
     Ok(Json(alert.into()))
 }
@@ -111,12 +122,15 @@ impl From<Alerts> for AlertResp {
     fn from(value: Alerts) -> Self {
         let severity = value.advisory_id.data.severity.to_string();
 
+        let dependency: DependencyResp = value.dependency_id.clone().data.into();
+
         Self {
             id: value.id.into(),
             name: value.name.clone(),
             severity,
             description: value.description(),
             url: value.url(),
+            dependency: Some(dependency),
             ..Default::default()
         }
     }
