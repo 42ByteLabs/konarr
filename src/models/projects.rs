@@ -175,6 +175,8 @@ impl Projects {
             connection,
             Projects::query_count()
                 .where_eq("project_type", ProjectType::Server)
+                .and()
+                .where_eq("status", ProjectStatus::Active)
                 .build()?,
         )
         .await?)
@@ -189,6 +191,8 @@ impl Projects {
             connection,
             Projects::query_count()
                 .where_eq("project_type", ProjectType::Container)
+                .and()
+                .where_eq("status", ProjectStatus::Active)
                 .build()?,
         )
         .await?)
