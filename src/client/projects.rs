@@ -1,4 +1,5 @@
 //! Project Request
+use log::debug;
 use serde::{Deserialize, Serialize};
 
 use crate::KonarrError;
@@ -13,6 +14,7 @@ pub struct KonarrProjects;
 impl KonarrProjects {
     /// List Projects
     pub async fn list(client: &KonarrClient) -> Result<Pagination<KonarrProject>, KonarrError> {
+        debug!("Listing Projects");
         Ok(client
             .get("/projects")
             .await?
@@ -22,8 +24,23 @@ impl KonarrProjects {
 
     /// List Top Projects
     pub async fn list_top(client: &KonarrClient) -> Result<Pagination<KonarrProject>, KonarrError> {
+        debug!("Listing Top Projects");
         Ok(client
             .get("/projects?top=true")
+            .await?
+            .json::<Pagination<KonarrProject>>()
+            .await?)
+    }
+
+    /// Search Projects
+    pub async fn search(
+        client: &KonarrClient,
+        search: impl Into<String>,
+    ) -> Result<Pagination<KonarrProject>, KonarrError> {
+        let search = search.into();
+        debug!("Searching Projects: {}", search);
+        Ok(client
+            .get(&format!("/projects?search={}", search))
             .await?
             .json::<Pagination<KonarrProject>>()
             .await?)
@@ -34,6 +51,7 @@ impl KonarrProjects {
         client: &KonarrClient,
         id: u32,
     ) -> Result<Option<KonarrProject>, KonarrError> {
+        debug!("Getting Project by ID: {}", id);
         Ok(client
             .get(&format!("/projects/{}", id))
             .await?
@@ -46,12 +64,15 @@ impl KonarrProjects {
         client: &KonarrClient,
         name: &str,
     ) -> Result<Option<KonarrProject>, KonarrError> {
-        Ok(client
-            .get(&format!("/projects?search={}", name))
-            .await?
-            .json::<KonarrProject>()
-            .await
-            .ok())
+        debug!("Getting Project by Name: {}", name);
+        let search = Self::search(client, name).await?;
+
+        for result in search.data {
+            if result.title == name || result.name == name {
+                return Ok(Some(result));
+            }
+        }
+        return Ok(None);
     }
 }
 
@@ -86,7 +107,7 @@ pub struct KonarrProject {
 
     /// Security
     #[serde(skip_serializing)]
-    pub security: SecuritySummary,
+    pub security: Option<SecuritySummary>,
 
     /// Parent Project
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -113,6 +134,7 @@ impl KonarrProject {
 
     /// Create new Project
     pub async fn create(&mut self, client: &KonarrClient) -> Result<Self, KonarrError> {
+        debug!("Creating Project: {}", self.name);
         match client
             .post("/projects", &self)
             .await?
@@ -129,6 +151,7 @@ impl KonarrProject {
 
     /// Get Project by ID
     pub async fn get(&mut self, client: &KonarrClient) -> Result<ApiResponse<Self>, KonarrError> {
+        debug!("Getting Project by ID: {}", self.id);
         match client
             .get(&format!("/projects/{}", self.id))
             .await?
@@ -148,6 +171,7 @@ impl KonarrProject {
         &self,
         client: &KonarrClient,
     ) -> Result<ApiResponse<Self>, KonarrError> {
+        debug!("Getting Project Snapshot: {}", self.id);
         Ok(client
             .get(&format!("/projects/{}/snapshot", self.id))
             .await?

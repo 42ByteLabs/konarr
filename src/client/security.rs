@@ -15,6 +15,12 @@ pub struct SecuritySummary {
     pub medium: u32,
     /// Low
     pub low: u32,
-    /// Other
-    pub other: u32,
+    /// Informational
+    pub informational: u32,
+    /// Unmaintained
+    pub unmaintained: u32,
+    /// Malware
+    pub malware: u32,
+    /// Unknown
+    pub unknown: u32,
 }
