@@ -57,6 +57,9 @@ use crate::{error::KonarrError as Error, utils::rand::generate_random_string};
 /// ```
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Config {
+    #[serde(skip)]
+    data_path: PathBuf,
+
     /// Database Configuration
     #[serde(default)]
     pub database: DatabaseConfig,
@@ -93,7 +96,14 @@ impl Config {
         if config.server.secret.is_empty() {
             config.server.secret = ServerConfig::generate_secret();
         }
+        // Set the data path
+        if std::env::var("KONARR_DATA_PATH").is_ok() {
+            config.data_path = PathBuf::from(std::env::var("KONARR_DATA_PATH").unwrap());
+        } else {
+            config.data_path = PathBuf::from("./data");
+        }
 
+        debug!("Finished Loading Configuration");
         Ok(config)
     }
 
@@ -126,12 +136,11 @@ impl Config {
 
     /// Data directory path
     pub fn data_path(&self) -> Result<PathBuf, Error> {
-        let path = PathBuf::from("./data");
-        if !path.exists() {
+        if !self.data_path.exists() {
             log::debug!("Creating data path");
-            std::fs::create_dir_all(&path)?;
+            std::fs::create_dir_all(&self.data_path)?;
         }
-        Ok(path)
+        Ok(self.data_path.clone())
     }
 
     #[cfg(feature = "models")]
