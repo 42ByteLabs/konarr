@@ -42,6 +42,10 @@ pub struct Arguments {
     #[clap(long, env = "KONARR_DB_URL")]
     pub database_url: Option<String>,
 
+    /// Konarr Server URL
+    #[clap(short, long, env = "KONARR_INSTANCE")]
+    pub instance: Option<String>,
+
     // Agent Settings
     /// Monitoring Enabled
     #[clap(short, long, env = "KONARR_AGENT_MONITORING")]
@@ -103,6 +107,7 @@ pub enum ArgumentCommands {
 }
 
 pub fn init() -> Arguments {
+    dotenvy::dotenv().ok();
     let arguments = Arguments::parse();
 
     let log_level = match &arguments.debug {
