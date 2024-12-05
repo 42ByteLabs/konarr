@@ -6,6 +6,16 @@ on:
   release:
     types: [ created ]
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Please select the bump version"
+        required: true
+        type: choice
+        default: "patch"
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   contents: write
@@ -19,6 +29,16 @@ jobs:
     with:
       crate: konarr
       crates: konarr,konarr-server,konarr-cli
+
+  patch-release-me:
+    uses: 42ByteLabs/.github/.github/workflows/auto-patch-release.yml@main
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    secrets: inherit
+    permissions:
+      contents: write
+      pull-requests: write
+    with:
+      mode: ${{ inputs.mode }}
 
   container-server:
     # https://github.com/42ByteLabs/.github/blob/main/.github/workflows/container.yml
