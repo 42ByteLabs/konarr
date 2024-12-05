@@ -3,7 +3,7 @@ use konarr::{
     client::{
         projects::{KonarrProject, KonarrProjects},
         snapshot::KonarrSnapshot,
-        ApiResponse, Pagination,
+        ApiResponse,
     },
     tools::{syft::Syft, Tool},
     Config, KonarrError,
