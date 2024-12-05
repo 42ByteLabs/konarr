@@ -1,6 +1,6 @@
 name: "konarr"
 repository: "42ByteLabs/konarr"
-version: 0.2.1
+version: 0.2.2
 
 ecosystems:
   - Rust
