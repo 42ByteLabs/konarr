@@ -299,6 +299,21 @@ impl ServerConfig {
             .merge(Serialized::defaults(base))
             .merge(figment::providers::Env::prefixed("KONARR_SERVER_"))
     }
+
+    /// Set Instance from URL
+    pub fn set_instance(&mut self, instance: &String) -> Result<(), crate::KonarrError> {
+        let url: Url = Url::parse(instance)?;
+
+        self.scheme = Some(url.scheme().to_string());
+        if let Some(host) = url.host_str() {
+            self.domain = Some(host.to_string());
+        }
+        if let Some(port) = url.port_or_known_default() {
+            self.port = Some(port as i32);
+        }
+        Ok(())
+    }
+
     /// Get the Server URL
     ///
     /// ```rust
