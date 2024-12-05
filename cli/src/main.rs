@@ -26,6 +26,10 @@ async fn main() -> Result<()> {
     match arguments.commands {
         Some(cli::ArgumentCommands::Agent { docker_socket }) => {
             // HACK: Manually set some stuff for now
+            if let Some(instance) = arguments.instance {
+                config.server.set_instance(&instance)?;
+            }
+
             config.agent.docker_socket = docker_socket;
             config.agent.project_id = arguments.project_id;
             config.agent.create = arguments.auto_create;
