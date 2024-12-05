@@ -32,19 +32,15 @@ pub async fn setup(
         }
     } else if let Some(hostname) = &config.agent.host {
         log::debug!("Hostname :: {}", hostname);
+        let lhost = hostname.to_lowercase();
 
         // Look at top projects
-        let project: Option<KonarrProject> = match KonarrProjects::list_top(&client).await {
-            Ok(Pagination { data: projects, .. }) => projects
-                .iter()
-                .find(|p| p.title == *hostname || p.name == *hostname)
-                .cloned(),
-            _ => None,
-        };
+        let project: Option<KonarrProject> = KonarrProjects::by_name(&client, &lhost).await?;
 
         match project {
             Some(p) => p,
             None => {
+                log::debug!("Project not found by name: {}", hostname);
                 if !config.agent.create {
                     log::error!("Failed to get project by name: {}", hostname);
                     return Err(KonarrError::KonarrClient(
