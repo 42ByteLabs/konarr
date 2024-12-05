@@ -84,6 +84,12 @@ async fn advisories(
             }
             Err(e) => {
                 warn!("Advisory Sync Error: {}", e);
+
+                warn!("Disabling Advisory DB Polling");
+                ServerSettings::fetch_by_name(connection, "security.advisories.polling")
+                    .await?
+                    .set_update(connection, "disabled")
+                    .await?;
             }
         };
         ServerSettings::fetch_by_name(connection, "security.advisories.updated")
