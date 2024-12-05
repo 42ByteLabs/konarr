@@ -13,7 +13,7 @@ RUN apk add --no-cache pkgconf alpine-sdk openssl-dev perl musl-dev curl git && 
     cargo build -p konarr-server --release --target x86_64-unknown-linux-musl
 
 # Build the Web
-FROM docker.io/library/node:22-alpine as web
+FROM docker.io/library/node:22.12-alpine as web
 
 WORKDIR /app
 
