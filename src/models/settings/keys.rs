@@ -101,6 +101,9 @@ pub enum Setting {
     SecurityAlertsOther,
     #[geekorm(key = "security.grype")]
     SecurityGrype,
+    /// Remove old typo
+    #[geekorm(key = "security.alerts.infomational")]
+    SecurityAlertsInfomational,
 
     // Unknown
     #[default]
@@ -109,7 +112,7 @@ pub enum Setting {
 }
 
 /// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 25] = [
+pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 35] = [
     // Registration Settings
     (Setting::Registration, SettingType::Toggle, "enabled"),
     // If we are already initialized
@@ -167,10 +170,32 @@ pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 25] =
         SettingType::Toggle,
         "disabled",
     ),
+    (Setting::SecurityAlertsTotal, SettingType::Statistics, "0"),
+    (
+        Setting::SecurityAlertsCritical,
+        SettingType::Statistics,
+        "0",
+    ),
+    (Setting::SecurityAlertsHigh, SettingType::Statistics, "0"),
+    (Setting::SecurityAlertsMedium, SettingType::Statistics, "0"),
+    (Setting::SecurityAlertsLow, SettingType::Statistics, "0"),
+    (
+        Setting::SecurityAlertsInformational,
+        SettingType::Statistics,
+        "0",
+    ),
+    (
+        Setting::SecurityAlertsUnmaintained,
+        SettingType::Statistics,
+        "0",
+    ),
+    (Setting::SecurityAlertsMalware, SettingType::Statistics, "0"),
+    (Setting::SecurityAlertsUnknown, SettingType::Statistics, "0"),
     // Deprecated Settings
     (Setting::SecurityPolling, SettingType::Delete, ""),
     (Setting::SecurityAlertsOther, SettingType::Delete, ""),
     (Setting::SecurityGrype, SettingType::Delete, ""),
+    (Setting::SecurityAlertsInfomational, SettingType::Delete, ""),
 ];
 
 #[cfg(test)]
