@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
             warn!("Error loading configuration: {}", e);
             let new_config = Config::default();
             warn!("Generating default configuration");
-            new_config.save(&arguments.config)?;
+            new_config.autosave()?;
             new_config
         }
     };
@@ -44,15 +44,18 @@ async fn main() -> Result<()> {
     // Database
     create(&mut config).await?;
 
-    info!("Saving Configuration to: {}", arguments.config.display());
-    // config.save(&arguments.config)?;
-
     // Server
     server(config).await?;
 
     Ok(())
 }
 
+/// Setup, Create, and Update the Database
+///
+/// - Run Create Database
+/// - Initiale data
+/// - Update Statistics
+/// - Update Security Data
 async fn create(config: &mut Config) -> Result<()> {
     let connection = config.database.connection().await?;
 
@@ -60,13 +63,39 @@ async fn create(config: &mut Config) -> Result<()> {
     database_create(&connection).await?;
 
     // Store the server setting into the config file
-    if let Ok(token) = konarr::models::ServerSettings::fetch_by_name(&connection, "agent.key").await
-    {
-        config.agent.token = Some(token.value);
+    if config.agent.token.is_none() {
+        if let Ok(token) =
+            konarr::models::ServerSettings::fetch_by_name(&connection, "agent.key").await
+        {
+            config.agent.token = Some(token.value);
+            config.autosave()?;
+        }
     }
 
     // Update Stats
     konarr::tasks::statistics(&connection).await?;
+
+    // Initialise Security
+    if ServerSettings::get_bool(&connection, Setting::Security).await? {
+        if ServerSettings::get_bool(&connection, Setting::SecurityAdvisories).await? {
+            debug!("Syncing Security Advisories");
+
+            match konarr::tasks::advisories::sync_advisories(&config, &connection).await {
+                Err(e) => {
+                    error!("{}", e);
+                    ServerSettings::fetch_by_name(&connection, Setting::SecurityAdvisories)
+                        .await?
+                        .set_update(&connection, "disabled")
+                        .await?;
+                }
+                _ => {}
+            }
+        } else {
+            debug!("Security Advisories are disabled");
+        }
+        // Calculate Alerts
+        konarr::tasks::alerts::alert_calculator(&connection).await?;
+    }
 
     Ok(())
 }
@@ -125,29 +154,8 @@ async fn server(config: Config) -> Result<()> {
     // Check if we have init Konarr
     let init: bool = ServerSettings::get_bool(&connection, Setting::Initialized).await?;
 
-    // Initialise Security
-    if ServerSettings::get_bool(&connection, Setting::Security).await? {
-        if ServerSettings::get_bool(&connection, Setting::SecurityAdvisories).await? {
-            debug!("Syncing Security Advisories");
-
-            match konarr::tasks::advisories::sync_advisories(&config, &connection).await {
-                Err(e) => {
-                    error!("{}", e);
-                    ServerSettings::fetch_by_name(&connection, Setting::SecurityAdvisories)
-                        .await?
-                        .set_update(&connection, "disabled")
-                        .await?;
-                }
-                _ => {}
-            }
-        } else {
-            debug!("Security Advisories are disabled");
-        }
-        // Calculate Alerts
-        konarr::tasks::alerts::alert_calculator(&connection).await?;
-    }
-
     if !frontend.exists() {
+        info!("No Frontend found, creating directory and running in API-only mode");
         std::fs::create_dir_all(&frontend)?;
     }
 

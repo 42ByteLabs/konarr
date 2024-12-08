@@ -99,6 +99,16 @@ pub(crate) async fn patch_snapshot_metadata(
         snapshot.set_metadata(&connection, key, value).await?;
     }
 
+    // Run the statistics task in the background
+    tokio::spawn(async move {
+        konarr::tasks::statistics(&connection)
+            .await
+            .map_err(|e| {
+                log::error!("Failed to run alert calculator: {:?}", e);
+            })
+            .ok();
+    });
+
     Ok(Json(snapshot.into()))
 }
 
@@ -125,7 +135,12 @@ pub(crate) async fn upload_bom(
     snapshot.add_bom(&connection, &bom).await?;
 
     tokio::spawn(async move {
-        debug!("Calculating alerts for server");
+        konarr::tasks::statistics(&connection)
+            .await
+            .map_err(|e| {
+                log::error!("Failed to run statistics: {:?}", e);
+            })
+            .ok();
         konarr::tasks::alerts::alert_calculator(&connection)
             .await
             .map_err(|e| {
