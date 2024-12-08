@@ -182,7 +182,7 @@ mod tests {
         let key = Setting::Registration;
         assert_eq!(Value::from(key), Value::from("registration"));
         let key = Setting::Initialized;
-        assert_eq!(Value::from(key), Value::from("initialize"));
+        assert_eq!(Value::from(key), Value::from("initialized"));
         let key = Setting::Security;
         assert_eq!(Value::from(key), Value::from("security"));
         let key = Setting::StatsProjectsTotal;
@@ -197,7 +197,7 @@ mod tests {
         let key = Setting::Registration;
         assert_eq!(key.to_string(), "registration");
         let key = Setting::Initialized;
-        assert_eq!(key.to_string(), "initialize");
+        assert_eq!(key.to_string(), "initialized");
         let security = Setting::Security;
         assert_eq!(security.to_string(), "security");
         let stats = Setting::StatsProjectsTotal;
@@ -208,7 +208,7 @@ mod tests {
     fn test_from_string() {
         let key = Setting::from("registration");
         assert_eq!(key, Setting::Registration);
-        let key = Setting::from("initialize");
+        let key = Setting::from("initialized");
         assert_eq!(key, Setting::Initialized);
         let key = Setting::from("security");
         assert_eq!(key, Setting::Security);
