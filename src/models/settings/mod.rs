@@ -86,13 +86,15 @@ impl ServerSettings {
                     if setting.setting_type == SettingType::Delete {
                         warn!("Deleting deprecated setting: {:?}", name);
                         setting.delete(connection).await?;
-                    } else {
-                        // Update setting type in case it has changed in newer versions
-                        if setting.setting_type != typ {
-                            debug!("Updating setting: {:?}", name);
-                            setting.setting_type = typ;
-                            setting.update(connection).await?;
-                        }
+                        continue;
+                    }
+
+                    // Update setting type in case it has changed in newer versions
+                    log::info!("Setting: {:?} == ({:?})", setting, typ);
+                    if setting.setting_type != typ {
+                        debug!("Updating setting: {:?}", name);
+                        setting.setting_type = typ;
+                        setting.update(connection).await?;
                     }
                 }
                 Err(geekorm::Error::SerdeError(e)) => {
@@ -124,11 +126,8 @@ impl ServerSettings {
         defaults.push((Setting::AgentKey, SettingType::Regenerate, agent_key));
 
         for sev in crate::models::security::SECURITY_SEVERITY.iter() {
-            defaults.push((
-                Setting::from(format!("security.alerts.{}", sev).as_str()),
-                SettingType::Statistics,
-                "0".to_string(),
-            ));
+            let key = format!("security.alerts.{}", sev);
+            defaults.push((Setting::from(key), SettingType::Statistics, "0".to_string()));
         }
 
         defaults
@@ -208,6 +207,7 @@ impl ServerSettings {
         if !namespace.ends_with('.') {
             namespace.push('.');
         }
+        log::debug!("Fetching settings in namespace: `{}%`", namespace);
 
         Ok(Self::query(
             connection,
