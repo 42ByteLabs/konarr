@@ -14,58 +14,71 @@ use super::SecuritySeverity;
 #[derive(Data, Debug, Clone, Default, PartialEq)]
 pub enum AdvisorySource {
     /// Alpine Security DB
+    #[geekorm(aliases = "alpine,alpinesecdb")]
     AlpineSecDB,
     /// Amazon Web Services
+    #[geekorm(aliases = "amazon,aws,amazonwebservices")]
     AmazonWebServices,
     /// Anchore
+    #[geekorm(aliases = "anchore")]
     Anchore,
     /// Chainguard
+    #[geekorm(aliases = "chainguard")]
     Chainguard,
     /// Debian
+    #[geekorm(aliases = "debian,debian-sec,debian-distro-debian-12")]
     Debian,
     /// GitHub Advisory Database
+    #[geekorm(aliases = "github,ghad,githubadvisories")]
     GitHubAdvisoryDatabase,
     /// National Vulnerability Database
+    #[geekorm(aliases = "nvd,nationalvulnerabilitydatabase")]
     NationalVulnerabilityDatabase,
     /// Oracle
+    #[geekorm(aliases = "oracle,oracleoval")]
     OracleOval,
     /// RedHat
+    #[geekorm(aliases = "redhat,redhatsecurity")]
     RedHatSecurity,
     /// SUSE
+    #[geekorm(aliases = "suse,suseoval")]
     SuseOval,
     /// Ubuntu
+    #[geekorm(aliases = "ubuntu")]
     UbuntuSecurity,
     /// Wolfi
+    #[geekorm(aliases = "wolfi")]
     WolfiSecDB,
     /// Custom source of security information
+    #[geekorm(aliases = "custom")]
     Custom,
     /// Unknown
     #[default]
     Unknown,
 }
 
-impl From<String> for AdvisorySource {
-    fn from(value: String) -> Self {
-        match value.to_lowercase().as_str() {
-            "alpine" | "alpinesecdb" => AdvisorySource::AlpineSecDB,
-            "amazon" | "aws" | "amazonwebservices" => AdvisorySource::AmazonWebServices,
-            "anchore" => AdvisorySource::Anchore,
-            "chainguard" => AdvisorySource::Chainguard,
-            "debian" | "debian-distro-debian-12" => AdvisorySource::Debian,
-            "github" | "ghad" | "githubadvisories" => AdvisorySource::GitHubAdvisoryDatabase,
-            "nvd" | "nationalvulnerabilitydatabase" => {
-                AdvisorySource::NationalVulnerabilityDatabase
-            }
-            "oracle" | "oracleoval" => AdvisorySource::OracleOval,
-            "redhat" | "redhatsecurity" => AdvisorySource::RedHatSecurity,
-            "suse" | "suseoval" => AdvisorySource::SuseOval,
-            "ubuntu" => AdvisorySource::UbuntuSecurity,
-            "wolfi" => AdvisorySource::WolfiSecDB,
-            "custom" => AdvisorySource::Custom,
-            _ => AdvisorySource::Unknown,
-        }
-    }
-}
+// impl From<String> for AdvisorySource {
+//     fn from(value: String) -> Self {
+//         match value.to_lowercase().as_str() {
+//             "alpine" | "alpinesecdb" => AdvisorySource::AlpineSecDB,
+//             "amazon" | "aws" | "amazonwebservices" => AdvisorySource::AmazonWebServices,
+//             "anchore" => AdvisorySource::Anchore,
+//             "chainguard" => AdvisorySource::Chainguard,
+//             "debian" | "debian-distro-debian-12" => AdvisorySource::Debian,
+//             "github" | "ghad" | "githubadvisories" => AdvisorySource::GitHubAdvisoryDatabase,
+//             "nvd" | "nationalvulnerabilitydatabase" => {
+//                 AdvisorySource::NationalVulnerabilityDatabase
+//             }
+//             "oracle" | "oracleoval" => AdvisorySource::OracleOval,
+//             "redhat" | "redhatsecurity" => AdvisorySource::RedHatSecurity,
+//             "suse" | "suseoval" => AdvisorySource::SuseOval,
+//             "ubuntu" => AdvisorySource::UbuntuSecurity,
+//             "wolfi" => AdvisorySource::WolfiSecDB,
+//             "custom" => AdvisorySource::Custom,
+//             _ => AdvisorySource::Unknown,
+//         }
+//     }
+// }
 
 /// Security vulnerabilities table
 #[derive(Table, Debug, Clone, Default, serde::Serialize, serde::Deserialize)]

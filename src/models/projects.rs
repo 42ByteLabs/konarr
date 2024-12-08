@@ -5,7 +5,6 @@ use geekorm::prelude::*;
 use chrono::{DateTime, Utc};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
 
 use super::{Dependencies, Snapshot};
 
@@ -490,45 +489,32 @@ pub struct ProjectSnapshots {
 #[derive(Data, Debug, Default, Clone, PartialEq)]
 pub enum ProjectType {
     /// Group of Projects
+    #[geekorm(aliases = "group,groups")]
     Group,
     /// Single Application
     #[default]
+    #[geekorm(aliases = "app,application,applications")]
     Application,
     /// Server
+    #[geekorm(aliases = "server,servers")]
     Server,
     /// Cluster (Kubernetes, Docker Swarm, etc.)
+    #[geekorm(aliases = "cluster")]
     Cluster,
     /// Container
+    #[geekorm(aliases = "container,containers,docker")]
     Container,
 }
 
-impl Display for ProjectType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ProjectType::Group => write!(f, "Group"),
-            ProjectType::Application => write!(f, "Application"),
-            ProjectType::Server => write!(f, "Server"),
-            ProjectType::Cluster => write!(f, "Cluster"),
-            ProjectType::Container => write!(f, "Container"),
-        }
-    }
-}
-
-impl From<String> for ProjectType {
-    fn from(s: String) -> Self {
-        match s.to_lowercase().as_str() {
-            "group" | "groups" => ProjectType::Group,
-            "app" | "application" | "applications" => ProjectType::Application,
-            "server" | "servers" => ProjectType::Server,
-            "cluster" => ProjectType::Cluster,
-            "container" | "containers" | "docker" => ProjectType::Container,
-            _ => ProjectType::Application,
-        }
-    }
-}
-
-impl From<&String> for ProjectType {
-    fn from(s: &String) -> Self {
-        ProjectType::from(s.clone())
-    }
-}
+// impl From<String> for ProjectType {
+//     fn from(s: String) -> Self {
+//         match s.to_lowercase().as_str() {
+//             "group" | "groups" => ProjectType::Group,
+//             "app" | "application" | "applications" => ProjectType::Application,
+//             "server" | "servers" => ProjectType::Server,
+//             "cluster" => ProjectType::Cluster,
+//             "container" | "containers" | "docker" => ProjectType::Container,
+//             _ => ProjectType::Application,
+//         }
+//     }
+// }

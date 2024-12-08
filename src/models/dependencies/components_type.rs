@@ -1,91 +1,55 @@
 //! # Component Type
 use geekorm::Data;
-use std::fmt::Display;
 
 use crate::bom::sbom::BomComponentType;
 
 /// Component Type Enum
 #[derive(Data, Debug, Hash, Default, Clone, PartialEq, Eq)]
+#[geekorm(from_string = "lowercase")]
 pub enum ComponentType {
     /// Library
+    #[geekorm(aliases = "library,lib")]
     Library,
     /// Application
+    #[geekorm(aliases = "application,app")]
     Application,
     /// Framework
+    #[geekorm(aliases = "framework")]
     Framework,
     /// Operating System
+    #[geekorm(aliases = "os,operatingsystem,operating_system")]
     OperatingSystem,
     /// Package Manager
+    #[geekorm(aliases = "packagemanager,package_manager")]
     PackageManager,
     /// Container
+    #[geekorm(aliases = "container,docker")]
     Container,
     /// Firmware
+    #[geekorm(aliases = "firmware")]
     Firmware,
     /// Cryptograph Library
+    #[geekorm(aliases = "cryptographylibrary,crypto,cryptography,cryptography_library")]
     CryptographyLibrary,
     /// Service
+    #[geekorm(aliases = "service")]
     Service,
     /// Database
+    #[geekorm(aliases = "db,database")]
     Database,
     /// Operating Environment
+    #[geekorm(aliases = "oe,operatingenvironment,operating_environment")]
     OperatingEnvironment,
     /// Middleware
+    #[geekorm(aliases = "middleware")]
     Middleware,
     /// Programming Language
+    #[geekorm(aliases = "language,programminglanguage,programming_language")]
     ProgrammingLanguage,
     /// Unknown
     #[default]
+    #[geekorm(aliases = "unknown")]
     Unknown,
-}
-
-impl Display for ComponentType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ComponentType::Library => write!(f, "library"),
-            ComponentType::Application => write!(f, "application"),
-            ComponentType::Framework => write!(f, "framework"),
-            ComponentType::OperatingSystem => write!(f, "operating_system"),
-            ComponentType::PackageManager => write!(f, "package_manager"),
-            ComponentType::Container => write!(f, "container"),
-            ComponentType::Firmware => write!(f, "firmware"),
-            ComponentType::CryptographyLibrary => write!(f, "cryptography_library"),
-            ComponentType::Service => write!(f, "service"),
-            ComponentType::Database => write!(f, "database"),
-            ComponentType::OperatingEnvironment => write!(f, "operating_environment"),
-            ComponentType::Middleware => write!(f, "middleware"),
-            ComponentType::ProgrammingLanguage => write!(f, "programming_language"),
-            ComponentType::Unknown => write!(f, "unknown"),
-        }
-    }
-}
-
-impl From<&String> for ComponentType {
-    fn from(value: &String) -> Self {
-        match value.to_lowercase().as_str() {
-            "lib" | "library" => ComponentType::Library,
-            "application" => ComponentType::Application,
-            "framework" => ComponentType::Framework,
-            "os" | "operatingsystem" | "operating_system" => ComponentType::OperatingSystem,
-            "package_manager" => ComponentType::PackageManager,
-            "container" | "docker" => ComponentType::Container,
-            "firmware" => ComponentType::Firmware,
-            "crypto" | "cryptography" | "cryptography_library" => {
-                ComponentType::CryptographyLibrary
-            }
-            "service" => ComponentType::Service,
-            "db" | "database" => ComponentType::Database,
-            "operatingenvironment" | "operating_environment" => ComponentType::OperatingEnvironment,
-            "middleware" => ComponentType::Middleware,
-            "programminglanguage" | "programming_language" => ComponentType::ProgrammingLanguage,
-            _ => ComponentType::Unknown,
-        }
-    }
-}
-
-impl From<String> for ComponentType {
-    fn from(value: String) -> Self {
-        Self::from(&value)
-    }
 }
 
 impl From<BomComponentType> for ComponentType {
@@ -104,6 +68,30 @@ impl From<BomComponentType> for ComponentType {
             BomComponentType::Middleware => ComponentType::Middleware,
             BomComponentType::ProgrammingLanguage => ComponentType::ProgrammingLanguage,
             BomComponentType::Unknown => ComponentType::Unknown,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parsing() {
+        for lib in vec!["library", "lib", "LiBrArY", "LIB"] {
+            let plib = ComponentType::from(lib);
+            assert_eq!(plib, ComponentType::Library);
+            assert_eq!(plib.to_string(), "Library");
+        }
+        for app in vec!["application", "APP"] {
+            let papp = ComponentType::from(app);
+            assert_eq!(papp, ComponentType::Application);
+            assert_eq!(papp.to_string(), "Application");
+        }
+        for crypto in vec!["CrYpTo", "cryptography", "cryptography_library"] {
+            let pcrypto = ComponentType::from(crypto);
+            assert_eq!(pcrypto, ComponentType::CryptographyLibrary);
+            assert_eq!(pcrypto.to_string(), "CryptographyLibrary");
         }
     }
 }

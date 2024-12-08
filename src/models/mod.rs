@@ -17,7 +17,8 @@ pub use dependencies::Dependencies;
 pub use projects::{ProjectSnapshots, ProjectStatus, ProjectType, Projects};
 use security::advisories::AdvisoriesMetadata;
 use security::{Advisories, Alerts};
-pub use settings::ServerSettings;
+
+pub use settings::{ServerSettings, Setting};
 
 use crate::KonarrError;
 use geekorm::prelude::*;
