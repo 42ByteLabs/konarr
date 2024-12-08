@@ -143,6 +143,17 @@ impl Config {
         Ok(self.data_path.clone())
     }
 
+    /// GrypeDB Path in data directory
+    #[cfg(feature = "tools-grypedb")]
+    pub fn grype_path(&self) -> Result<PathBuf, Error> {
+        let path = self.data_path()?.join("grypedb");
+        if !path.exists() {
+            log::debug!("Creating Grype path");
+            std::fs::create_dir_all(&path)?;
+        }
+        Ok(path)
+    }
+
     #[cfg(feature = "models")]
     /// Get Database Connection
     pub async fn database(&self) -> Result<libsql::Database, Error> {
