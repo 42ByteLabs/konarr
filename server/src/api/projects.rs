@@ -152,14 +152,19 @@ pub async fn create_project(
     let connection = state.db.connect()?;
 
     let mut project: models::Projects = project_req.into_inner().into();
+    project.fetch_or_create(&connection).await?;
 
-    match project.fetch_or_create(&connection).await {
-        Ok(_) => {
-            info!("Creating new project: {}", project.id);
-            Ok(Json(project.into()))
-        }
-        Err(e) => Err(e.into()),
-    }
+    // Run the statistics task in the background
+    tokio::spawn(async move {
+        konarr::tasks::statistics(&connection)
+            .await
+            .map_err(|e| {
+                log::error!("Failed to run alert calculator: {:?}", e);
+            })
+            .ok();
+    });
+
+    Ok(Json(project.into()))
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -216,6 +221,16 @@ pub async fn patch_project(
 
     project.update(&connection).await?;
 
+    // Run the statistics task in the background
+    tokio::spawn(async move {
+        konarr::tasks::statistics(&connection)
+            .await
+            .map_err(|e| {
+                log::error!("Failed to run alert calculator: {:?}", e);
+            })
+            .ok();
+    });
+
     Ok(Json(project.into()))
 }
 
@@ -254,6 +269,15 @@ pub async fn delete_project(
         project.name, session.user.username
     );
     project.archive(&connection).await?;
+    // Run the statistics task in the background
+    tokio::spawn(async move {
+        konarr::tasks::statistics(&connection)
+            .await
+            .map_err(|e| {
+                log::error!("Failed to run alert calculator: {:?}", e);
+            })
+            .ok();
+    });
 
     Ok(Json(project.into()))
 }

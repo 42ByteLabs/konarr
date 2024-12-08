@@ -121,6 +121,15 @@ pub async fn register(
             info!("Server is now initialized");
         }
 
+        tokio::spawn(async move {
+            konarr::tasks::statistics(&connection)
+                .await
+                .map_err(|e| {
+                    log::error!("Failed to run alert calculator: {:?}", e);
+                })
+                .ok();
+        });
+
         Ok(Json(LoginResponse::success()))
     } else {
         Ok(Json(LoginResponse::failed("Registration is disabled")))
