@@ -9,9 +9,15 @@ permissions:
   contents: write
 
 jobs:
+  project:
+    # https://github.com/42ByteLabs/.github/blob/main/.github/workflows/project.yml
+    uses: 42ByteLabs/.github/.github/workflows/project.yml@main
+    secrets: inherit
+
   cargo-publish:
     # https://github.com/42ByteLabs/.github/blob/main/.github/workflows/cargo-publish.yml
     uses: 42ByteLabs/.github/.github/workflows/cargo-publish.yml@main
+    if: ${{ needs.project.outputs.release == 'true' }}
     secrets: inherit
     with:
       crate: konarr
@@ -20,23 +26,29 @@ jobs:
   container-server:
     # https://github.com/42ByteLabs/.github/blob/main/.github/workflows/container.yml
     uses: 42ByteLabs/.github/.github/workflows/container.yml@main
+    if: ${{ needs.project.outputs.release == 'true' }}
     secrets: inherit
     permissions:
       id-token: write
       contents: write
       packages: write
+      security-events: write
     with:
+      version: ${{ needs.project.outputs.version }}
       container-name: "42bytelabs/konarr"
       docker-file: "./server/Dockerfile"
 
   container-cli:
     # https://github.com/42ByteLabs/.github/blob/main/.github/workflows/container.yml
     uses: 42ByteLabs/.github/.github/workflows/container.yml@main
+    if: ${{ needs.project.outputs.release == 'true' }}
     secrets: inherit
     permissions:
       id-token: write
       contents: write
       packages: write
+      security-events: write
     with:
+      version: ${{ needs.project.outputs.version }}
       container-name: "42bytelabs/konarr-cli"
       docker-file: "./cli/Dockerfile"
