@@ -58,6 +58,9 @@ use crate::{error::KonarrError as Error, utils::rand::generate_random_string};
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     #[serde(skip)]
+    path: PathBuf,
+
+    #[serde(skip)]
     data_path: PathBuf,
 
     /// Database Configuration
@@ -102,6 +105,7 @@ impl Config {
         } else {
             config.data_path = PathBuf::from("./data");
         }
+        config.path = path.clone();
 
         debug!("Finished Loading Configuration");
         Ok(config)
@@ -134,13 +138,27 @@ impl Config {
         Ok(())
     }
 
+    /// Automatically save the Configuration
+    pub fn autosave(&self) -> Result<(), Error> {
+        self.save(&self.path)
+    }
+
+    /// Config directory path
+    pub fn config_path(&self) -> Result<PathBuf, Error> {
+        Ok(self
+            .path
+            .parent()
+            .ok_or_else(|| Error::ConfigParseError("Invalid Config Path".to_string()))?
+            .to_path_buf())
+    }
+
     /// Data directory path
-    pub fn data_path(&self) -> Result<PathBuf, Error> {
+    pub fn data_path(&self) -> Result<&PathBuf, Error> {
         if !self.data_path.exists() {
             log::debug!("Creating data path");
             std::fs::create_dir_all(&self.data_path)?;
         }
-        Ok(self.data_path.clone())
+        Ok(&self.data_path)
     }
 
     /// GrypeDB Path in data directory
