@@ -240,15 +240,6 @@ impl Alerts {
     }
 }
 
-impl From<String> for SecurityState {
-    fn from(value: String) -> Self {
-        match value.to_lowercase().as_str() {
-            "secure" => SecurityState::Secure,
-            "unfixable" => SecurityState::Unfixable,
-            _ => SecurityState::Vulnerable,
-        }
-    }
-}
 impl From<Option<String>> for SecurityState {
     fn from(state: Option<String>) -> Self {
         match state {

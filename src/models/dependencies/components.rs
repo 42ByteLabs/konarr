@@ -1,11 +1,10 @@
 //! # Dependency Components Models / Tables
 
-use std::{fmt::Display, str::FromStr};
-
 use geekorm::prelude::*;
 use log::{debug, info};
 use purl::GenericPurl;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 use super::ComponentType;
 
@@ -73,7 +72,7 @@ impl Component {
 
     /// Create PURL from Component
     pub fn purl(&self) -> String {
-        let mut purl = format!("pkg:{}/", self.manager);
+        let mut purl = format!("pkg:{}/", self.manager.to_string().to_lowercase());
 
         if let Some(namespace) = &self.namespace {
             purl += format!("{}/", namespace).as_str();
@@ -203,8 +202,7 @@ impl Component {
     /// Get the top components
     pub async fn top<'a, T>(
         connection: &'a T,
-        limit: usize,
-        page: usize,
+        page: &Pagination,
     ) -> Result<Vec<Self>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
@@ -217,8 +215,7 @@ impl Component {
                 .where_ne("component_type", ComponentType::Unknown)
                 .and()
                 .where_ne("component_type", ComponentType::Framework)
-                .limit(limit)
-                .offset(page * limit)
+                .page(page)
                 .order_by("name", QueryOrder::Asc)
                 .build()?,
         )
@@ -229,8 +226,7 @@ impl Component {
     pub async fn find_by_name<'a, T>(
         connection: &'a T,
         name: impl Into<String>,
-        page: usize,
-        limit: usize,
+        page: &Pagination,
     ) -> Result<Vec<Component>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
@@ -240,8 +236,7 @@ impl Component {
             .where_like("name", format!("%{}%", name))
             .or()
             .where_like("namespace", format!("%{}%", name))
-            .limit(limit)
-            .offset(page * limit)
+            .page(page)
             .build()?;
 
         Ok(Component::query(connection, select).await?)
@@ -251,8 +246,7 @@ impl Component {
     pub async fn find_by_component_type<'a, T>(
         connection: &'a T,
         ctype: impl Into<ComponentType>,
-        page: usize,
-        limit: usize,
+        page: &Pagination,
     ) -> Result<Vec<Component>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
@@ -262,8 +256,7 @@ impl Component {
             connection,
             Self::query_select()
                 .where_eq("component_type", ctype)
-                .limit(limit)
-                .offset(page * limit)
+                .page(page)
                 .build()?,
         )
         .await?)
@@ -319,79 +312,62 @@ impl ComponentVersion {
 ///
 /// https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst
 #[derive(Data, Debug, Default, Clone, PartialEq, Eq)]
+#[geekorm(from_string = "lowercase", to_string = "lowercase")]
 pub enum ComponentManager {
     /// Alpine Linux
+    #[geekorm(aliases = "apk,alpine")]
     Apk,
     /// Cargo / Rust
+    #[geekorm(aliases = "cargo,rust,rustc,rustlang")]
     Cargo,
     /// Composer / PHP
+    #[geekorm(aliases = "composer,php")]
     Composer,
     /// Debian / Ubuntu
+    #[geekorm(aliases = "deb,debian")]
     Deb,
     /// Ruby Gem
+    #[geekorm(aliases = "gem,ruby")]
     Gem,
     /// Generic
+    #[geekorm(aliases = "generic")]
     Generic,
     /// NPM
+    #[geekorm(aliases = "npm,node,javascript")]
     Npm,
     /// Go Modules
+    #[geekorm(aliases = "go,golang")]
     Golang,
     /// Maven / Java / Kotlin
+    #[geekorm(aliases = "maven,gradle,java,kotlin,jvm")]
     Maven,
     /// Python Pip
+    #[geekorm(aliases = "pypi,pip,python")]
     PyPi,
     /// Nuget
+    #[geekorm(aliases = "nuget,csharp")]
     Nuget,
     /// RPM (Redhat Package Manager)
+    #[geekorm(aliases = "rpm,redhat")]
     Rpm,
     /// Unknown Package Manager
     #[default]
     Unknown,
 }
 
-impl Display for ComponentManager {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ComponentManager::Apk => write!(f, "apk"),
-            ComponentManager::Composer => write!(f, "composer"),
-            ComponentManager::Cargo => write!(f, "cargo"),
-            ComponentManager::Deb => write!(f, "deb"),
-            ComponentManager::Gem => write!(f, "gem"),
-            ComponentManager::Golang => write!(f, "golang"),
-            ComponentManager::Generic => write!(f, "generic"),
-            ComponentManager::Maven => write!(f, "maven"),
-            ComponentManager::Npm => write!(f, "npm"),
-            ComponentManager::Nuget => write!(f, "nuget"),
-            ComponentManager::PyPi => write!(f, "pypi"),
-            ComponentManager::Rpm => write!(f, "rpm"),
-            ComponentManager::Unknown => write!(f, "unknown"),
-        }
-    }
-}
-
-impl From<&String> for ComponentManager {
-    fn from(value: &String) -> Self {
-        match value.to_lowercase().as_str() {
-            "apk" | "alpine" => ComponentManager::Apk,
-            "cargo" | "rust" => ComponentManager::Cargo,
-            "composer" | "php" => ComponentManager::Composer,
-            "deb" | "debian" => ComponentManager::Deb,
-            "gem" | "ruby" => ComponentManager::Gem,
-            "go" | "golang" => ComponentManager::Golang,
-            "generic" => ComponentManager::Generic,
-            "maven" | "java" | "kotlin" => ComponentManager::Maven,
-            "npm" | "node" | "javascript" => ComponentManager::Npm,
-            "pypi" | "pip" | "python" => ComponentManager::PyPi,
-            "nuget" | "csharp" => ComponentManager::Nuget,
-            "rpm" | "redhat" => ComponentManager::Rpm,
-            _ => ComponentManager::Unknown,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parsing() {
+        let debs = vec!["deb", "DeBiAn", "debian", "DEBIAN", "Debian"];
+        for deb in debs.iter() {
+            let pdeb = ComponentManager::from(*deb);
+            assert_eq!(pdeb, ComponentManager::Deb);
+            assert_eq!(pdeb.to_string(), "deb");
+        }
+    }
 
     #[test]
     fn test_purl_to_comp() {

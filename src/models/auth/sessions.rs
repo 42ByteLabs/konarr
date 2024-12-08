@@ -63,11 +63,11 @@ pub enum SessionType {
     Application,
 }
 
-impl From<&str> for SessionType {
-    fn from(session_type: &str) -> Self {
-        match session_type {
-            "application" => SessionType::Application,
-            _ => SessionType::User,
-        }
-    }
-}
+// impl From<&str> for SessionType {
+//     fn from(session_type: &str) -> Self {
+//         match session_type {
+//             "application" => SessionType::Application,
+//             _ => SessionType::User,
+//         }
+//     }
+// }

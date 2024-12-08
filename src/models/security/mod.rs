@@ -1,4 +1,5 @@
 //! # Security module
+
 use geekorm::prelude::*;
 
 pub mod advisories;
@@ -8,51 +9,46 @@ pub use crate::bom::sbom::BomVulnerabilitySeverity;
 pub use advisories::{Advisories, AdvisorySource};
 pub use alerts::{Alerts, SecurityState};
 
+/// List of Security Criticality
+pub const SECURITY_SEVERITY: [&'static str; 8] = [
+    "Critical",
+    "High",
+    "Medium",
+    "Low",
+    "Informational",
+    "Unmantained",
+    "Malware",
+    "Unknown",
+];
+
 /// Security Criticality
 #[derive(Data, Debug, Clone, Default, Eq, PartialEq, Hash)]
 pub enum SecuritySeverity {
     /// Critical
+    #[geekorm(aliases = "critical,crit,very-high,security.alerts.critical")]
     Critical,
     /// High
+    #[geekorm(aliases = "high,security.alerts.high")]
     High,
     /// Medium
+    #[geekorm(aliases = "medium,med,moderate,security.alerts.medium")]
     Medium,
     /// Low
+    #[geekorm(aliases = "low,security.alerts.low")]
     Low,
     /// Informational
+    #[geekorm(aliases = "informational,info,security.alerts.informational")]
     Informational,
     /// Unmantained
+    #[geekorm(aliases = "unmaintained,security.alerts.unmaintained")]
     Unmantained,
     /// Malware
+    #[geekorm(aliases = "mal,security.alerts.malware")]
     Malware,
     /// Unknown
+    #[geekorm(aliases = "unknown,none,other,security.alerts.unknown,security.alerts.other")]
     #[default]
     Unknown,
-}
-
-impl From<String> for SecuritySeverity {
-    fn from(value: String) -> Self {
-        match value.to_lowercase().as_str() {
-            "crit" | "critical" | "very-high" | "security.alerts.critical" => {
-                SecuritySeverity::Critical
-            }
-            "high" | "security.alerts.high" => SecuritySeverity::High,
-            "med" | "medium" | "moderate" | "security.alerts.medium" => SecuritySeverity::Medium,
-            "low" | "security.alerts.low" => SecuritySeverity::Low,
-            "info" | "information" | "informational" | "security.alerts.infomational" => {
-                SecuritySeverity::Informational
-            }
-            "mal" | "malware" | "security.alerts.malware" => SecuritySeverity::Malware,
-            "unmaintained" | "security.alerts.unmaintained" => SecuritySeverity::Unmantained,
-            "unknown" | "none" | "other" | "security.alerts.unknown" | "security.alerts.other" => {
-                SecuritySeverity::Unknown
-            }
-            _ => {
-                log::warn!("Unknown Security Severity: '{}'", value);
-                SecuritySeverity::Unknown
-            }
-        }
-    }
 }
 
 impl From<&BomVulnerabilitySeverity> for SecuritySeverity {
@@ -68,17 +64,21 @@ impl From<&BomVulnerabilitySeverity> for SecuritySeverity {
     }
 }
 
-impl ToString for SecuritySeverity {
-    fn to_string(&self) -> String {
-        match self {
-            SecuritySeverity::Critical => "Critical".to_string(),
-            SecuritySeverity::High => "High".to_string(),
-            SecuritySeverity::Medium => "Medium".to_string(),
-            SecuritySeverity::Low => "Low".to_string(),
-            SecuritySeverity::Informational => "Informational".to_string(),
-            SecuritySeverity::Unmantained => "Unmantained".to_string(),
-            SecuritySeverity::Malware => "Malware".to_string(),
-            SecuritySeverity::Unknown => "Unknown".to_string(),
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parsing() {
+        let criticals = vec![
+            "Critical",
+            "critical",
+            "crit",
+            "very-high",
+            "security.alerts.critical",
+        ];
+        for crit in criticals {
+            assert_eq!(SecuritySeverity::from(crit), SecuritySeverity::Critical);
         }
     }
 }
