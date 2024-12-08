@@ -199,7 +199,7 @@ pub async fn patch_project(
     }
     if let Some(typ) = &project_req.project_type {
         info!("Updating Project (type) :: {}", typ);
-        project.project_type = ProjectType::from(typ);
+        project.project_type = ProjectType::from(typ.clone());
     }
     if let Some(desc) = &project_req.description {
         info!("Update Project (description) :: {}", desc);

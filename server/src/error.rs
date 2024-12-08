@@ -22,6 +22,10 @@ pub enum KonarrServerError {
     /// Unauthorized Error
     #[error("Unauthorized")]
     Unauthorized,
+    /// Readonly property/field cannot be modified
+    #[error("Readonly property/field cannot be modified: {0}")]
+    UnauthorizedReadonly(String),
+
     /// Internal Server Error
     #[error("Internal Server Error")]
     InternalServerError,

@@ -1,4 +1,7 @@
-use konarr::models::{settings::ServerSettings, Sessions, UserRole, Users};
+use konarr::models::{
+    settings::{keys::Setting, ServerSettings},
+    Sessions, UserRole, Users,
+};
 use rocket::{
     outcome::try_outcome,
     request::{FromRequest, Outcome, Request},
@@ -38,7 +41,7 @@ impl<'r> FromRequest<'r> for Session {
 
         // Agent
         if let Some(token) = req.headers().get_one("Authorization") {
-            match ServerSettings::fetch_by_name(&connection, "agent.key").await {
+            match ServerSettings::fetch_by_name(&connection, Setting::AgentKey).await {
                 Ok(key) => {
                     // Match Agent Key
                     if token != key.value {
