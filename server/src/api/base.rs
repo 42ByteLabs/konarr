@@ -1,6 +1,5 @@
-use geekorm::prelude::*;
 use konarr::{
-    models::{settings::ServerSettings, Component, Projects},
+    models::settings::{find_statistic, keys::Setting, ServerSettings},
     KONARR_VERSION,
 };
 use rocket::{serde::json::Json, State};
@@ -46,30 +45,30 @@ pub struct UserResponse {
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct ProjectsSummary {
-    pub total: u32,
-    pub servers: u32,
-    pub containers: u32,
+    pub total: u64,
+    pub servers: u64,
+    pub containers: u64,
 }
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct DependenciesSummary {
-    pub total: u32,
+    pub total: u64,
 }
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct SecuritySummary {
-    pub advisories: u32,
-    pub total: u32,
-    pub critical: u32,
-    pub high: u32,
-    pub medium: u32,
-    pub low: u32,
-    pub informational: u32,
-    pub malware: u32,
-    pub unmaintained: u32,
-    pub unknown: u32,
+    pub advisories: u64,
+    pub total: u64,
+    pub critical: u64,
+    pub high: u64,
+    pub medium: u64,
+    pub low: u64,
+    pub informational: u64,
+    pub malware: u64,
+    pub unmaintained: u64,
+    pub unknown: u64,
 }
 
 impl Default for BaseResponse {
@@ -94,21 +93,18 @@ impl Default for BaseResponse {
 pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResult<BaseResponse> {
     let connection = state.db.connect()?;
 
-    let init: bool = ServerSettings::fetch_by_name(&connection, "initialized")
+    let init: bool = ServerSettings::fetch_by_name(&connection, Setting::Initialized)
         .await?
         .boolean();
-    let registration: bool = ServerSettings::fetch_by_name(&connection, "registration")
+    let registration: bool = ServerSettings::fetch_by_name(&connection, Setting::Registration)
         .await?
         .boolean();
 
     if let Some(session) = &session {
-        let dependencies_total =
-            Component::row_count(&connection, Component::query_count().build()?).await? as u32;
-
-        let projects_total = Projects::count_active(&connection).await? as u32;
+        let stats = ServerSettings::fetch_statistics(&connection).await?;
 
         let security: Option<SecuritySummary> =
-            if ServerSettings::get_bool(&connection, "security").await? {
+            if ServerSettings::get_bool(&connection, Setting::Security).await? {
                 let security_counts =
                     ServerSettings::get_namespace(&connection, "security.alerts").await?;
 
@@ -128,13 +124,13 @@ pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResul
                 role: session.user.role.to_string(),
             }),
             projects: Some(ProjectsSummary {
-                total: projects_total,
-                containers: Projects::count_containers(&connection).await? as u32,
-                servers: Projects::count_servers(&connection).await? as u32,
+                total: find_statistic(&stats, Setting::StatsProjectsTotal),
+                containers: find_statistic(&stats, Setting::StatsProjectsContainers),
+                servers: find_statistic(&stats, Setting::StatsProjectsServers),
                 ..Default::default()
             }),
             dependencies: Some(DependenciesSummary {
-                total: dependencies_total,
+                total: find_statistic(&stats, Setting::StatsDependenciesTotal),
                 ..Default::default()
             }),
             security,
@@ -157,23 +153,23 @@ impl From<Vec<ServerSettings>> for SecuritySummary {
         let mut summary = SecuritySummary::default();
 
         for setting in value.iter() {
-            if setting.name.as_str() == "security.alerts.total" {
+            if setting.name == Setting::SecurityAlertsTotal {
                 summary.total = setting.value.parse().unwrap_or(0);
-            } else if setting.name.as_str() == "security.alerts.critical" {
+            } else if setting.name == Setting::SecurityAlertsCritical {
                 summary.critical = setting.value.parse().unwrap_or(0);
-            } else if setting.name.as_str() == "security.alerts.high" {
+            } else if setting.name == Setting::SecurityAlertsHigh {
                 summary.high = setting.value.parse().unwrap_or(0);
-            } else if setting.name.as_str() == "security.alerts.medium" {
+            } else if setting.name == Setting::SecurityAlertsMedium {
                 summary.medium = setting.value.parse().unwrap_or(0);
-            } else if setting.name.as_str() == "security.alerts.low" {
+            } else if setting.name == Setting::SecurityAlertsLow {
                 summary.low = setting.value.parse().unwrap_or(0);
-            } else if setting.name.as_str() == "security.alerts.informational" {
+            } else if setting.name == Setting::SecurityAlertsInformational {
                 summary.informational = setting.value.parse().unwrap_or(0);
-            } else if setting.name.as_str() == "security.alerts.malware" {
+            } else if setting.name == Setting::SecurityAlertsMalware {
                 summary.malware = setting.value.parse().unwrap_or(0);
-            } else if setting.name.as_str() == "security.alerts.unmaintained" {
+            } else if setting.name == Setting::SecurityAlertsUnmaintained {
                 summary.unmaintained = setting.value.parse().unwrap_or(0);
-            } else if setting.name.as_str() == "security.alerts.unknown" {
+            } else if setting.name == Setting::SecurityAlertsUnknown {
                 summary.unknown = setting.value.parse().unwrap_or(0);
             }
         }

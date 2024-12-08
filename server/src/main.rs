@@ -6,11 +6,10 @@ extern crate geekorm;
 
 use anyhow::Result;
 use konarr::{
-    models::{self, ServerSettings},
-    utils::grypedb::GrypeDatabase,
+    models::{database_create, settings::keys::Setting, ServerSettings},
     Config, KonarrError,
 };
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use rocket::{fs::FileServer, Rocket};
 use rocket_cors::{Cors, CorsOptions};
 
@@ -46,7 +45,7 @@ async fn main() -> Result<()> {
     create(&mut config).await?;
 
     info!("Saving Configuration to: {}", arguments.config.display());
-    config.save(&arguments.config)?;
+    // config.save(&arguments.config)?;
 
     // Server
     server(config).await?;
@@ -58,7 +57,7 @@ async fn create(config: &mut Config) -> Result<()> {
     let connection = config.database.connection().await?;
 
     // TODO: Check if the database exists
-    models::database_create(&connection).await?;
+    database_create(&connection).await?;
 
     // Store the server setting into the config file
     if let Ok(token) = konarr::models::ServerSettings::fetch_by_name(&connection, "agent.key").await
@@ -66,53 +65,10 @@ async fn create(config: &mut Config) -> Result<()> {
         config.agent.token = Some(token.value);
     }
 
+    // Update Stats
+    konarr::tasks::statistics(&connection).await?;
+
     Ok(())
-}
-
-async fn advisories(
-    config: &Config,
-    connection: &libsql::Connection,
-) -> Result<Option<libsql::Connection>, KonarrError> {
-    let grype_path = config.data_path()?.join("grypedb");
-    info!("Grype Path: {:?}", grype_path);
-
-    if ServerSettings::get_bool(connection, "security.advisories.polling").await? {
-        info!("Starting Advisory DB Polling");
-        match GrypeDatabase::sync(&grype_path).await {
-            Ok(_) => {
-                info!("Advisory Sync Complete");
-            }
-            Err(e) => {
-                warn!("Advisory Sync Error: {}", e);
-
-                warn!("Disabling Advisory DB Polling");
-                ServerSettings::fetch_by_name(connection, "security.advisories.polling")
-                    .await?
-                    .set_update(connection, "disabled")
-                    .await?;
-            }
-        };
-        ServerSettings::fetch_by_name(connection, "security.advisories.updated")
-            .await?
-            .set_update(connection, chrono::Utc::now().to_rfc3339())
-            .await?;
-    }
-
-    let grype_conn: libsql::Connection = match GrypeDatabase::connect(&grype_path).await {
-        Ok(conn) => conn,
-        Err(_) => {
-            return Ok(None);
-        }
-    };
-
-    // Set Version
-    let grype_id = GrypeDatabase::fetch_grype(&grype_conn).await?;
-    ServerSettings::fetch_by_name(connection, "security.advisories.version")
-        .await?
-        .set_update(connection, grype_id.build_timestamp.to_string().as_str())
-        .await?;
-
-    Ok(Some(grype_conn))
 }
 
 fn cors(config: &Config) -> Result<Cors, KonarrError> {
@@ -159,17 +115,34 @@ fn rocket(config: &Config) -> Rocket<rocket::Build> {
 
 async fn server(config: Config) -> Result<()> {
     let frontend = config.frontend_path()?;
+    debug!("Frontend Path: {:?}", frontend);
     let cors = cors(&config)?;
 
     let database = config.database().await?;
     let connection = database.connect()?;
+    debug!("Database Initialized");
 
     // Check if we have init Konarr
-    let init: bool = ServerSettings::get_bool(&connection, "initialized").await?;
+    let init: bool = ServerSettings::get_bool(&connection, Setting::Initialized).await?;
 
     // Initialise Security
-    if ServerSettings::get_bool(&connection, "security").await? {
-        advisories(&config, &connection).await?;
+    if ServerSettings::get_bool(&connection, Setting::Security).await? {
+        if ServerSettings::get_bool(&connection, Setting::SecurityAdvisories).await? {
+            debug!("Syncing Security Advisories");
+
+            match konarr::tasks::advisories::sync_advisories(&config, &connection).await {
+                Err(e) => {
+                    error!("{}", e);
+                    ServerSettings::fetch_by_name(&connection, Setting::SecurityAdvisories)
+                        .await?
+                        .set_update(&connection, "disabled")
+                        .await?;
+                }
+                _ => {}
+            }
+        } else {
+            debug!("Security Advisories are disabled");
+        }
         // Calculate Alerts
         konarr::tasks::alerts::alert_calculator(&connection).await?;
     }

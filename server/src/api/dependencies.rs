@@ -100,29 +100,24 @@ pub async fn get_dependencies(
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
     let connection = state.db.connect()?;
 
-    let page = page.unwrap_or(0) as usize;
-    let limit = limit.unwrap_or(25) as usize;
+    let page = Pagination::from((page, limit));
 
     let deps = if let Some(search) = search {
-        models::Component::find_by_name(&connection, search, page, limit).await?
+        models::Component::find_by_name(&connection, search, &page).await?
     } else if let Some(dtyp) = deptype {
         models::Component::find_by_component_type(
             &connection,
             models::ComponentType::from(dtyp),
-            page,
-            limit,
+            &page,
         )
         .await?
     } else if top.unwrap_or(false) {
-        models::Component::top(&connection, limit, page).await?
+        models::Component::top(&connection, &page).await?
     } else {
         // Fetch all
         models::Component::query(
             &connection,
-            models::Component::query_select()
-                .limit(limit)
-                .offset(page * limit)
-                .build()?,
+            models::Component::query_select().page(&page).build()?,
         )
         .await?
     };
@@ -130,7 +125,7 @@ pub async fn get_dependencies(
     let total: u32 =
         models::Component::row_count(&connection, models::Component::query_count().build()?).await?
             as u32;
-    let pages = (total as f64 / limit as f64).ceil() as u32;
+    let pages = (total as f64 / page.limit() as f64).ceil() as u32;
 
     Ok(Json(ApiResponse::new(
         deps.iter().map(|dep| dep.clone().into()).collect(),

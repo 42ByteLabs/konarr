@@ -1,8 +1,8 @@
 use geekorm::prelude::*;
 use std::collections::HashMap;
 
-use konarr::models::settings::ServerSettings;
-use log::info;
+use konarr::models::settings::{keys::Setting, ServerSettings, SettingType};
+use log::{info, warn};
 use rocket::{serde::json::Json, State};
 
 use crate::{error::KonarrServerError, guards::AdminSession, AppState};
@@ -32,16 +32,16 @@ pub struct AdminUserSummary {
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct AdminUserStats {
-    total: i64,
-    active: i64,
-    inactive: i64,
+    total: u64,
+    active: u64,
+    inactive: u64,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct AdminProjectStats {
-    total: i64,
-    inactive: i64,
+    total: u64,
+    inactive: u64,
     archived: i64,
 }
 
@@ -60,27 +60,22 @@ pub struct AdminResponse {
 pub async fn settings(state: &State<AppState>, _session: AdminSession) -> ApiResult<AdminResponse> {
     let connection = state.db.connect()?;
 
-    let settings: Vec<ServerSettings> =
-        ServerSettings::query(&connection, ServerSettings::query_all()).await?;
+    let settings = ServerSettings::fetch_settings(&connection).await?;
+    log::debug!("Fetched {} settings", settings.len());
+    let stats = ServerSettings::fetch_statistics(&connection).await?;
+    log::debug!("Fetched {} stats", stats.len());
 
+    // TODO: This will get all the users, we should limit this?
     let users =
         konarr::models::Users::query(&connection, konarr::models::Users::query_all()).await?;
 
-    let user_stats = AdminUserStats {
-        total: konarr::models::Users::total(&connection).await?,
-        active: konarr::models::Users::count_active(&connection).await?,
-        inactive: konarr::models::Users::count_inactive(&connection).await?,
-    };
-    let project_stats = AdminProjectStats {
-        total: konarr::models::Projects::total(&connection).await?,
-        inactive: konarr::models::Projects::count_inactive(&connection).await?,
-        archived: konarr::models::Projects::count_archived(&connection).await?,
-    };
+    let user_stats = AdminUserStats::from(&stats);
+    let project_stats = AdminProjectStats::from(&stats);
 
     Ok(Json(AdminResponse {
         settings: settings
             .into_iter()
-            .map(|setting| (setting.name.clone(), setting.value))
+            .map(|setting| (setting.name.to_string(), setting.value))
             .collect(),
         project_stats,
         user_stats,
@@ -111,29 +106,32 @@ pub async fn update_settings(
     for (name, value) in settings.iter() {
         let mut setting = ServerSettings::fetch_by_name(&connection, name).await?;
 
-        setting.set(value);
-        setting.update(&connection).await?;
+        match setting.setting_type {
+            SettingType::Toggle | SettingType::Regenerate => {
+                setting.set(value);
+                setting.update(&connection).await?;
+            }
+            _ => {
+                warn!("Read-only Server Setting is being updated: {}", name);
+                return Err(KonarrServerError::UnauthorizedReadonly(name.to_string()));
+            }
+        }
     }
 
-    let settings: Vec<ServerSettings> =
-        ServerSettings::query(&connection, ServerSettings::query_all()).await?;
+    // TODO: Return updated settings
+    let stats = konarr::models::ServerSettings::fetch_statistics(&connection).await?;
+    let settings = ServerSettings::fetch_settings(&connection).await?;
+
     let users =
         konarr::models::Users::query(&connection, konarr::models::Users::query_all()).await?;
-    let user_stats = AdminUserStats {
-        total: konarr::models::Users::total(&connection).await?,
-        active: konarr::models::Users::count_active(&connection).await?,
-        inactive: konarr::models::Users::count_inactive(&connection).await?,
-    };
-    let project_stats = AdminProjectStats {
-        total: konarr::models::Projects::total(&connection).await?,
-        inactive: konarr::models::Projects::count_inactive(&connection).await?,
-        archived: konarr::models::Projects::count_archived(&connection).await?,
-    };
+
+    let user_stats = AdminUserStats::from(&stats);
+    let project_stats = AdminProjectStats::from(&stats);
 
     Ok(Json(AdminResponse {
         settings: settings
             .into_iter()
-            .map(|setting| (setting.name.clone(), setting.value))
+            .map(|setting| (setting.name.to_string(), setting.value))
             .collect(),
         project_stats,
         user_stats,
@@ -224,4 +222,38 @@ pub(crate) async fn update_users(
         state: user.state.to_string(),
         created_at: user.created_at,
     }))
+}
+
+impl From<&Vec<ServerSettings>> for AdminUserStats {
+    fn from(value: &Vec<ServerSettings>) -> Self {
+        let mut stats = AdminUserStats::default();
+        for setting in value {
+            match setting.name {
+                Setting::StatsUsersTotal => stats.total = setting.value.parse().unwrap_or(0),
+                Setting::StatsUsersActive => stats.active = setting.value.parse().unwrap_or(0),
+                Setting::StatsUsersInactive => stats.inactive = setting.value.parse().unwrap_or(0),
+                _ => {}
+            }
+        }
+        stats
+    }
+}
+
+impl From<&Vec<ServerSettings>> for AdminProjectStats {
+    fn from(value: &Vec<ServerSettings>) -> Self {
+        let mut stats = AdminProjectStats::default();
+        for setting in value {
+            match setting.name {
+                Setting::StatsProjectsTotal => stats.total = setting.value.parse().unwrap_or(0),
+                Setting::StatsProjectsInactive => {
+                    stats.inactive = setting.value.parse().unwrap_or(0)
+                }
+                Setting::StatsProjectsArchived => {
+                    stats.archived = setting.value.parse().unwrap_or(0)
+                }
+                _ => {}
+            }
+        }
+        stats
+    }
 }
