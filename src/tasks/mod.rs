@@ -2,32 +2,24 @@
 
 use async_trait::async_trait;
 use geekorm::GeekConnection;
+use log::info;
 
 pub mod advisories;
 pub mod alerts;
+pub mod statistics;
 
-/// Setup background tasks
-// pub async fn setup<T>(config: &Config, connection: Arc<Mutex<T>>) -> Result<(), crate::KonarrError>
-// where
-//     T: GeekConnection<Connection = T> + 'static + Send + Sync,
-// {
-//     let alerts_task = every(30).seconds().perform(|| async move {
-//         let conn = connection.lock().await;
-//         let c = *conn;
-//
-//         match alerts::alert_calculator(&c).await {
-//             Ok(r) => {
-//                 debug!("Task complete: {:?}", r);
-//             }
-//             Err(e) => {
-//                 warn!("Task - Error: {:?}", e);
-//             }
-//         };
-//     });
-//     spawn(alerts_task);
-//
-//     Ok(())
-// }
+/// Calculate Statistics Task
+pub async fn statistics<T>(connection: &T) -> Result<(), crate::KonarrError>
+where
+    T: GeekConnection<Connection = T> + Send + Sync + 'static,
+{
+    info!("Task - Calculating Statistics");
+    statistics::user_statistics(connection).await?;
+    statistics::project_statistics(connection).await?;
+    statistics::dependencies_statistics(connection).await?;
+
+    Ok(())
+}
 
 /// Task Trait
 #[async_trait]
