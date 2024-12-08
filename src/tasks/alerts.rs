@@ -1,8 +1,10 @@
 //! Security Alerts Tasks
 
+use std::collections::HashMap;
+
 use crate::models::{
     dependencies::snapshots::AlertsSummary, security::SecuritySeverity, settings::Setting,
-    Projects, ServerSettings,
+    ProjectType, Projects, ServerSettings,
 };
 use geekorm::prelude::*;
 use log::{debug, info};
@@ -18,9 +20,12 @@ where
     }
     info!("Running Alert Calculator Task");
 
-    let mut projects = Projects::fetch_all(connection).await?;
     let mut summary = AlertsSummary::new();
     let mut total = 0;
+
+    let mut projects =
+        Projects::fetch_project_type(connection, ProjectType::Container, 1_000, 0).await?;
+    let mut project_summaries: HashMap<i32, AlertsSummary> = HashMap::new();
 
     for project in projects.iter_mut() {
         if let Some(mut snapshot) = project.fetch_latest_snapshot(connection).await? {
@@ -31,8 +36,12 @@ where
                 *summary.entry(key.clone()).or_insert(0) += value;
                 total += value;
             }
+
+            project_summaries.insert(project.id.into(), snap_summary);
         }
     }
+
+    calculate_group_alerts(connection, &projects, &project_summaries).await?;
 
     info!("Calculating Global Alerts Summary");
     debug!("Global Summary: {:?}", summary);
@@ -65,5 +74,56 @@ where
 
     info!("Global Alerts Updated");
 
+    Ok(())
+}
+
+/// Calculate Group Alerts
+pub async fn calculate_group_alerts<T>(
+    connection: &T,
+    projects: &Vec<Projects>,
+    project_summaries: &HashMap<i32, AlertsSummary>,
+) -> Result<(), crate::KonarrError>
+where
+    T: GeekConnection<Connection = T> + Send + Sync + 'static,
+{
+    log::debug!("Calculating Group Alerts");
+    // TODO: Only Server's are supported
+    let mut groups = Projects::query(
+        connection,
+        Projects::query_select()
+            .where_eq("project_type", ProjectType::Server)
+            .build()?,
+    )
+    .await?;
+    log::debug!("Found {} groups", groups.len());
+
+    for group in groups.iter_mut() {
+        let group_id: i32 = group.id.into();
+
+        if let Some(mut snapshot) = group.fetch_latest_snapshot(connection).await? {
+            log::debug!("Group('{}', snapshot='{}')", group.name, snapshot.id);
+
+            let mut group_summary = AlertsSummary::new();
+            let mut group_total = 0;
+
+            let children: Vec<AlertsSummary> = projects
+                .iter()
+                .filter(|p| p.parent == group_id)
+                .filter_map(|c| project_summaries.get(&c.id.into()))
+                .cloned()
+                .collect();
+
+            for child in children.iter() {
+                for (key, value) in child.iter() {
+                    *group_summary.entry(key.clone()).or_insert(0) += value;
+                    group_total += value;
+                }
+            }
+
+            snapshot
+                .calculate_alerts(connection, &group_summary)
+                .await?;
+        }
+    }
     Ok(())
 }
