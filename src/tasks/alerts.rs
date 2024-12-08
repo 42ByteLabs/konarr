@@ -1,7 +1,8 @@
 //! Security Alerts Tasks
 
 use crate::models::{
-    dependencies::snapshots::AlertsSummary, security::SecuritySeverity, Projects, ServerSettings,
+    dependencies::snapshots::AlertsSummary, security::SecuritySeverity, settings::Setting,
+    Projects, ServerSettings,
 };
 use geekorm::prelude::*;
 use log::{debug, info};
@@ -40,13 +41,13 @@ where
     let mut total_check = 0;
 
     for galert in global_alerts.iter_mut() {
-        if galert.name.as_str() == "security.alerts.total" {
+        if galert.name == Setting::SecurityAlertsTotal {
             galert.value = total.to_string();
             galert.update(connection).await?;
             continue;
         }
 
-        let severity = SecuritySeverity::from(galert.name.clone());
+        let severity = SecuritySeverity::from(galert.name.to_string());
 
         if let Some(value) = summary.get(&severity) {
             galert.value = value.to_string();
