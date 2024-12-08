@@ -1,7 +1,10 @@
 //! # Server Settings Model
 use geekorm::prelude::*;
-use log::{debug, info};
+use log::{debug, error, warn};
 use serde::{Deserialize, Serialize};
+
+pub mod keys;
+pub use keys::{Setting, SERVER_SETTINGS_DEFAULTS};
 
 /// Setting Type
 #[derive(Data, Debug, Default, Clone, PartialEq)]
@@ -21,6 +24,15 @@ pub enum SettingType {
     /// Float
     Float,
 
+    /// Datetime (UTC)
+    Datetime,
+
+    /// Statistics (unsigned integer)
+    ///
+    /// This is used for counters, etc. and should not be used for
+    /// settings that require a specific value.
+    Statistics,
+
     /// Delete (this is for cleanup purposes)
     Delete,
 }
@@ -34,7 +46,7 @@ pub struct ServerSettings {
 
     /// Setting Name
     #[geekorm(unique, not_null)]
-    pub name: String,
+    pub name: Setting,
 
     /// Setting Type
     pub setting_type: SettingType,
@@ -48,6 +60,18 @@ pub struct ServerSettings {
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// Find setting in the list
+pub fn find_setting(settings: &[ServerSettings], name: Setting) -> Option<&ServerSettings> {
+    settings.iter().find(|s| s.name == name)
+}
+/// Find setting in the list and default if not present
+pub fn find_statistic(settings: &[ServerSettings], name: Setting) -> u64 {
+    settings
+        .iter()
+        .find(|s| s.name == name)
+        .map_or(0, |s| s.value.parse().unwrap_or(0))
+}
+
 impl ServerSettings {
     /// Initialize the Server Settings Table
     pub async fn init<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
@@ -56,66 +80,29 @@ impl ServerSettings {
     {
         ServerSettings::create_table(connection).await?;
 
-        let agent_key = geekorm::utils::generate_random_string(43, "kagent_");
-        let settings = vec![
-            // Registration Settings
-            ("registration", SettingType::Toggle, "enabled"),
-            // If we are already initialized
-            ("initialized", SettingType::Boolean, "false"),
-            // Agent Settings
-            ("agent", SettingType::Toggle, "disabled"),
-            ("agent.key", SettingType::Regenerate, agent_key.as_str()),
-            // Security Features
-            ("security", SettingType::Toggle, "disabled"),
-            ("security.polling", SettingType::Delete, "disabled"),
-            // Alerts Count Caching
-            ("security.alerts.total", SettingType::Integer, "0"),
-            ("security.alerts.critical", SettingType::Integer, "0"),
-            ("security.alerts.high", SettingType::Integer, "0"),
-            ("security.alerts.medium", SettingType::Integer, "0"),
-            ("security.alerts.low", SettingType::Integer, "0"),
-            ("security.alerts.infomational", SettingType::Integer, "0"),
-            ("security.alerts.malware", SettingType::Integer, "0"),
-            ("security.alerts.unmaintained", SettingType::Integer, "0"),
-            ("security.alerts.other", SettingType::Integer, "0"),
-            // Tools Settings
-            ("security.tools.alerts", SettingType::Toggle, "enabled"),
-            // Advisories Settings
-            ("security.advisories", SettingType::Toggle, "disabled"),
-            ("security.advisories.pull", SettingType::Toggle, "disabled"),
-            (
-                "security.advisories.version",
-                SettingType::String,
-                "Unknown",
-            ),
-            (
-                "security.advisories.updated",
-                SettingType::String,
-                "Unknown",
-            ),
-            (
-                "security.advisories.polling",
-                SettingType::Toggle,
-                "disabled",
-            ),
-        ];
-
-        for (name, typ, value) in settings {
-            match ServerSettings::fetch_by_name(connection, name).await {
+        for (name, typ, value) in Self::defaults() {
+            match ServerSettings::fetch_by_name(connection, name.to_string()).await {
                 Ok(mut setting) => {
                     if setting.setting_type == SettingType::Delete {
-                        debug!("Deleting setting: {}", name);
-                        // setting.delete(connection).await?;
+                        warn!("Deleting deprecated setting: {:?}", name);
+                        setting.delete(connection).await?;
                     } else {
                         // Update setting type in case it has changed in newer versions
                         if setting.setting_type != typ {
-                            debug!("Updating setting: {}", name);
+                            debug!("Updating setting: {:?}", name);
                             setting.setting_type = typ;
                             setting.update(connection).await?;
                         }
                     }
                 }
-                Err(_) => {
+                Err(geekorm::Error::SerdeError(e)) => {
+                    error!("Error fetching setting: `{}` ({})", name, e);
+                    return Err(crate::KonarrError::UnknownError(
+                        "Error fetching setting".to_string(),
+                    ));
+                }
+                Err(e) => {
+                    debug!("Creating setting: `{}` ({})", name, e);
                     let mut setting = ServerSettings::new(name, typ, value);
                     setting.save(connection).await?;
                 }
@@ -125,20 +112,74 @@ impl ServerSettings {
         Ok(())
     }
 
+    /// Create a default list of ServerSettings entries
+    fn defaults() -> Vec<(Setting, SettingType, String)> {
+        let mut defaults: Vec<(Setting, SettingType, String)> = SERVER_SETTINGS_DEFAULTS
+            .to_vec()
+            .into_iter()
+            .map(|(a, b, c)| (a.into(), b, c.to_string()))
+            .collect();
+
+        let agent_key = geekorm::utils::generate_random_string(43, "kagent_");
+        defaults.push((Setting::AgentKey, SettingType::Regenerate, agent_key));
+
+        for sev in crate::models::security::SECURITY_SEVERITY.iter() {
+            defaults.push((
+                Setting::from(format!("security.alerts.{}", sev).as_str()),
+                SettingType::Statistics,
+                "0".to_string(),
+            ));
+        }
+
+        defaults
+    }
+
+    /// Fetch all the settings that are not statistics
+    pub async fn fetch_settings<'a, T>(
+        connection: &'a T,
+    ) -> Result<Vec<ServerSettings>, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Ok(ServerSettings::query(
+            connection,
+            ServerSettings::query_select()
+                .where_ne("setting_type", SettingType::Statistics)
+                .build()?,
+        )
+        .await?)
+    }
+
+    /// Update Statistic Setting
+    pub async fn update_statistic<'a, T>(
+        connection: &'a T,
+        name: Setting,
+        value: i64,
+    ) -> Result<(), crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        ServerSettings::fetch_by_name(connection, name)
+            .await?
+            .set_update(connection, &value.to_string())
+            .await?;
+        Ok(())
+    }
+
     /// Set the Setting
     pub fn set(&mut self, value: impl Into<String>) {
         let value = value.into();
         if self.setting_type == SettingType::Boolean {
-            info!("Setting boolean: {} = {}", self.name, value);
+            debug!("Setting boolean: {:?} = {}", self.name, value);
             self.set_boolean(value);
         } else if self.setting_type == SettingType::Toggle {
-            info!("Toggling setting: {}", self.name);
+            debug!("Toggling setting: {:?}", self.name);
             self.toggle();
         } else if self.setting_type == SettingType::Regenerate {
-            info!("Regenerating setting: {}", self.name);
+            debug!("Regenerating setting: {:?}", self.name);
             self.regenerate();
         } else {
-            info!("Updating setting: '{}' = '{}'", self.name, value);
+            debug!("Updating setting: '{:?}' = '{}'", self.name, value);
             self.value = value.to_string();
         }
         self.updated_at = chrono::Utc::now();
@@ -177,10 +218,24 @@ impl ServerSettings {
         .await?)
     }
 
+    /// Get all Statistics Settings
+    pub async fn fetch_statistics<'a, T>(connection: &'a T) -> Result<Vec<Self>, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Ok(Self::query(
+            connection,
+            Self::query_select()
+                .where_eq("setting_type", SettingType::Statistics)
+                .build()?,
+        )
+        .await?)
+    }
+
     /// Fetch the Setting by Name as a Boolean
     pub async fn get_bool<'a, T>(
         connection: &'a T,
-        name: impl Into<String>,
+        name: impl Into<Setting>,
     ) -> Result<bool, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
@@ -239,5 +294,24 @@ impl ServerSettings {
         T: GeekConnection<Connection = T> + 'a,
     {
         Ok(Self::get_bool(connection, "security").await?)
+    }
+
+    /// Reset the Setting to the default value
+    pub async fn reset<'a, T>(&mut self, connection: &'a T) -> Result<(), crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        if let Some(default) = Self::defaults()
+            .iter()
+            .find(|(name, _, _)| name == &self.name)
+        {
+            self.value = default.2.to_string();
+            self.update(connection).await?;
+            Ok(())
+        } else {
+            Err(crate::KonarrError::UnknownError(
+                "Unknown ServerSettings default value".to_string(),
+            ))
+        }
     }
 }

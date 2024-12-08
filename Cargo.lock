@@ -1042,8 +1042,18 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6197f0100bc3e799b945ca860def10ac8ce9d6d3f989ca30f7cb95d1a7c1ab03"
 dependencies = [
- "geekorm-core",
- "geekorm-derive",
+ "geekorm-core 0.7.2",
+ "geekorm-derive 0.7.2",
+]
+
+[[package]]
+name = "geekorm"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f47737268531e42f49fda281ff1b99293e657735a17151670437bbea66c2f33f"
+dependencies = [
+ "geekorm-core 0.8.1",
+ "geekorm-derive 0.8.1",
 ]
 
 [[package]]
@@ -1051,6 +1061,24 @@ name = "geekorm-core"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93bec8389c2f4f04a90496203e4f0258ea168085db99d15721906a8fbef78c06"
+dependencies = [
+ "chrono",
+ "libsql",
+ "password-hash",
+ "pbkdf2",
+ "rand",
+ "rand_core",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.4",
+ "uuid",
+]
+
+[[package]]
+name = "geekorm-core"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27d1c6d7ea887ce51940bc9a67013c17114ae0e9d3222d3babe10da69607689d"
 dependencies = [
  "chrono",
  "libsql",
@@ -1072,7 +1100,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7bd6e8e26eafab6d4e8912fb458897870c3a46a1e9e27be0807d9ef5992868f5"
 dependencies = [
  "chrono",
- "geekorm-core",
+ "geekorm-core 0.7.2",
+ "proc-macro2",
+ "quote",
+ "rand",
+ "serde",
+ "serde_json",
+ "syn",
+ "thiserror 2.0.4",
+]
+
+[[package]]
+name = "geekorm-derive"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68d92c031f9ba770e9d0266fb45b06234d7be75a793a16e10d826d8fbaf444cc"
+dependencies = [
+ "chrono",
+ "geekorm-core 0.8.1",
  "proc-macro2",
  "quote",
  "rand",
@@ -1784,7 +1829,7 @@ dependencies = [
 
 [[package]]
 name = "konarr"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1793,7 +1838,7 @@ dependencies = [
  "chrono",
  "figment",
  "flate2",
- "geekorm",
+ "geekorm 0.8.1",
  "hex",
  "konarr",
  "libsql",
@@ -1817,7 +1862,7 @@ dependencies = [
 
 [[package]]
 name = "konarr-cli"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "bollard",
@@ -1827,7 +1872,7 @@ dependencies = [
  "dialoguer",
  "dotenvy",
  "env_logger",
- "geekorm",
+ "geekorm 0.7.2",
  "glob",
  "indicatif",
  "konarr",
@@ -1842,7 +1887,7 @@ dependencies = [
 
 [[package]]
 name = "konarr-server"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1850,7 +1895,7 @@ dependencies = [
  "console",
  "dotenvy",
  "env_logger",
- "geekorm",
+ "geekorm 0.8.1",
  "konarr",
  "libsql",
  "log",
@@ -3575,9 +3620,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-stream"
-version = "0.1.16"
+version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f4e6ce100d0eb49a2734f8c0812bcd324cf357d21810932c5df6b96ef2b86f1"
+checksum = "eca58d7bba4a75707817a2c44174253f9236b2d5fbd055602e9d5c07c139a047"
 dependencies = [
  "futures-core",
  "pin-project-lite",
