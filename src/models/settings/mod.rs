@@ -125,11 +125,6 @@ impl ServerSettings {
         let agent_key = geekorm::utils::generate_random_string(43, "kagent_");
         defaults.push((Setting::AgentKey, SettingType::Regenerate, agent_key));
 
-        for sev in crate::models::security::SECURITY_SEVERITY.iter() {
-            let key = format!("security.alerts.{}", sev);
-            defaults.push((Setting::from(key), SettingType::Statistics, "0".to_string()));
-        }
-
         defaults
     }
 
