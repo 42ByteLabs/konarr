@@ -391,7 +391,7 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "serde_urlencoded",
- "thiserror 2.0.4",
+ "thiserror 2.0.6",
  "tokio",
  "tokio-util",
  "tower-service",
@@ -1038,40 +1038,12 @@ dependencies = [
 
 [[package]]
 name = "geekorm"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6197f0100bc3e799b945ca860def10ac8ce9d6d3f989ca30f7cb95d1a7c1ab03"
-dependencies = [
- "geekorm-core 0.7.2",
- "geekorm-derive 0.7.2",
-]
-
-[[package]]
-name = "geekorm"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f47737268531e42f49fda281ff1b99293e657735a17151670437bbea66c2f33f"
 dependencies = [
- "geekorm-core 0.8.1",
- "geekorm-derive 0.8.1",
-]
-
-[[package]]
-name = "geekorm-core"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93bec8389c2f4f04a90496203e4f0258ea168085db99d15721906a8fbef78c06"
-dependencies = [
- "chrono",
- "libsql",
- "password-hash",
- "pbkdf2",
- "rand",
- "rand_core",
- "serde",
- "serde_json",
- "thiserror 2.0.4",
- "uuid",
+ "geekorm-core",
+ "geekorm-derive",
 ]
 
 [[package]]
@@ -1089,25 +1061,8 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "thiserror 2.0.4",
+ "thiserror 2.0.6",
  "uuid",
-]
-
-[[package]]
-name = "geekorm-derive"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7bd6e8e26eafab6d4e8912fb458897870c3a46a1e9e27be0807d9ef5992868f5"
-dependencies = [
- "chrono",
- "geekorm-core 0.7.2",
- "proc-macro2",
- "quote",
- "rand",
- "serde",
- "serde_json",
- "syn",
- "thiserror 2.0.4",
 ]
 
 [[package]]
@@ -1117,14 +1072,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68d92c031f9ba770e9d0266fb45b06234d7be75a793a16e10d826d8fbaf444cc"
 dependencies = [
  "chrono",
- "geekorm-core 0.8.1",
+ "geekorm-core",
  "proc-macro2",
  "quote",
  "rand",
  "serde",
  "serde_json",
  "syn",
- "thiserror 2.0.4",
+ "thiserror 2.0.6",
 ]
 
 [[package]]
@@ -1838,7 +1793,7 @@ dependencies = [
  "chrono",
  "figment",
  "flate2",
- "geekorm 0.8.1",
+ "geekorm",
  "hex",
  "konarr",
  "libsql",
@@ -1853,7 +1808,7 @@ dependencies = [
  "serde_yaml",
  "sha2",
  "tar",
- "thiserror 2.0.4",
+ "thiserror 2.0.6",
  "tokio",
  "tokio-tungstenite 0.24.0",
  "tokio_schedule",
@@ -1872,7 +1827,7 @@ dependencies = [
  "dialoguer",
  "dotenvy",
  "env_logger",
- "geekorm 0.7.2",
+ "geekorm",
  "glob",
  "indicatif",
  "konarr",
@@ -1895,7 +1850,7 @@ dependencies = [
  "console",
  "dotenvy",
  "env_logger",
- "geekorm 0.8.1",
+ "geekorm",
  "konarr",
  "libsql",
  "log",
@@ -1906,7 +1861,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "thiserror 2.0.4",
+ "thiserror 2.0.6",
  "tokio",
 ]
 
@@ -1935,7 +1890,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -3468,11 +3423,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.4"
+version = "2.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f49a1853cf82743e3b7950f77e0f4d622ca36cf4317cba00c767838bac8d490"
+checksum = "8fec2a1820ebd077e2b90c4df007bebf344cd394098a13c563957d0afc83ea47"
 dependencies = [
- "thiserror-impl 2.0.4",
+ "thiserror-impl 2.0.6",
 ]
 
 [[package]]
@@ -3488,9 +3443,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.4"
+version = "2.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8381894bb3efe0c4acac3ded651301ceee58a15d47c2e34885ed1908ad667061"
+checksum = "d65750cab40f4ff1929fb1ba509e9914eb756131cef4210da8d5d700d26f6312"
 dependencies = [
  "proc-macro2",
  "quote",
