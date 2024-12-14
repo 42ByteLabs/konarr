@@ -419,6 +419,19 @@ impl ServerConfig {
             .token(token)
             .build()?)
     }
+
+    /// Get the Konarr Client with Credentials
+    #[cfg(feature = "client")]
+    pub fn client_with_credentials(
+        &self,
+        username: String,
+        password: String,
+    ) -> Result<KonarrClient, crate::KonarrError> {
+        Ok(KonarrClient::init()
+            .base(self.api_url()?)?
+            .credentials(username, password)
+            .build()?)
+    }
 }
 
 /// Sessions Configuration
@@ -472,6 +485,8 @@ pub struct AgentConfig {
     /// Docker Socket
     #[serde(rename = "docker-socket", skip_serializing_if = "Option::is_none")]
     pub docker_socket: Option<String>,
+    /// Tool to use
+    pub tool: Option<String>,
 }
 
 impl AgentConfig {
