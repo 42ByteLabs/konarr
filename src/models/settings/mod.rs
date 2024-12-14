@@ -90,7 +90,6 @@ impl ServerSettings {
                     }
 
                     // Update setting type in case it has changed in newer versions
-                    log::info!("Setting: {:?} == ({:?})", setting, typ);
                     if setting.setting_type != typ {
                         debug!("Updating setting: {:?}", name);
                         setting.setting_type = typ;
