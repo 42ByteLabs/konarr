@@ -8,16 +8,15 @@ use crate::KonarrError;
 
 /// Syft Tool
 #[derive(Debug)]
-pub struct Grype;
+pub struct Trivy;
 
 #[async_trait]
-impl Tool for Grype {
+impl Tool for Trivy {
     fn init() -> Result<ToolConfig, KonarrError> {
-        if let Ok(path) = Self::find("grype") {
-            log::debug!("Found Grype at: {}", path.display());
-            Ok(ToolConfig::new("grype", path))
+        if let Ok(path) = Self::find("trivy") {
+            Ok(ToolConfig::new("trivy", path))
         } else {
-            return Err(KonarrError::ToolError("Grype not found".to_string()));
+            return Err(KonarrError::ToolError("Trivy not found".to_string()));
         }
     }
 
@@ -29,14 +28,20 @@ impl Tool for Grype {
         Self: Sized,
     {
         let image = image.into();
+        info!("Running Trivy on image: {}", image);
+        let opath = config.output.display().to_string();
 
-        info!("Running Grype on image: {}", image);
-        let opath = format!("cyclonedx-json={}", config.output.display());
-        log::debug!("Output path: {}", config.output.display());
-
-        log::debug!("Run Grype (all layers, output to temp file)");
+        // Run Grype (all layers, output to temp file)
         let output = tokio::process::Command::new(&config.path)
-            .args(&["-s", "all-layers", "-o", opath.as_str(), image.as_str()])
+            .args(&[
+                "image",
+                "--offline-scan",
+                "--format",
+                "cyclonedx",
+                "--output",
+                opath.as_str(),
+                image.as_str(),
+            ])
             .output()
             .await?;
 
@@ -46,7 +51,7 @@ impl Tool for Grype {
         if !config.output.exists() {
             return Err(KonarrError::ToolError("No output file".to_string()));
         }
-        log::info!("Successfully ran Grype");
+        log::info!("Successfully ran Trivy");
 
         // Read the output file
         Ok(tokio::fs::read_to_string(config.output.clone()).await?)

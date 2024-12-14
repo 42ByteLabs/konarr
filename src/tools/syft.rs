@@ -2,38 +2,41 @@
 
 use async_trait::async_trait;
 use log::info;
-use std::path::PathBuf;
 
-use super::Tool;
+use super::{Tool, ToolConfig};
 use crate::KonarrError;
 
 /// Syft Tool
-#[derive(Debug)]
-pub struct Syft {
-    path: PathBuf,
-}
+pub struct Syft;
 
 #[async_trait]
 impl Tool for Syft
 where
     Self: Sized,
 {
-    async fn init() -> Result<Self, KonarrError> {
+    fn init() -> Result<ToolConfig, KonarrError> {
         // Initialize Syft (confirm it exists)
-        Ok(Syft {
-            path: Self::find()?,
-        })
+        if let Ok(path) = Self::find("syft") {
+            Ok(ToolConfig::new("syft", path))
+        } else {
+            return Err(KonarrError::ToolError("Syft not found".to_string()));
+        }
     }
 
-    async fn run(&self, image: impl Into<String> + Send) -> Result<String, KonarrError>
+    async fn run(
+        config: &ToolConfig,
+        image: impl Into<String> + Send,
+    ) -> Result<String, KonarrError>
     where
         Self: Sized,
     {
         let image = image.into();
+
         info!("Running Syft on image: {}", image);
-        let output_path = format!("cyclonedx-json={}", self.temp_path());
+        let output_path = format!("cyclonedx-json={}", config.output.display());
+
         // Run Syft
-        let output = tokio::process::Command::new(&self.path)
+        let output = tokio::process::Command::new(&config.path)
             .args(&["scan", "-o", output_path.as_str(), image.as_str()])
             .output()
             .await?;
@@ -43,29 +46,6 @@ where
         }
 
         // Read the output file
-        Ok(tokio::fs::read_to_string(self.temp_path()).await?)
-    }
-}
-
-impl Syft {
-    /// Find the Syft binary
-    pub fn find() -> Result<PathBuf, KonarrError> {
-        let locations = vec![
-            "/usr/local/bin/syft",
-            "/usr/bin/syft",
-            "/bin/syft",
-            "/snap/bin/syft",
-        ];
-        for loc in locations {
-            if std::path::Path::new(loc).exists() {
-                info!("Found Syft at: {}", loc);
-                return Ok(PathBuf::from(loc));
-            }
-        }
-        return Err(KonarrError::ToolError("Syft not found".to_string()));
-    }
-
-    fn temp_path(&self) -> String {
-        String::from("syft-output.json")
+        Ok(tokio::fs::read_to_string(output_path).await?)
     }
 }
