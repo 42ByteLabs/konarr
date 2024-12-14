@@ -3,9 +3,7 @@ use konarr::{
     client::{
         projects::{KonarrProject, KonarrProjects},
         snapshot::KonarrSnapshot,
-        ApiResponse,
     },
-    tools::{syft::Syft, Tool},
     Config, KonarrError,
 };
 use log::{debug, info};
@@ -114,13 +112,7 @@ async fn run(
         snap
     } else {
         info!("Creating Host Snapshot...");
-        match KonarrSnapshot::create(client, project.id).await? {
-            ApiResponse::Ok(snap) => snap,
-            ApiResponse::Error(e) => {
-                log::error!("Error creating Snapshot: {:?}", e);
-                return Err(KonarrError::UnknownError("Snapshot".to_string()));
-            }
-        }
+        KonarrSnapshot::create(client, project.id).await?
     };
 
     debug!("Snapshot: {:#?}", snapshot);
@@ -153,7 +145,7 @@ async fn run(
 }
 
 async fn run_docker(
-    _config: &Config,
+    config: &Config,
     socket: Option<String>,
     client: &konarr::client::KonarrClient,
     server_project: &KonarrProject,
@@ -267,9 +259,9 @@ async fn run_docker(
                     (false, snap)
                 } else {
                     debug!("Snapshot SHA for Container is different: {}", name);
-                    match KonarrSnapshot::create(client, project.id).await? {
-                        ApiResponse::Ok(snap) => (true, snap),
-                        ApiResponse::Error(e) => {
+                    match KonarrSnapshot::create(client, project.id).await {
+                        Ok(snap) => (true, snap),
+                        Err(e) => {
                             log::error!("Error creating Snapshot: {:?}", e);
                             (false, snap)
                         }
@@ -277,9 +269,9 @@ async fn run_docker(
                 }
             } else {
                 debug!("Creating new Snapshot for Container: {}", name);
-                match KonarrSnapshot::create(client, project.id).await? {
-                    ApiResponse::Ok(snap) => (true, snap),
-                    ApiResponse::Error(e) => {
+                match KonarrSnapshot::create(client, project.id).await {
+                    Ok(snap) => (true, snap),
+                    Err(e) => {
                         log::error!("Error creating Snapshot: {:?}", e);
                         (false, snap)
                     }
@@ -287,9 +279,9 @@ async fn run_docker(
             }
         } else {
             info!("Creating initial Snapshot...");
-            match KonarrSnapshot::create(client, project.id).await? {
-                ApiResponse::Ok(snap) => (true, snap),
-                ApiResponse::Error(e) => {
+            match KonarrSnapshot::create(client, project.id).await {
+                Ok(snap) => (true, snap),
+                Err(e) => {
                     log::error!("Error creating Snapshot: {:?}", e);
                     return Err(KonarrError::UnknownError(
                         "Error creating initial Snapshot".to_string(),
@@ -343,11 +335,7 @@ async fn run_docker(
             .await?;
 
         if state {
-            let tool = Syft::init().await?;
-            info!("Running Syft on Container: {}", name);
-
-            let results = tool.run(container_image).await?;
-            debug!("Syft Results :: {}", results);
+            let results = konarr::tools::run(&config, container_image).await?;
 
             info!("Uploading BOM to Server");
             container_snapshot.upload_bom(client, results).await?;
