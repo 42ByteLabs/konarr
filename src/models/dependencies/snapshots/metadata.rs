@@ -40,14 +40,25 @@ impl SnapshotMetadata {
     {
         Self::create_table(connection).await?;
 
-        for meta in Self::query(connection, Self::query_select().build()?)
-            .await?
-            .iter_mut()
-        {
-            debug!("SnapshotMetadata: {:?}", meta);
-        }
+        let all = match Self::all(connection).await {
+            Ok(all) => all,
+            Err(e) => {
+                log::error!("Failed to get all metadata: {:?}", e);
+                log::error!("Please report this error to the Konarr team");
+                return Err(e.into());
+            }
+        };
+        log::debug!("Found {} metadata entries", all.len());
 
         Ok(())
+    }
+
+    /// Fetch all Snapshot Metadata
+    pub async fn all<'a, T>(connection: &'a T) -> Result<Vec<Self>, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Ok(Self::query(connection, Self::query_select().build()?).await?)
     }
 
     /// Update or Create Metadata
