@@ -5,6 +5,7 @@ use konarr::{
     bom::{BomParser, Parsers},
     models::{
         self,
+        dependencies::snapshots::metadata::SnapshotMetadataKey,
         security::{Advisories, Alerts, SecuritySeverity},
     },
 };
@@ -125,16 +126,20 @@ pub(crate) async fn upload_bom(
 
     // TODO: Implement file upload
     let data = data
-        .open(2.megabytes())
+        .open(10.megabytes())
         .into_bytes()
         .await
         .map_err(|_| konarr::KonarrError::ParseSBOM("Failed to read data".to_string()))?;
-    let bom = Parsers::parse(&data)?;
-    info!("Parsed SBOM: {:?}", bom);
 
+    info!("Read SBOM data: {} bytes", data.len());
+    let bom = Parsers::parse(&data)?;
+    debug!("Parsed SBOM: {:?}", bom);
+
+    info!("Adding SBOM to snapshot: {}", snapshot.id);
     snapshot.add_bom(&connection, &bom).await?;
 
     tokio::spawn(async move {
+        info!("Running statistics and alert calculator tasks");
         konarr::tasks::statistics(&connection)
             .await
             .map_err(|e| {
@@ -275,11 +280,11 @@ pub async fn get_snapshots(
 
         let mut metadata = HashMap::new();
         for (name, meta) in snapshot.metadata.iter() {
-            if name == "bom.dependencies.count" {
+            if *name == SnapshotMetadataKey::DependenciesTotal {
                 count = meta.as_string().parse().unwrap_or(0);
                 continue;
             }
-            metadata.insert(name.clone(), meta.as_string());
+            metadata.insert(name.to_string(), meta.as_string());
         }
 
         resp.push(SnapshotResp {
@@ -300,11 +305,11 @@ impl From<models::Snapshot> for SnapshotResp {
         let mut metadata = HashMap::new();
 
         for (name, meta) in snapshot.metadata.iter() {
-            if name == "bom.dependencies.count" {
+            if *name == SnapshotMetadataKey::DependenciesTotal {
                 count = meta.as_string().parse().unwrap_or(0);
                 continue;
             }
-            metadata.insert(name.clone(), meta.as_string());
+            metadata.insert(name.to_string(), meta.as_string());
         }
 
         SnapshotResp {
