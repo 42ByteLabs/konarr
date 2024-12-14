@@ -26,6 +26,8 @@ pub trait BomParser {
 pub enum Parsers {
     /// CycloneDX v1.5
     CycloneDX_v1_5,
+    /// CycloneDX v1.6
+    CycloneDX_v1_6,
 }
 
 impl BomParser for Parsers {

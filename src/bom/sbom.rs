@@ -1,8 +1,7 @@
 //! # Bill of Materials (BOM) module
 
-use std::fmt::Display;
-
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 /// Bill of Materials
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,11 +51,24 @@ pub struct BomTool {
 
 /// SBOM Type Enum
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
 pub enum BomType {
-    /// CycloneDX SBOM
-    CycloneDX,
+    /// CycloneDX v1.5
+    CycloneDX_1_5,
+    /// CycloneDX v1.6
+    CycloneDX_1_6,
     /// SPDX SBOM
     SPDX,
+}
+
+impl Display for BomType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BomType::CycloneDX_1_5 => write!(f, "CycloneDX v1.5"),
+            BomType::CycloneDX_1_6 => write!(f, "CycloneDX v1.6"),
+            BomType::SPDX => write!(f, "SPDX"),
+        }
+    }
 }
 
 /// Dependency Model
@@ -156,15 +168,6 @@ pub struct Container {
     pub image_tag: Option<String>,
 }
 
-impl Display for BomType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BomType::CycloneDX => write!(f, "CycloneDX"),
-            BomType::SPDX => write!(f, "SPDX"),
-        }
-    }
-}
-
 impl From<BomType> for String {
     fn from(value: BomType) -> Self {
         value.to_string()
@@ -174,7 +177,8 @@ impl From<BomType> for String {
 impl From<BomType> for Vec<u8> {
     fn from(value: BomType) -> Self {
         match value {
-            BomType::CycloneDX => value.to_string().as_bytes().to_vec(),
+            BomType::CycloneDX_1_5 => value.to_string().as_bytes().to_vec(),
+            BomType::CycloneDX_1_6 => value.to_string().as_bytes().to_vec(),
             BomType::SPDX => value.to_string().as_bytes().to_vec(),
         }
     }
