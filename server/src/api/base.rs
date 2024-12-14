@@ -11,34 +11,47 @@ use super::ApiResult;
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct BaseResponse {
+    /// Version of Konarr
     pub version: String,
+    /// Commit SHA of the current build
     pub commit: String,
+    /// Base configuration
     pub config: ConfigResponse,
+    /// Current User
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<UserResponse>,
-
+    /// Projects Summary
     #[serde(skip_serializing_if = "Option::is_none")]
     pub projects: Option<ProjectsSummary>,
-
+    /// Dependencies Summary
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dependencies: Option<DependenciesSummary>,
-
+    /// Security Summary
     #[serde(skip_serializing_if = "Option::is_none")]
     pub security: Option<SecuritySummary>,
+    /// Agent Settings
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent: Option<AgentResponse>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct ConfigResponse {
+    /// Is the server initialised
     pub initialised: bool,
+    /// Is the server open for registration
     pub registration: bool,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct UserResponse {
+    /// Username of the user
     pub username: String,
+    /// Avatar URL of the user
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub avatar: Option<String>,
+    /// Role of the user (Admin, User)
     pub role: String,
 }
 
@@ -71,6 +84,19 @@ pub struct SecuritySummary {
     pub unknown: u64,
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
+pub struct AgentResponse {
+    /// Tool name
+    pub tool: AgentTool,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub enum AgentTool {
+    Syft,
+    Grype,
+}
+
 impl Default for BaseResponse {
     fn default() -> Self {
         let commit = env!("KONARR_GIT_COMMIT").to_string();
@@ -85,6 +111,7 @@ impl Default for BaseResponse {
             projects: None,
             dependencies: None,
             security: None,
+            agent: None,
         }
     }
 }

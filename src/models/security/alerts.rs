@@ -172,9 +172,22 @@ impl Alerts {
             component.fetch_or_create(connection).await?;
             debug!("Alert Component: {:?}", component);
 
-            let dependency =
-                Dependencies::fetch_dependency_by_snapshot(connection, snapshot.id, component.id)
-                    .await?;
+            let dependency = match Dependencies::fetch_dependency_by_snapshot(
+                connection,
+                snapshot.id,
+                component.id,
+            )
+            .await
+            {
+                Ok(dep) => dep,
+                Err(_) => {
+                    log::error!(
+                        "Failed to fetch dependency for BOM vulnerability: {}",
+                        affected.purl
+                    );
+                    continue;
+                }
+            };
             debug!("Alert Dependency: {:?}", dependency);
 
             let mut advisory = Advisories::new(
