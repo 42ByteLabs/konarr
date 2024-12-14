@@ -120,25 +120,33 @@ impl Snapshot {
     where
         T: GeekConnection<Connection = T> + 'a,
     {
-        let metadata: Vec<(&str, String)> = vec![
-            ("bom.type", bom.sbom_type.to_string()),
-            ("bom.version", bom.version.clone()),
-            ("bom.dependencies.count", bom.components.len().to_string()),
-            ("bom.sha", bom.sha.clone()),
+        let metadata = vec![
+            (SnapshotMetadataKey::BomType, bom.sbom_type.to_string()),
+            (SnapshotMetadataKey::BomVersion, bom.version.clone()),
+            (
+                SnapshotMetadataKey::DependenciesTotal,
+                bom.components.len().to_string(),
+            ),
+            (SnapshotMetadataKey::BomSha, bom.sha.clone()),
         ];
         for (key, value) in metadata {
-            SnapshotMetadata::update_or_create(connection, self.id, key, value).await?;
+            SnapshotMetadata::update_or_create(connection, self.id, &key, value).await?;
         }
         // Tools
         // TODO: Supporting multiple tools (for now, only one tool)
         for tool in bom.tools.iter() {
-            SnapshotMetadata::update_or_create(connection, self.id, "bom.tool", tool.name.clone())
-                .await?;
+            SnapshotMetadata::update_or_create(
+                connection,
+                self.id,
+                &SnapshotMetadataKey::BomTool,
+                tool.name.clone(),
+            )
+            .await?;
             if !tool.version.is_empty() {
                 SnapshotMetadata::update_or_create(
                     connection,
                     self.id,
-                    "bom.tool.version",
+                    &SnapshotMetadataKey::BomToolVersion,
                     tool.version.clone(),
                 )
                 .await?;
@@ -151,7 +159,7 @@ impl Snapshot {
             SnapshotMetadata::update_or_create(
                 connection,
                 self.id,
-                "container.image",
+                &SnapshotMetadataKey::ContainerImage,
                 image.clone(),
             )
             .await?;
@@ -162,7 +170,7 @@ impl Snapshot {
             SnapshotMetadata::update_or_create(
                 connection,
                 self.id,
-                "container.version",
+                &SnapshotMetadataKey::ContainerVersion,
                 version.clone(),
             )
             .await?;
@@ -183,7 +191,7 @@ impl Snapshot {
             SnapshotMetadata::update_or_create(
                 connection,
                 self.id,
-                "security.tools.alerts",
+                &SnapshotMetadataKey::SecurityToolsAlerts,
                 "true",
             )
             .await?;
@@ -232,13 +240,14 @@ impl Snapshot {
     pub async fn set_metadata<'a, T>(
         &mut self,
         connection: &'a T,
-        key: &str,
+        key: impl Into<SnapshotMetadataKey>,
         value: &str,
     ) -> Result<(), crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
     {
-        SnapshotMetadata::update_or_create(connection, self.id, key, value).await?;
+        let key = key.into();
+        SnapshotMetadata::update_or_create(connection, self.id, &key, value).await?;
         Ok(())
     }
 
