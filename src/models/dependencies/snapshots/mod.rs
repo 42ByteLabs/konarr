@@ -1,10 +1,11 @@
 //! # Snapshot Model
 
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use chrono::{DateTime, Utc};
 use geekorm::prelude::*;
-use log::debug;
+use log::{debug, info};
+use metadata::SnapshotMetadataKey;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "tools-grypedb")]
@@ -14,6 +15,10 @@ use crate::{
     models::{security::SecuritySeverity, Alerts, Dependencies, ServerSettings},
     KonarrError,
 };
+
+pub mod metadata;
+
+pub use metadata::SnapshotMetadata;
 
 /// HashMap of Alerts Summary
 pub type AlertsSummary = HashMap<SecuritySeverity, u16>;
@@ -41,7 +46,7 @@ pub struct Snapshot {
     /// Snapshot Metadata
     #[geekorm(skip)]
     #[serde(skip)]
-    pub metadata: HashMap<String, SnapshotMetadata>,
+    pub metadata: HashMap<SnapshotMetadataKey, SnapshotMetadata>,
 
     /// Snapshot Alerts
     #[geekorm(skip)]
@@ -167,9 +172,10 @@ impl Snapshot {
             // Create dependency from PURL
             Dependencies::from_bom_compontent(connection, self.id, comp).await?;
         }
+        info!("Finished indexing dependencies");
 
         if ServerSettings::feature_security(connection).await? {
-            debug!("Indexing Security Alerts from BillOfMaterials");
+            info!("Indexing Security Alerts from BillOfMaterials");
 
             for vuln in bom.vulnerabilities.iter() {
                 Alerts::from_bom_vulnerability(connection, self, vuln).await?;
@@ -183,6 +189,7 @@ impl Snapshot {
             .await?;
 
             // Calculate the totals
+            info!("Calculating Security Alert Totals");
             self.calculate_alerts_summary(connection).await?;
         }
 
@@ -213,7 +220,8 @@ impl Snapshot {
 
     /// Find Metadata by Key
     pub fn find_metadata(&self, key: &str) -> Option<&SnapshotMetadata> {
-        self.metadata.get(key)
+        let key = SnapshotMetadataKey::from_str(key).ok()?;
+        self.metadata.get(&key)
     }
     /// Find Metadata by Key and return as usize
     pub fn find_metadata_usize(&self, key: &str) -> usize {
@@ -480,153 +488,4 @@ pub enum SnapshotState {
     Completed,
     /// Snapshot Failed (error during processing)
     Failed,
-}
-
-/// Snapshot Metadata Model
-#[derive(Table, Debug, Default, Clone, Serialize, Deserialize)]
-pub struct SnapshotMetadata {
-    /// Primary Key
-    #[geekorm(primary_key, auto_increment)]
-    pub id: PrimaryKey<i32>,
-
-    /// Snapshot ID
-    #[geekorm(foreign_key = "Snapshot.id")]
-    pub snapshot_id: ForeignKey<i32, Snapshot>,
-
-    /// Key
-    pub key: String,
-    /// Value (any binary data)
-    pub value: Vec<u8>,
-
-    /// Datetime Created
-    #[geekorm(new = "Utc::now()")]
-    pub created_at: DateTime<Utc>,
-    /// Last Updated
-    #[geekorm(new = "Utc::now()")]
-    pub updated_at: DateTime<Utc>,
-}
-
-impl SnapshotMetadata {
-    /// Initialise SnapshotMetadata
-    pub async fn init<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
-        Self::create_table(connection).await?;
-
-        Ok(())
-    }
-
-    /// Update or Create Metadata
-    pub async fn update_or_create<'a, T>(
-        connection: &'a T,
-        snapshot: impl Into<PrimaryKey<i32>>,
-        key: impl Into<String>,
-        value: impl Into<Vec<u8>>,
-    ) -> Result<Self, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
-        let snapshot = snapshot.into();
-        // TODO: Do we need to validate the key? This is user controlled
-        let key = key.into();
-        let value = value.into();
-        debug!("Updating Metadata for Snapshot({:?}) :: {} ", snapshot, key);
-
-        Ok(
-            match Self::find_by_key(connection, snapshot, key.clone()).await {
-                Ok(Some(mut meta)) => {
-                    meta.value = value;
-                    meta.updated_at = chrono::Utc::now();
-
-                    meta.update(connection).await?;
-                    meta
-                }
-                _ => Self::add(connection, snapshot, key, value).await?,
-            },
-        )
-    }
-    /// Add new Metadata to the Snapshot
-    pub async fn add<'a, T>(
-        connection: &'a T,
-        snapshot: impl Into<PrimaryKey<i32>>,
-        key: impl Into<String>,
-        value: impl Into<Vec<u8>>,
-    ) -> Result<Self, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
-        let snapshot = snapshot.into();
-        let key = key.into();
-        debug!("Adding Metadata to Snapshot({:?}) :: {} ", snapshot, key);
-
-        let mut meta = Self::new(snapshot, key, value.into());
-        meta.save(connection).await?;
-        Ok(meta)
-    }
-
-    /// Find Metadata by Key for a Snapshot
-    pub async fn find_by_key<'a, T>(
-        connection: &'a T,
-        snapshot: impl Into<PrimaryKey<i32>>,
-        key: impl Into<String>,
-    ) -> Result<Option<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
-        let snapshot = snapshot.into();
-        let key = key.into();
-        Ok(Some(
-            Self::query_first(
-                connection,
-                Self::query_select()
-                    .where_eq("snapshot_id", snapshot)
-                    .and()
-                    .where_eq("key", key)
-                    .build()?,
-            )
-            .await?,
-        ))
-    }
-
-    /// Find Metadata by SHA for a Snapshot
-    pub async fn find_by_sha<'a, T>(
-        connection: &'a T,
-        sha: impl Into<String>,
-    ) -> Result<Option<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
-        let sha = sha.into();
-        if sha.is_empty() {
-            return Ok(None);
-        }
-
-        Ok(Some(
-            Self::query_first(
-                connection,
-                Self::query_select()
-                    .where_eq("key", "bom.sha")
-                    .and()
-                    .where_eq("value", sha)
-                    .build()?,
-            )
-            .await?,
-        ))
-    }
-
-    /// Get the value as String
-    pub fn as_string(&self) -> String {
-        std::str::from_utf8(&self.value).unwrap().to_string()
-    }
-
-    /// Convert the bytes value to i32
-    pub fn as_i32(&self) -> i32 {
-        self.as_string().parse().unwrap_or_default()
-    }
-
-    /// Convert the value into a u32
-    pub fn as_u32(&self) -> u32 {
-        self.as_string().parse().unwrap_or_default()
-    }
 }
