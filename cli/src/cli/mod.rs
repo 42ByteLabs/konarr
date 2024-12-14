@@ -89,6 +89,28 @@ pub enum ArgumentCommands {
         #[clap(short, long, env = "DOCKER_HOST")]
         docker_socket: Option<String>,
     },
+    Scan {
+        /// Image to scan
+        #[clap(short, long)]
+        image: Option<String>,
+        /// List of tool
+        #[clap(short, long)]
+        list: bool,
+        /// Tool to use
+        #[clap(short, long)]
+        tool: Option<String>,
+        /// Output
+        #[clap(short, long)]
+        output: Option<String>,
+    },
+    UploadSbom {
+        /// Path to the file to upload
+        #[clap(short, long)]
+        input: PathBuf,
+        /// Snapshot ID, if not provided a new snapshot will be created
+        #[clap(short, long)]
+        snapshot_id: Option<u32>,
+    },
     #[cfg(feature = "database")]
     Index {
         #[clap(subcommand)]
