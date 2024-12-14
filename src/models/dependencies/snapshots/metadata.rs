@@ -54,46 +54,41 @@ impl SnapshotMetadata {
     pub async fn update_or_create<'a, T>(
         connection: &'a T,
         snapshot: impl Into<PrimaryKey<i32>>,
-        key: impl Into<String>,
+        key: &SnapshotMetadataKey,
         value: impl Into<Vec<u8>>,
     ) -> Result<Self, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
     {
         let snapshot = snapshot.into();
-        // TODO: Do we need to validate the key? This is user controlled
-        let key = key.into();
         let value = value.into();
         debug!("Updating Metadata for Snapshot({:?}) :: {} ", snapshot, key);
 
-        Ok(
-            match Self::find_by_key(connection, snapshot, key.clone()).await {
-                Ok(Some(mut meta)) => {
-                    meta.value = value;
-                    meta.updated_at = chrono::Utc::now();
+        Ok(match Self::find_by_key(connection, snapshot, &key).await {
+            Ok(Some(mut meta)) => {
+                meta.value = value;
+                meta.updated_at = chrono::Utc::now();
 
-                    meta.update(connection).await?;
-                    meta
-                }
-                _ => Self::add(connection, snapshot, key, value).await?,
-            },
-        )
+                meta.update(connection).await?;
+                meta
+            }
+            _ => Self::add(connection, snapshot, key, value).await?,
+        })
     }
     /// Add new Metadata to the Snapshot
     pub async fn add<'a, T>(
         connection: &'a T,
         snapshot: impl Into<PrimaryKey<i32>>,
-        key: impl Into<String>,
+        key: &SnapshotMetadataKey,
         value: impl Into<Vec<u8>>,
     ) -> Result<Self, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
     {
         let snapshot = snapshot.into();
-        let key = key.into();
         debug!("Adding Metadata to Snapshot({:?}) :: {} ", snapshot, key);
 
-        let mut meta = Self::new(snapshot, key, value.into());
+        let mut meta = Self::new(snapshot, key.clone(), value.into());
         meta.save(connection).await?;
         Ok(meta)
     }
@@ -102,13 +97,12 @@ impl SnapshotMetadata {
     pub async fn find_by_key<'a, T>(
         connection: &'a T,
         snapshot: impl Into<PrimaryKey<i32>>,
-        key: impl Into<String>,
+        key: &SnapshotMetadataKey,
     ) -> Result<Option<Self>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
     {
         let snapshot = snapshot.into();
-        let key = key.into();
         Ok(Some(
             Self::query_first(
                 connection,
@@ -139,7 +133,7 @@ impl SnapshotMetadata {
             Self::query_first(
                 connection,
                 Self::query_select()
-                    .where_eq("key", "bom.sha")
+                    .where_eq("key", SnapshotMetadataKey::BomSha)
                     .and()
                     .where_eq("value", sha)
                     .build()?,
@@ -274,4 +268,23 @@ pub enum SnapshotMetadataKey {
     #[geekorm(key = "unknown")]
     #[default]
     Unknown,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_keys() {
+        let key = SnapshotMetadataKey::from("os");
+        assert_eq!(key, SnapshotMetadataKey::Os);
+
+        let keys = vec!["security.critical.count", "security.counts.critical"];
+        for key in keys {
+            assert_eq!(
+                SnapshotMetadataKey::from(key),
+                SnapshotMetadataKey::SecurityAlertCritical
+            );
+        }
+    }
 }
