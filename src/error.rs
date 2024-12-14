@@ -33,6 +33,9 @@ pub enum KonarrError {
     /// Indexing Data
     #[error("Failed to index data: {0}")]
     IndexingError(String),
+    /// Invalid Data
+    #[error("Invalid Data: {0}")]
+    InvalidData(String),
 
     /// Authentication Error
     #[error("Authentication Error: {0}")]
@@ -48,12 +51,12 @@ pub enum KonarrError {
 
     /// GeekORM Error
     #[cfg(feature = "models")]
-    #[error("GeekORM Error: {0}")]
+    #[error("{0}")]
     GeekOrm(#[from] geekorm::Error),
 
     /// Libsql Error
     #[cfg(feature = "models")]
-    #[error("Libsql Error: {0}")]
+    #[error("{0}")]
     Libsql(#[from] libsql::Error),
 
     /// Tool Error
@@ -62,17 +65,17 @@ pub enum KonarrError {
     ToolError(String),
 
     /// URL Parse Error
-    #[error("URL Parse Error: {0}")]
+    #[error("{0}")]
     UrlParseError(#[from] url::ParseError),
 
     /// Reqwest Error
     #[cfg(feature = "client")]
-    #[error("Reqwest Error: {0}")]
+    #[error("{0}")]
     ReqwestError(#[from] reqwest::Error),
 
     /// Docker / Bollard Error
     #[cfg(feature = "docker")]
-    #[error("Bollard Error: {0}")]
+    #[error("{0}")]
     BollardError(#[from] bollard::errors::Error),
 
     /// Unknown Error
@@ -83,6 +86,10 @@ pub enum KonarrError {
 #[cfg(feature = "client")]
 impl From<crate::client::ApiError> for KonarrError {
     fn from(error: crate::client::ApiError) -> Self {
-        KonarrError::KonarrClient(error.message)
+        if let Some(details) = error.details {
+            KonarrError::KonarrClient(format!("{} - {}", error.message, details))
+        } else {
+            KonarrError::KonarrClient(error.message)
+        }
     }
 }
