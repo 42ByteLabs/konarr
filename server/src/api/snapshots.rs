@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use geekorm::prelude::*;
 use konarr::{
     bom::{BomParser, Parsers},
@@ -11,6 +9,7 @@ use konarr::{
 };
 use log::info;
 use rocket::{data::ToByteUnit, serde::json::Json, State};
+use std::{collections::HashMap, str::FromStr};
 
 use super::{
     dependencies::DependencyResp,
@@ -96,8 +95,21 @@ pub(crate) async fn patch_snapshot_metadata(
         if value.is_empty() {
             continue;
         }
+        let metadata_key = match SnapshotMetadataKey::from_str(key) {
+            Ok(key) => key,
+            Err(e) => {
+                log::error!("Invalid metadata key: {}", e);
+                return Err(konarr::KonarrError::InvalidData(format!(
+                    "Invalid metadata key: {}",
+                    e
+                ))
+                .into());
+            }
+        };
 
-        snapshot.set_metadata(&connection, key, value).await?;
+        snapshot
+            .set_metadata(&connection, metadata_key, value)
+            .await?;
     }
 
     // Run the statistics task in the background
