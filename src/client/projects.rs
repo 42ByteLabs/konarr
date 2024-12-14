@@ -15,21 +15,29 @@ impl KonarrProjects {
     /// List Projects
     pub async fn list(client: &KonarrClient) -> Result<Pagination<KonarrProject>, KonarrError> {
         debug!("Listing Projects");
-        Ok(client
+        match client
             .get("/projects")
             .await?
-            .json::<Pagination<KonarrProject>>()
-            .await?)
+            .json::<ApiResponse<Pagination<KonarrProject>>>()
+            .await?
+        {
+            ApiResponse::Ok(pagination) => Ok(pagination),
+            ApiResponse::Error(err) => Err(err.into()),
+        }
     }
 
     /// List Top Projects
     pub async fn list_top(client: &KonarrClient) -> Result<Pagination<KonarrProject>, KonarrError> {
         debug!("Listing Top Projects");
-        Ok(client
+        match client
             .get("/projects?top=true")
             .await?
-            .json::<Pagination<KonarrProject>>()
-            .await?)
+            .json::<ApiResponse<Pagination<KonarrProject>>>()
+            .await?
+        {
+            ApiResponse::Ok(pagination) => Ok(pagination),
+            ApiResponse::Error(err) => Err(err.into()),
+        }
     }
 
     /// Search Projects
@@ -39,11 +47,15 @@ impl KonarrProjects {
     ) -> Result<Pagination<KonarrProject>, KonarrError> {
         let search = search.into();
         debug!("Searching Projects: {}", search);
-        Ok(client
+        match client
             .get(&format!("/projects?search={}", search))
             .await?
-            .json::<Pagination<KonarrProject>>()
-            .await?)
+            .json::<ApiResponse<Pagination<KonarrProject>>>()
+            .await?
+        {
+            ApiResponse::Ok(pagination) => Ok(pagination),
+            ApiResponse::Error(err) => Err(err.into()),
+        }
     }
 
     /// Get Project by ID

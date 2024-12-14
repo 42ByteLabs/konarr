@@ -16,7 +16,7 @@ pub struct KonarrSnapshot {
     pub dependencies: u32,
     /// Security Summary
     #[serde(default)]
-    pub security: SecuritySummary,
+    pub security: Option<SecuritySummary>,
     /// Snapshot Metadata
     pub metadata: HashMap<String, String>,
     /// Created At
@@ -28,9 +28,9 @@ impl KonarrSnapshot {
     pub async fn create(
         client: &KonarrClient,
         project_id: u32,
-    ) -> Result<ApiResponse<Self>, crate::KonarrError> {
+    ) -> Result<Self, crate::KonarrError> {
         debug!("Creating snapshot for project `{}`", project_id);
-        Ok(client
+        match client
             .post(
                 "/snapshots",
                 serde_json::json!({
@@ -39,19 +39,28 @@ impl KonarrSnapshot {
             )
             .await?
             .json::<ApiResponse<Self>>()
-            .await?)
+            .await?
+        {
+            ApiResponse::Ok(snapshot) => Ok(snapshot),
+            ApiResponse::Error(err) => Err(err.into()),
+        }
     }
 
     /// Get a snapshot by ID
     pub async fn by_id(
         client: &KonarrClient,
         snapshot_id: u32,
-    ) -> Result<KonarrSnapshot, crate::KonarrError> {
-        Ok(client
+    ) -> Result<Self, crate::KonarrError> {
+        debug!("Getting snapshot by ID: `{}`", snapshot_id);
+        match client
             .get(format!("/snapshots/{}", snapshot_id).as_str())
             .await?
-            .json()
-            .await?)
+            .json::<ApiResponse<Self>>()
+            .await?
+        {
+            ApiResponse::Ok(snapshot) => Ok(snapshot),
+            ApiResponse::Error(err) => Err(err.into()),
+        }
     }
 
     /// Update Metadata to a snapshot (only update on changes)
@@ -86,14 +95,20 @@ impl KonarrSnapshot {
         &self,
         client: &KonarrClient,
         data: T,
-    ) -> Result<(), crate::KonarrError>
+    ) -> Result<Self, crate::KonarrError>
     where
         T: Serialize + Send,
     {
         debug!("Uploading BOM for Snapshot({:?})", self.id);
-        client
+
+        match client
             .post(format!("/snapshots/{}/bom", self.id).as_str(), data)
-            .await?;
-        Ok(())
+            .await?
+            .json::<ApiResponse<Self>>()
+            .await?
+        {
+            ApiResponse::Ok(snapshot) => Ok(snapshot),
+            ApiResponse::Error(err) => Err(err.into()),
+        }
     }
 }

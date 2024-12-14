@@ -27,7 +27,7 @@ pub mod snapshot;
 
 pub use server::ServerInfo;
 
-use crate::KonarrError;
+use crate::{KonarrError, KONARR_VERSION};
 
 /// Pagination Response
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -70,12 +70,15 @@ where
 /// Konarr REST Client
 #[derive(Debug, Clone)]
 pub struct KonarrClient {
+    version: String,
     /// Base URL
     url: Url,
     /// Web Client
     client: reqwest::Client,
     /// Web Server Token
     token: Option<String>,
+    /// Web Server Credentials
+    credentials: Option<(String, String)>,
 }
 
 impl KonarrClient {
@@ -90,15 +93,22 @@ impl KonarrClient {
         log::debug!("Setting up Konarr Client for {}", url);
 
         Self {
+            version: KONARR_VERSION.to_string(),
             client,
             url,
             token: None,
+            credentials: None,
         }
     }
 
     /// Initialize a new Konarr Client Builder
     pub fn init() -> KonarrClientBuilder {
         KonarrClientBuilder::new()
+    }
+
+    /// Get the Konarr Version
+    pub fn version(&self) -> &str {
+        &self.version
     }
 
     /// Get the URL of the client
@@ -140,27 +150,48 @@ impl KonarrClient {
     }
 
     /// Login to Konarr Server
-    pub async fn login(
-        &mut self,
-        username: impl Into<String>,
-        password: impl Into<String>,
+    pub async fn login(&mut self) -> Result<(), KonarrError> {
+        if let Some((username, password)) = &self.credentials {
+            info!("Logging in as {}", username);
+            let response = self
+                .post(
+                    "/auth/login",
+                    &serde_json::json!({
+                        "username": username,
+                        "password": password,
+                    }),
+                )
+                .await?;
+
+            if response.status().is_success() {
+                info!("Login Successful");
+                Ok(())
+            } else {
+                Err(KonarrError::UnknownError("Login Failed".to_string()))
+            }
+        } else {
+            Err(KonarrError::UnknownError(
+                "No Credentials Provided".to_string(),
+            ))
+        }
+    }
+
+    /// Login to Konarr Server with Credentials
+    pub async fn login_with_credentials(
+        &self,
+        username: &str,
+        password: &str,
     ) -> Result<(), KonarrError> {
-        let response = self
-            .post(
-                "/auth/login",
-                &serde_json::json!({
-                    "username": username.into(),
-                    "password": password.into(),
-                }),
-            )
+        self.client
+            .post(self.base("/auth/login")?)
+            .json(&serde_json::json!({
+                "username": username,
+                "password": password,
+            }))
+            .send()
             .await?;
 
-        if response.status().is_success() {
-            info!("Login Successful");
-            Ok(())
-        } else {
-            Err(KonarrError::UnknownError("Login Failed".to_string()))
-        }
+        Ok(())
     }
 
     /// Client GET Request
@@ -210,6 +241,7 @@ impl KonarrClient {
 pub struct KonarrClientBuilder {
     url: Option<Url>,
     token: Option<String>,
+    credentials: Option<(String, String)>,
 }
 
 impl KonarrClientBuilder {
@@ -230,6 +262,12 @@ impl KonarrClientBuilder {
         self
     }
 
+    /// Set the Users API Credentials
+    pub fn credentials(mut self, username: String, password: String) -> Self {
+        self.credentials = Some((username, password));
+        self
+    }
+
     /// Build the Konarr Client
     pub fn build(self) -> Result<KonarrClient, KonarrError> {
         if let Some(url) = self.url {
@@ -240,9 +278,11 @@ impl KonarrClientBuilder {
                 .unwrap();
 
             Ok(KonarrClient {
+                version: KONARR_VERSION.to_string(),
                 client,
                 url,
                 token: self.token,
+                credentials: self.credentials,
             })
         } else {
             Err(KonarrError::UnknownError("Base URL not set".to_string()))
