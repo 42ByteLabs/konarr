@@ -1,4 +1,4 @@
-//! # Syft
+//! # Grype
 
 use async_trait::async_trait;
 use log::info;
@@ -9,18 +9,15 @@ use crate::KonarrError;
 
 /// Syft Tool
 #[derive(Debug)]
-pub struct Syft {
+pub struct Grype {
     path: PathBuf,
 }
 
 #[async_trait]
-impl Tool for Syft
-where
-    Self: Sized,
-{
+impl Tool for Grype {
     async fn init() -> Result<Self, KonarrError> {
-        // Initialize Syft (confirm it exists)
-        Ok(Syft {
+        // Initialize Grype (confirm it exists)
+        Ok(Grype {
             path: Self::find()?,
         })
     }
@@ -30,11 +27,17 @@ where
         Self: Sized,
     {
         let image = image.into();
-        info!("Running Syft on image: {}", image);
+        info!("Running Grype on image: {}", image);
         let output_path = format!("cyclonedx-json={}", self.temp_path());
-        // Run Syft
+        // Run Grype (all layers, output to temp file)
         let output = tokio::process::Command::new(&self.path)
-            .args(&["scan", "-o", output_path.as_str(), image.as_str()])
+            .args(&[
+                "-s",
+                "all-layers",
+                "-o",
+                output_path.as_str(),
+                image.as_str(),
+            ])
             .output()
             .await?;
 
@@ -47,25 +50,25 @@ where
     }
 }
 
-impl Syft {
-    /// Find the Syft binary
+impl Grype {
+    /// Find the Grype binary
     pub fn find() -> Result<PathBuf, KonarrError> {
         let locations = vec![
-            "/usr/local/bin/syft",
-            "/usr/bin/syft",
-            "/bin/syft",
-            "/snap/bin/syft",
+            "/usr/local/bin/grype",
+            "/usr/bin/grype",
+            "/bin/grype",
+            "/snap/bin/grype",
         ];
         for loc in locations {
             if std::path::Path::new(loc).exists() {
-                info!("Found Syft at: {}", loc);
+                info!("Found Grype at: {}", loc);
                 return Ok(PathBuf::from(loc));
             }
         }
-        return Err(KonarrError::ToolError("Syft not found".to_string()));
+        return Err(KonarrError::ToolError("Grype not found".to_string()));
     }
 
     fn temp_path(&self) -> String {
-        String::from("syft-output.json")
+        String::from("grype-output.json")
     }
 }
