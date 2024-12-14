@@ -1,9 +1,6 @@
 name: "konarr"
 repository: "42ByteLabs/konarr"
-version: 0.2.4
-
-ecosystems:
-  - Rust
+version: 0.3.0
 
 locations:
   - name: "Containers"
