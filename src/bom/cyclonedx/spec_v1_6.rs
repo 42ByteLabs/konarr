@@ -52,7 +52,7 @@ impl BomParser for Bom {
 
 impl From<Bom> for BillOfMaterials {
     fn from(value: Bom) -> Self {
-        let mut sbom = BillOfMaterials::new(BomType::CycloneDX, value.spec_version);
+        let mut sbom = BillOfMaterials::new(BomType::CycloneDX_1_6, value.spec_version);
 
         if let Some(metadata) = value.metadata {
             if let Some(comp) = metadata.component {
