@@ -18,6 +18,9 @@ pub enum Setting {
     Agent,
     #[geekorm(key = "agent.key")]
     AgentKey,
+    #[geekorm(key = "agent.tool")]
+    AgentTool,
+
     // Statistics - Projects
     #[geekorm(key = "stats.projects.total")]
     StatsProjectsTotal,
