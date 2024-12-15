@@ -47,8 +47,9 @@ async fn main() -> Result<()> {
     create(&mut config).await?;
 
     // Tasks
+    let task_config = Arc::new(config.clone());
     let database = Arc::new(config.database().await?);
-    konarr::tasks::init(&config, database).await?;
+    konarr::tasks::init(task_config, database).await?;
 
     // Server
     server(config).await?;

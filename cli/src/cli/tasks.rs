@@ -1,6 +1,6 @@
 use clap::Subcommand;
 use geekorm::GeekConnector;
-use konarr::{models::Projects, utils::grypedb::GrypeDatabase, Config};
+use konarr::{models::Projects, tasks, utils::grypedb::GrypeDatabase, Config};
 use log::{debug, info};
 
 #[derive(Subcommand, Debug, Clone)]
@@ -36,18 +36,7 @@ pub async fn run(
                 info!("Running Grype Alerts Task");
                 let grype_conn = GrypeDatabase::connect(&grype_path).await?;
 
-                let mut projects = Projects::fetch_all(&connection).await?;
-                info!("Projects Count: {}", projects.len());
-
-                for project in projects.iter_mut() {
-                    info!("Project: {}", project.name);
-                    if let Some(mut snapshot) = project.fetch_latest_snapshot(&connection).await? {
-                        info!("Snapshot: {} :: {}", snapshot.id, snapshot.components.len());
-
-                        let results = snapshot.scan_with_grype(&connection, &grype_conn).await?;
-                        info!("Vulnerabilities: {}", results.len());
-                    }
-                }
+                tasks::advisories::scan_projects(&connection, &grype_conn):
             }
         }
         None => {
