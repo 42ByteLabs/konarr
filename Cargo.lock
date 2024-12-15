@@ -1784,7 +1784,7 @@ dependencies = [
 
 [[package]]
 name = "konarr"
-version = "0.2.4"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1817,7 +1817,7 @@ dependencies = [
 
 [[package]]
 name = "konarr-cli"
-version = "0.2.4"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "bollard",
@@ -1842,7 +1842,7 @@ dependencies = [
 
 [[package]]
 name = "konarr-server"
-version = "0.2.4"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "chrono",
