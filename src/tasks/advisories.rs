@@ -1,13 +1,17 @@
 //! # Task - Advisories
 
 use crate::{models::ServerSettings, utils::grypedb::GrypeDatabase, Config, KonarrError};
+use geekorm::prelude::*;
 use log::{info, warn};
 
 /// Poll for Advisories and update the database
-pub async fn sync_advisories(
-    config: &Config,
-    connection: &libsql::Connection,
-) -> Result<(), KonarrError> {
+pub async fn sync_advisories<'a, T>(
+    config: &'a Config,
+    connection: &'a T,
+) -> Result<(), KonarrError>
+where
+    T: GeekConnection<Connection = T> + Send + Sync + 'a,
+{
     if !ServerSettings::get_bool(connection, "security.advisories").await? {
         info!("Advisories Disabled");
         return Ok(());
@@ -58,7 +62,10 @@ pub async fn sync_advisories(
     Ok(())
 }
 
-async fn reset_polling(connection: &libsql::Connection) -> Result<(), KonarrError> {
+async fn reset_polling<'a, T>(connection: &'a T) -> Result<(), KonarrError>
+where
+    T: GeekConnection<Connection = T> + Send + Sync + 'a,
+{
     ServerSettings::fetch_by_name(connection, "security.advisories.polling")
         .await?
         .set_update(connection, "disabled")

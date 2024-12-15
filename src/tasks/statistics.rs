@@ -3,6 +3,19 @@ use geekorm::{GeekConnection, GeekConnector, QueryBuilderTrait};
 
 use crate::models::{Component, ComponentType, Projects, ServerSettings, Setting, Users};
 
+/// Calculate Statistics Task
+pub async fn statistics<T>(connection: &T) -> Result<(), crate::KonarrError>
+where
+    T: GeekConnection<Connection = T> + Send + Sync + 'static,
+{
+    log::info!("Task - Calculating Statistics");
+    user_statistics(connection).await?;
+    project_statistics(connection).await?;
+    dependencies_statistics(connection).await?;
+
+    Ok(())
+}
+
 /// User Statistics Task
 pub async fn user_statistics<T>(connection: &T) -> Result<(), crate::KonarrError>
 where

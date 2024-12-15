@@ -4,6 +4,8 @@
 extern crate rocket;
 extern crate geekorm;
 
+use std::sync::Arc;
+
 use anyhow::Result;
 use konarr::{
     models::{database_create, settings::keys::Setting, ServerSettings},
@@ -43,6 +45,10 @@ async fn main() -> Result<()> {
 
     // Database
     create(&mut config).await?;
+
+    // Tasks
+    let database = Arc::new(config.database().await?);
+    konarr::tasks::init(&config, database).await?;
 
     // Server
     server(config).await?;

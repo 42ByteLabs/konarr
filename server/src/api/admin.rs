@@ -1,9 +1,8 @@
 use geekorm::prelude::*;
-use std::collections::HashMap;
-
 use konarr::models::settings::{keys::Setting, ServerSettings, SettingType};
 use log::{info, warn};
 use rocket::{serde::json::Json, State};
+use std::collections::HashMap;
 
 use crate::{error::KonarrServerError, guards::AdminSession, AppState};
 
@@ -101,7 +100,6 @@ pub async fn update_settings(
     let connection = state.db.connect()?;
 
     info!("Updating settings: {:?}", settings);
-    // TODO: "type" checking of the setting?
 
     for (name, value) in settings.iter() {
         let mut setting = ServerSettings::fetch_by_name(&connection, name).await?;
