@@ -3,20 +3,48 @@
 use async_trait::async_trait;
 use geekorm::GeekConnection;
 use log::info;
+use std::sync::Arc;
+use tokio::spawn;
+use tokio_schedule::Job;
 
 pub mod advisories;
 pub mod alerts;
 pub mod statistics;
 
-/// Calculate Statistics Task
-pub async fn statistics<T>(connection: &T) -> Result<(), crate::KonarrError>
-where
-    T: GeekConnection<Connection = T> + Send + Sync + 'static,
-{
-    info!("Task - Calculating Statistics");
-    statistics::user_statistics(connection).await?;
-    statistics::project_statistics(connection).await?;
-    statistics::dependencies_statistics(connection).await?;
+pub use advisories::sync_advisories;
+pub use alerts::alert_calculator;
+pub use statistics::statistics;
+
+use crate::Config;
+
+/// Initialse background tasks
+///
+/// Setup a timer to run every 1 minute to do the following:
+/// - Calculate statistics
+pub async fn init(
+    _config: &Config,
+    database: Arc<libsql::Database>,
+) -> Result<(), crate::KonarrError> {
+    info!("Initializing Background Tasks...");
+
+    let tasks = tokio_schedule::every(60).seconds().perform(move || {
+        let database = Arc::clone(&database);
+        let connection = database.connect().unwrap();
+        log::info!("Running Background Tasks");
+
+        async move {
+            alert_calculator(&connection)
+                .await
+                .map_err(|e| log::error!("Task Error :: {}", e))
+                .unwrap();
+
+            statistics(&connection)
+                .await
+                .map_err(|e| log::error!("Task Error :: {}", e))
+                .unwrap();
+        }
+    });
+    spawn(tasks);
 
     Ok(())
 }

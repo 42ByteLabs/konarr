@@ -18,7 +18,7 @@ where
         log::error!("Security Feature is not enabled");
         return Ok(());
     }
-    info!("Running Alert Calculator Task");
+    info!("Task - Running Alert Calculator");
 
     let mut summary = AlertsSummary::new();
     let mut total = 0;
@@ -43,7 +43,7 @@ where
 
     calculate_group_alerts(connection, &projects, &project_summaries).await?;
 
-    info!("Calculating Global Alerts Summary");
+    debug!("Calculating Global Alerts Summary");
     debug!("Global Summary: {:?}", summary);
 
     let mut global_alerts = ServerSettings::get_namespace(connection, "security.alerts").await?;
@@ -72,7 +72,7 @@ where
         log::error!("Total Alert Count Mismatch: {} != {}", total_check, total);
     }
 
-    info!("Global Alerts Updated");
+    debug!("Global Alerts Updated");
 
     Ok(())
 }
