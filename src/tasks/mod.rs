@@ -22,7 +22,7 @@ use crate::Config;
 /// Setup a timer to run every 1 minute to do the following:
 /// - Calculate statistics
 pub async fn init(
-    _config: &Config,
+    config: Arc<Config>,
     database: Arc<libsql::Database>,
 ) -> Result<(), crate::KonarrError> {
     info!("Initializing Background Tasks...");
@@ -30,9 +30,15 @@ pub async fn init(
     let tasks = tokio_schedule::every(60).seconds().perform(move || {
         let database = Arc::clone(&database);
         let connection = database.connect().unwrap();
+        let config = Arc::clone(&config);
         log::info!("Running Background Tasks");
 
         async move {
+            match sync_advisories(&config, &connection).await {
+                Ok(_) => log::debug!("Advisories Synced"),
+                Err(e) => log::error!("Advisories Sync Error: {}", e),
+            }
+
             alert_calculator(&connection)
                 .await
                 .map_err(|e| log::error!("Task Error :: {}", e))

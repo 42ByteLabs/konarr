@@ -336,7 +336,7 @@ impl Snapshot {
     pub async fn scan_with_grype<'a, T>(
         &mut self,
         connection: &'a T,
-        grypedb_connection: &'a T,
+        grypedb_connection: &libsql::Connection,
     ) -> Result<Vec<Alerts>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
