@@ -31,7 +31,7 @@ impl GrypeDatabase {
     /// Sync the Grype database
     ///
     /// The path is the directory where the Grype database is stored
-    pub async fn sync(path: &PathBuf) -> Result<(), KonarrError> {
+    pub async fn sync(path: &PathBuf) -> Result<bool, KonarrError> {
         debug!("Syncing Grype DB");
         let dbpath = path.join("vulnerability.db");
         let archive_path = path.join("vulnerability.tar.gz");
@@ -72,10 +72,13 @@ impl GrypeDatabase {
         debug!("Grype DB build time: {}", build_timestamp);
         debug!("Latest Grype DB build time: {}", latest_build);
 
+        let mut new = false;
         if latest_build > build_timestamp {
+            debug!("New Grype DB available, updating...");
             debug!("Latest Grype DB URL: {}", latest.url);
             GrypeDatabase::download(&path, &latest.url).await?;
             GrypeDatabase::unarchive(&archive_path)?;
+            new = true;
         } else {
             debug!("Grype DB is up to date");
         }
@@ -85,7 +88,7 @@ impl GrypeDatabase {
             debug!("Removing Grype DB archive");
             std::fs::remove_file(&archive_path)?;
         }
-        Ok(())
+        Ok(new)
     }
 
     /// Get the Grype database listings
@@ -178,11 +181,12 @@ pub struct GrypeListingResponse {
 }
 
 impl GrypeListingResponse {
+    /// Get the latest Grype database entry
     pub fn latest(&self) -> Option<&GrypeDatabaseEntry> {
         self.available
             .values()
-            .flatten()
-            .max_by_key(|entry| entry.version)
+            .filter_map(|e| e.first())
+            .max_by_key(|e| e.built)
     }
 }
 
