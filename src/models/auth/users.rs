@@ -147,10 +147,7 @@ impl Users {
     }
 
     /// Validate Users Session
-    pub async fn validate_session<'a, T>(&self, _connection: &'a T, config: &SessionsConfig) -> bool
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub fn validate_session(&self, config: &SessionsConfig) -> bool {
         let config = self.get_config(config);
 
         // is session active?
