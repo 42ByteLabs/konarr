@@ -72,6 +72,14 @@ pub async fn logout(
 
     cookies.remove_private("x-konarr-token");
 
+    if let Ok(mut sessions) = state.sessions.write() {
+        log::info!(
+            "Removing user session from in-memory cache: User({})",
+            user.id
+        );
+        sessions.retain(|s| s.user.id != user.id);
+    }
+
     Ok(Json(LogoutResponse {
         status: String::from("success"),
     }))
