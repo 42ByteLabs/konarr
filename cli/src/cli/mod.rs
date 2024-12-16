@@ -74,21 +74,25 @@ pub struct Arguments {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum ArgumentCommands {
+    /// Database actions and commands
     #[cfg(feature = "database")]
     Database {
         #[clap(subcommand)]
         subcommands: Option<database::DatabaseCommands>,
     },
+    /// Display data
     #[cfg(feature = "database")]
     Display {
         #[clap(subcommand)]
         subcommands: Option<display::DisplayCommands>,
     },
+    /// Agent mode
     Agent {
         /// Docker Socket Path
         #[clap(short, long, env = "DOCKER_HOST")]
         docker_socket: Option<String>,
     },
+    /// Scan a container image
     Scan {
         /// Image to scan
         #[clap(short, long)]
@@ -103,6 +107,7 @@ pub enum ArgumentCommands {
         #[clap(short, long)]
         output: Option<String>,
     },
+    /// Upload a SBOM file
     UploadSbom {
         /// Path to the file to upload
         #[clap(short, long)]
@@ -111,16 +116,19 @@ pub enum ArgumentCommands {
         #[clap(short, long)]
         snapshot_id: Option<u32>,
     },
+    /// Index data into the database
     #[cfg(feature = "database")]
     Index {
         #[clap(subcommand)]
         subcommands: Option<index::IndexCommand>,
     },
+    /// Search the database for specific data
     #[cfg(feature = "database")]
     Search {
         #[clap(subcommand)]
         subcommands: Option<search::SearchCommands>,
     },
+    /// Run various tasks
     #[cfg(feature = "tasks")]
     Tasks {
         #[clap(subcommand)]
