@@ -13,6 +13,8 @@ pub enum SettingType {
     Toggle,
     /// Regenerate value (e.g. API Key)
     Regenerate,
+    /// User controllable setting
+    SetString,
 
     /// Boolean
     Boolean,

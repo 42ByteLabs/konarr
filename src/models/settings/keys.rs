@@ -82,6 +82,10 @@ pub enum Setting {
     // Security
     #[geekorm(key = "security")]
     Security,
+    /// Security tool name to use by default
+    #[geekorm(key = "security.tools.name")]
+    SecurityToolsName,
+    /// Allow Security tools to submit alerts
     #[geekorm(key = "security.tools.alerts")]
     SecurityToolsAlerts,
 
@@ -115,7 +119,7 @@ pub enum Setting {
 }
 
 /// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 35] = [
+pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 36] = [
     // Registration Settings
     (Setting::Registration, SettingType::Toggle, "enabled"),
     // If we are already initialized
@@ -149,6 +153,7 @@ pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 35] =
     (Setting::StatsUsersInactive, SettingType::Statistics, "0"),
     // Security Features
     (Setting::Security, SettingType::Toggle, "disabled"),
+    (Setting::SecurityToolsName, SettingType::SetString, "syft"),
     // Tools Settings
     (Setting::SecurityToolsAlerts, SettingType::Toggle, "enabled"),
     // Advisories Settings

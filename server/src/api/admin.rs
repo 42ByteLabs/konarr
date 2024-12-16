@@ -105,7 +105,7 @@ pub async fn update_settings(
         let mut setting = ServerSettings::fetch_by_name(&connection, name).await?;
 
         match setting.setting_type {
-            SettingType::Toggle | SettingType::Regenerate => {
+            SettingType::Toggle | SettingType::Regenerate | SettingType::SetString => {
                 setting.set(value);
                 setting.update(&connection).await?;
             }
