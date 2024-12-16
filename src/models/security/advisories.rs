@@ -57,29 +57,6 @@ pub enum AdvisorySource {
     Unknown,
 }
 
-// impl From<String> for AdvisorySource {
-//     fn from(value: String) -> Self {
-//         match value.to_lowercase().as_str() {
-//             "alpine" | "alpinesecdb" => AdvisorySource::AlpineSecDB,
-//             "amazon" | "aws" | "amazonwebservices" => AdvisorySource::AmazonWebServices,
-//             "anchore" => AdvisorySource::Anchore,
-//             "chainguard" => AdvisorySource::Chainguard,
-//             "debian" | "debian-distro-debian-12" => AdvisorySource::Debian,
-//             "github" | "ghad" | "githubadvisories" => AdvisorySource::GitHubAdvisoryDatabase,
-//             "nvd" | "nationalvulnerabilitydatabase" => {
-//                 AdvisorySource::NationalVulnerabilityDatabase
-//             }
-//             "oracle" | "oracleoval" => AdvisorySource::OracleOval,
-//             "redhat" | "redhatsecurity" => AdvisorySource::RedHatSecurity,
-//             "suse" | "suseoval" => AdvisorySource::SuseOval,
-//             "ubuntu" => AdvisorySource::UbuntuSecurity,
-//             "wolfi" => AdvisorySource::WolfiSecDB,
-//             "custom" => AdvisorySource::Custom,
-//             _ => AdvisorySource::Unknown,
-//         }
-//     }
-// }
-
 /// Security vulnerabilities table
 #[derive(Table, Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Advisories {
@@ -135,13 +112,14 @@ impl Advisories {
         T: GeekConnection<Connection = T> + 'a,
     {
         let key = key.into();
+        log::debug!("Adding advisory metadata `{}`", key);
 
         let meta = match AdvisoriesMetadata::query_first(
             connection,
             AdvisoriesMetadata::query_select()
                 .where_eq("key", key.clone())
                 .and()
-                .where_eq("vulnerability_id", self.id)
+                .where_eq("advisory_id", self.id)
                 .build()?,
         )
         .await
@@ -168,21 +146,27 @@ impl Advisories {
         T: geekorm::GeekConnection<Connection = T> + 'a,
     {
         let key = key.into();
+        log::debug!("Getting advisory metadata `{}`", key);
         let meta = self.metadata.iter().find(|m| m.key == key);
 
         if let Some(meta) = meta {
             return Ok(Some(meta.clone()));
         }
 
-        let meta = AdvisoriesMetadata::query_first(
+        let meta = if let Ok(m) = AdvisoriesMetadata::query_first(
             connection,
             AdvisoriesMetadata::query_select()
                 .where_eq("key", key)
                 .and()
-                .where_eq("vulnerability_id", self.id)
+                .where_eq("advisory_id", self.id)
                 .build()?,
         )
-        .await?;
+        .await
+        {
+            m
+        } else {
+            return Ok(None);
+        };
         self.metadata.push(meta.clone());
         Ok(Some(meta))
     }
