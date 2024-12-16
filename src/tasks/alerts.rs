@@ -69,7 +69,7 @@ where
     }
 
     if total_check != total {
-        log::error!("Total Alert Count Mismatch: {} != {}", total_check, total);
+        log::warn!("Total Alert Count Mismatch: {} != {}", total_check, total);
     }
 
     debug!("Global Alerts Updated");
