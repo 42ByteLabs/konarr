@@ -4,7 +4,7 @@
 extern crate rocket;
 extern crate geekorm;
 
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use anyhow::Result;
 use konarr::{
@@ -24,6 +24,8 @@ mod routes;
 /// Application State
 pub struct AppState {
     db: libsql::Database,
+    sessions: Arc<RwLock<Vec<guards::Session>>>,
+    agent_token: Arc<RwLock<String>>,
     config: Config,
     init: bool,
 }
@@ -160,6 +162,9 @@ async fn server(config: Config) -> Result<()> {
 
     // Check if we have init Konarr
     let init: bool = ServerSettings::get_bool(&connection, Setting::Initialized).await?;
+    let agent_token: String = ServerSettings::fetch_by_name(&connection, Setting::AgentKey)
+        .await?
+        .value;
 
     if !frontend.exists() {
         info!("No Frontend found, creating directory and running in API-only mode");
@@ -168,6 +173,8 @@ async fn server(config: Config) -> Result<()> {
 
     let state = AppState {
         db: database,
+        sessions: Arc::new(RwLock::new(Vec::new())),
+        agent_token: Arc::new(RwLock::new(agent_token)),
         config: config.clone(),
         init,
     };
