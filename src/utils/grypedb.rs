@@ -9,7 +9,7 @@ use semver::Version;
 use sha2::Digest;
 use url::Url;
 
-use crate::KonarrError;
+use crate::{models::security::AdvisorySource, KonarrError};
 
 /// Grype Database
 pub struct GrypeDatabase;
@@ -34,10 +34,11 @@ impl GrypeDatabase {
     pub async fn sync(path: &PathBuf) -> Result<bool, KonarrError> {
         debug!("Syncing Grype DB");
         let dbpath = path.join("vulnerability.db");
-        let archive_path = path.join("vulnerability.tar.gz");
+        // let archive_path = path.join("vulnerability.tar.gz");
 
         // Fetch the latest Grype database listing
         let latest = GrypeDatabase::latest().await?;
+        debug!("Latest Grype DB: {}", latest.built);
         let latest_build = latest.built.with_nanosecond(0).unwrap();
 
         if !path.exists() || !dbpath.exists() {
@@ -51,16 +52,7 @@ impl GrypeDatabase {
             std::fs::create_dir_all(path)?;
 
             debug!("Downloading Grype DB with build: {}", latest.url);
-            GrypeDatabase::download(&archive_path, &latest.url).await?;
-
-            if !GrypeDatabase::verify(&archive_path, &latest.checksum)? {
-                error!("Checksum verification failed, security risk!");
-                return Err(KonarrError::UnknownError(
-                    "Checksum verification failed".into(),
-                ));
-            }
-
-            GrypeDatabase::unarchive(&archive_path)?;
+            GrypeDatabase::download(path, &latest).await?;
             debug!("Grype DB created and ready to use");
         }
 
@@ -76,18 +68,12 @@ impl GrypeDatabase {
         if latest_build > build_timestamp {
             debug!("New Grype DB available, updating...");
             debug!("Latest Grype DB URL: {}", latest.url);
-            GrypeDatabase::download(&path, &latest.url).await?;
-            GrypeDatabase::unarchive(&archive_path)?;
+            GrypeDatabase::download(path, &latest).await?;
             new = true;
         } else {
             debug!("Grype DB is up to date");
         }
 
-        // Clean up the archive
-        if archive_path.exists() {
-            debug!("Removing Grype DB archive");
-            std::fs::remove_file(&archive_path)?;
-        }
         Ok(new)
     }
 
@@ -109,6 +95,31 @@ impl GrypeDatabase {
         assert_eq!(latest.version, 5);
         Ok(latest.clone())
     }
+
+    /// Download, verify and unarchive a build of the Grype database
+    ///
+    /// This is the full process of updating the Grype database
+    pub async fn download(path: &PathBuf, build: &GrypeDatabaseEntry) -> Result<(), KonarrError> {
+        let archive_path = GrypeDatabase::download_archive(path, &build.url).await?;
+
+        if !GrypeDatabase::verify(&archive_path, &build.checksum)? {
+            error!("Checksum verification failed, security risk!");
+            return Err(KonarrError::UnknownError(
+                "Checksum verification failed".into(),
+            ));
+        }
+
+        GrypeDatabase::unarchive(&archive_path)?;
+        debug!("Grype DB created and ready to use");
+
+        // Clean up the archive
+        if archive_path.exists() {
+            debug!("Removing Grype DB archive");
+            std::fs::remove_file(&archive_path)?;
+        }
+        Ok(())
+    }
+
     /// Verify the checksum of the Grype archive file against the provided checksum
     ///
     /// Checksum is the SHA256 checksum provided by the Grype database listing
@@ -131,17 +142,23 @@ impl GrypeDatabase {
     }
 
     /// Download a Grype Database archive
-    pub async fn download(path: &PathBuf, url: &Url) -> Result<(), KonarrError> {
+    async fn download_archive(path: &PathBuf, url: &Url) -> Result<PathBuf, KonarrError> {
         debug!("Downloading Grype DB from: {}", url);
         let path_archive = path.join("vulnerability.tar.gz");
+
+        if path_archive.exists() {
+            debug!("Removing existing Grype DB archive");
+            std::fs::remove_file(&path_archive)?;
+        }
 
         let response = reqwest::get(url.clone()).await?;
         let bytes = response.bytes().await?;
 
         debug!("Saving to: {:?}", path);
         tokio::fs::write(&path_archive, bytes).await?;
+        debug!("Finished downloading and writing Grype DB");
 
-        Ok(())
+        Ok(path_archive)
     }
 
     /// Unarchive the Grype database tar.gz
@@ -182,11 +199,13 @@ pub struct GrypeListingResponse {
 
 impl GrypeListingResponse {
     /// Get the latest Grype database entry
+    ///
+    /// This is the latest entry with version 5
     pub fn latest(&self) -> Option<&GrypeDatabaseEntry> {
         self.available
-            .values()
-            .filter_map(|e| e.first())
-            .max_by_key(|e| e.built)
+            .iter()
+            .find(|e| *e.0 == 5)
+            .map_or(None, |e| e.1.first())
     }
 }
 
@@ -247,10 +266,15 @@ impl GrypeVulnerability {
             warn!("Unsure what the version of the package is");
             return Ok(vec![]);
         }
+
+        // TODO: Only semver for now
         let version = if let Ok(v) = Version::parse(component_version.version.as_str()) {
             v
         } else {
-            warn!("Unable to parse version: {}", component_version.version);
+            warn!(
+                "Unable to parse version `{}` for component `{}`",
+                component_version.version, component.name
+            );
             return Ok(vec![]);
         };
         let mut results: Vec<GrypeVulnerability> = vec![];
@@ -291,8 +315,8 @@ impl GrypeVulnerability {
 #[derive(Table, Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 #[geekorm(rename = "vulnerability_metadata")]
 pub struct GrypeVulnerabilityMetadata {
-    #[geekorm(primary_key, unique)]
     pub id: PrimaryKey<String>,
+
     pub namespace: String,
     pub data_source: String,
     pub record_source: String,
@@ -300,4 +324,23 @@ pub struct GrypeVulnerabilityMetadata {
     pub urls: Option<String>,
     pub description: String,
     pub cvss: Option<String>,
+}
+
+impl GrypeVulnerabilityMetadata {
+    /// Convert the GrypeDB record source into AdvisorySource
+    pub fn source(&self) -> AdvisorySource {
+        // TODO: Add all sources
+        match self.record_source.as_str() {
+            "nvdv2:nvdv2:cves" => AdvisorySource::NationalVulnerabilityDatabase,
+            "vulnerabilities:chainguard:rolling" => AdvisorySource::Chainguard,
+            "vulnerabilities:wolfi:rolling" => AdvisorySource::WolfiSecDB,
+            s if s.starts_with("github:github:") => AdvisorySource::GitHubAdvisoryDatabase,
+            s if s.starts_with("vulnerabilities:alpine:") => AdvisorySource::AlpineSecDB,
+            s if s.starts_with("vulnerabilities:debian:") => AdvisorySource::Debian,
+            s if s.starts_with("vulnerabilities:ubuntu:") => AdvisorySource::UbuntuSecurity,
+            s if s.starts_with("vulnerabilities:rhel:") => AdvisorySource::RedHatSecurity,
+            // Default to Anchore
+            _ => AdvisorySource::Anchore,
+        }
+    }
 }
