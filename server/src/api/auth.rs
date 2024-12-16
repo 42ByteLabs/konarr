@@ -53,8 +53,13 @@ pub async fn login(
     )
     .await?;
 
-    cookies.add_private(("x-konarr-token", session.token));
+    cookies.add_private(("x-konarr-token", session.token.clone()));
+
     log::info!("Successfull logged in: {:?}", user.id);
+    if let Ok(mut sessions) = state.sessions.write() {
+        log::debug!("Adding user session to in-memory cache - User({})", user.id);
+        sessions.push(Session { user, session });
+    }
 
     Ok(Json(LoginResponse::success()))
 }
@@ -73,8 +78,8 @@ pub async fn logout(
     cookies.remove_private("x-konarr-token");
 
     if let Ok(mut sessions) = state.sessions.write() {
-        log::info!(
-            "Removing user session from in-memory cache: User({})",
+        log::debug!(
+            "Removing user session from in-memory cache - User({})",
             user.id
         );
         sessions.retain(|s| s.user.id != user.id);
