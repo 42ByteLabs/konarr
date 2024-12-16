@@ -188,15 +188,15 @@ impl<'r> FromRequest<'r> for AdminSession {
 
         match session.user.role {
             UserRole::Admin => {
-                log::info!("Admin User performing action: {}", session.user.username);
+                log::info!("Admin performing action - Admin({})", session.user.id);
                 Outcome::Success(AdminSession {
                     user: session.user,
                     session: session.session,
                 })
             }
-            _ => {
+            UserRole::User | UserRole::Agent => {
                 log::warn!(
-                    "Non-Admin User tried performing action: {}",
+                    "Non-Admin User tried performing action - User({})",
                     session.user.id
                 );
                 Outcome::Error((rocket::http::Status::Unauthorized, ()))
