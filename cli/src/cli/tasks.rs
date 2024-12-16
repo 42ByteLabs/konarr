@@ -36,7 +36,7 @@ pub async fn run(
                 info!("Running Grype Alerts Task");
                 let grype_conn = GrypeDatabase::connect(&grype_path).await?;
 
-                tasks::advisories::scan_projects(&connection, &grype_conn):
+                tasks::advisories::scan_projects(&connection, &grype_conn).await?;
             }
         }
         None => {
