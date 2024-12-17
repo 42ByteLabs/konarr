@@ -162,11 +162,18 @@ impl Component {
                     component.component_type = ComponentType::ProgrammingLanguage;
                 } else if component.name == "crypto" {
                     component.component_type = ComponentType::CryptographyLibrary;
+                } else {
+                    component.component_type = ComponentType::Library;
                 }
+            } else {
+                component.component_type = ComponentType::Library;
             }
         } else if component.manager == ComponentManager::Generic {
             // Generic manager are typically applications
             component.component_type = ComponentType::Application;
+        } else {
+            // Default to library
+            component.component_type = ComponentType::Library;
         }
     }
 
