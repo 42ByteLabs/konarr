@@ -1,5 +1,8 @@
 use geekorm::prelude::*;
-use konarr::models::settings::{keys::Setting, ServerSettings, SettingType};
+use konarr::models::{
+    auth::users::UserState,
+    settings::{keys::Setting, ServerSettings, SettingType},
+};
 use log::{info, warn};
 use rocket::{serde::json::Json, State};
 use std::collections::HashMap;
@@ -198,8 +201,14 @@ pub(crate) async fn update_users(
 
     if let Some(state) = &data.state {
         let og = user.state.clone();
-        user.state = konarr::models::auth::users::UserState::from(state.as_str());
-        log::info!("Updating users state to `{:?}` from `{:?}`", user.state, og);
+        user.state = match state.to_lowercase().as_str() {
+            "active" => UserState::Active,
+            "disabled" => UserState::Disabled,
+            _ => {
+                return Err(KonarrServerError::InternalServerError);
+            }
+        };
+        log::info!("Updating users state - `{:?}` -> `{:?}`", og, user.state);
 
         if user.state == konarr::models::auth::users::UserState::Disabled {
             // Logout the user

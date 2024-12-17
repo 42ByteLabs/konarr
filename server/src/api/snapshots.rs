@@ -7,7 +7,7 @@ use konarr::{
         security::{Advisories, Alerts, SecuritySeverity},
     },
 };
-use log::info;
+use log::{debug, info};
 use rocket::{data::ToByteUnit, serde::json::Json, State};
 use std::{collections::HashMap, str::FromStr};
 
@@ -16,7 +16,7 @@ use super::{
     security::{AlertResp, SecuritySummary},
     ApiResponse, ApiResult,
 };
-use crate::{guards::Session, AppState};
+use crate::{error::KonarrServerError, guards::Session, AppState};
 
 pub fn routes() -> Vec<rocket::Route> {
     routes![
@@ -49,7 +49,14 @@ pub(crate) async fn get_snapshot(
 ) -> ApiResult<SnapshotResp> {
     let connection = state.db.connect()?;
 
-    let mut snapshot = models::Snapshot::fetch_by_primary_key(&connection, id as i32).await?;
+    info!("Fetching snapshot: {}", id);
+    let mut snapshot = match models::Snapshot::fetch_by_primary_key(&connection, id as i32).await {
+        Ok(snapshot) => snapshot,
+        Err(e) => {
+            log::error!("Failed to fetch snapshot: {:?}", e);
+            return Err(KonarrServerError::SnapshotNotFoundError(id as i32).into());
+        }
+    };
     snapshot.fetch_metadata(&connection).await?;
 
     Ok(Json(snapshot.into()))
@@ -69,11 +76,18 @@ pub(crate) async fn create_snapshot(
 ) -> ApiResult<SnapshotResp> {
     let connection = state.db.connect()?;
 
+    info!("Creating snapshot for Project: {}", snapshot.project_id);
     let mut project =
         models::Projects::fetch_by_primary_key(&connection, snapshot.project_id as i32).await?;
-    info!("Creating snapshot for Project: {}", project.id);
+    debug!("Project: {:?}", project);
 
-    let snapshot = models::Snapshot::create(&connection).await?;
+    let snapshot = match models::Snapshot::create(&connection).await {
+        Ok(snapshot) => snapshot,
+        Err(e) => {
+            log::error!("Failed to create snapshot: {:?}", e);
+            return Err(KonarrServerError::InternalServerError.into());
+        }
+    };
     project.add_snapshot(&connection, snapshot.clone()).await?;
 
     Ok(Json(snapshot.into()))
@@ -88,7 +102,14 @@ pub(crate) async fn patch_snapshot_metadata(
 ) -> ApiResult<SnapshotResp> {
     let connection = state.db.connect()?;
 
-    let mut snapshot = models::Snapshot::fetch_by_primary_key(&connection, id as i32).await?;
+    info!("Updating metadata for snapshot: {}", id);
+    let mut snapshot = match models::Snapshot::fetch_by_primary_key(&connection, id as i32).await {
+        Ok(snapshot) => snapshot,
+        Err(e) => {
+            log::error!("Failed to fetch snapshot: {:?}", e);
+            return Err(KonarrServerError::SnapshotNotFoundError(id as i32).into());
+        }
+    };
     snapshot.fetch_metadata(&connection).await?;
 
     for (key, value) in metadata.iter() {
@@ -106,6 +127,8 @@ pub(crate) async fn patch_snapshot_metadata(
                 .into());
             }
         };
+
+        log::info!("Setting metadata: {} = {}", metadata_key, value);
 
         snapshot
             .set_metadata(&connection, metadata_key, value)
@@ -134,6 +157,7 @@ pub(crate) async fn upload_bom(
 ) -> ApiResult<SnapshotResp> {
     let connection = state.db.connect()?;
 
+    info!("Uploading SBOM for snapshot: {}", id);
     let mut snapshot = models::Snapshot::fetch_by_primary_key(&connection, id as i32).await?;
 
     // TODO: Implement file upload
