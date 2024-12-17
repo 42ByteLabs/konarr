@@ -19,6 +19,9 @@ pub enum KonarrServerError {
     /// Project Not Found Error
     #[error("Project {0} not found")]
     ProjectNotFoundError(i32),
+    /// Snapshot Not Found Error
+    #[error("Snapshot {0} not found")]
+    SnapshotNotFoundError(i32),
     /// Unauthorized Error
     #[error("Unauthorized")]
     Unauthorized,
