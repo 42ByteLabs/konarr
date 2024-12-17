@@ -195,6 +195,58 @@ async fn main() -> Result<()> {
         Some(cli::ArgumentCommands::Tasks { subcommands }) => {
             Ok(cli::tasks::run(&config, subcommands).await?)
         }
-        None => Err(anyhow!("No subcommand provided")),
+        None => {
+            info!("No command provided, showing server info");
+            let (_client, serverinfo) = client(&config).await?;
+
+            // Check if the user is authenticated
+            if !serverinfo.user.is_some() {
+                info!("User is not authenticated");
+            } else {
+                info!("User is authenticated!");
+            }
+
+            if let Some(psummary) = serverinfo.projects {
+                info!("----- Project Statistics -----");
+                info!(" > ⚡ Projects: {}", psummary.total);
+                info!(" > 💻 Servers: {}", psummary.servers);
+                info!(" > 📦 Containers: {}", psummary.containers);
+            }
+            if let Some(dsummary) = serverinfo.dependencies {
+                info!("----- Dependency Statistics -----");
+                info!(" > 🧰 Dependencies: {}", dsummary.total);
+            }
+            if let Some(security) = serverinfo.security {
+                info!("----- Security Summary -----");
+                info!(" > Total: {}", security.total);
+                info!(" > 🔴 Critical: {}", security.critical);
+                info!(" > 🟠 High: {}", security.high);
+                info!(" > 🟡 Medium: {}", security.medium);
+                info!(" > 🟢 Low: {}", security.low);
+                info!(" > ℹ️  Informational: {}", security.informational);
+                info!(" > 🦠 Malware: {}", security.malware);
+                info!(" > 🛡️ Unmaintained: {}", security.unmaintained);
+                info!(" > ❓ Unknown: {}", security.unknown);
+            }
+            // info!("Dependencies :: {}", serverinfo.dependencies.total);
+
+            if let Some(agent_settings) = serverinfo.agent {
+                info!("----- Agent Settings -----");
+                let tools = konarr::tools::get_available_tools().await?;
+                let tool_available = if tools.contains(&agent_settings.tool.to_lowercase()) {
+                    "✅"
+                } else {
+                    "❌"
+                };
+
+                info!("Agent settings");
+                info!(
+                    " > {} Tool to use: {} ",
+                    tool_available, agent_settings.tool
+                );
+            }
+
+            Ok(())
+        }
     }
 }
