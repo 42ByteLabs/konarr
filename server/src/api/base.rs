@@ -91,10 +91,15 @@ pub struct AgentResponse {
     pub tool: AgentTool,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 pub enum AgentTool {
+    /// Syft
+    #[default]
     Syft,
+    /// Grype
     Grype,
+    /// Trivy
+    Trivy,
 }
 
 impl Default for BaseResponse {
@@ -140,6 +145,18 @@ pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResul
                 None
             };
 
+        let agent: Option<AgentResponse> = if session.user.username == "konarr-agent" {
+            Some(AgentResponse {
+                tool: AgentTool::from(
+                    ServerSettings::fetch_by_name(&connection, Setting::SecurityToolsName)
+                        .await?
+                        .value,
+                ),
+            })
+        } else {
+            None
+        };
+
         Ok(Json(BaseResponse {
             config: ConfigResponse {
                 initialised: !init,
@@ -161,6 +178,7 @@ pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResul
                 ..Default::default()
             }),
             security,
+            agent,
             ..Default::default()
         }))
     } else {
@@ -202,5 +220,15 @@ impl From<Vec<ServerSettings>> for SecuritySummary {
         }
 
         summary
+    }
+}
+
+impl From<String> for AgentTool {
+    fn from(value: String) -> Self {
+        match value.to_lowercase().as_str() {
+            "grype" => Self::Grype,
+            "trivy" => Self::Trivy,
+            _ => Self::Syft,
+        }
     }
 }
