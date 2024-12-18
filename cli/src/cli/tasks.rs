@@ -1,6 +1,6 @@
 use clap::Subcommand;
 use konarr::{
-    tasks::{advisories::scan_projects, alert_calculator},
+    tasks::{advisories::scan_projects, alert_calculator, catalogue},
     utils::grypedb::GrypeDatabase,
     Config,
 };
@@ -10,6 +10,11 @@ use log::{debug, info};
 pub enum TaskCommands {
     /// Run the Alert Calculator
     Alerts {},
+    /// Run the Catalogue Sync Task
+    Catalogue {
+        #[clap(short, long, default_value = "false")]
+        force: bool,
+    },
     /// Run the Grype Sync Task
     Grype {
         /// Run the Grype Alerts Tas
@@ -27,8 +32,9 @@ pub async fn run(
     match subcommands {
         Some(TaskCommands::Alerts {}) => {
             alert_calculator(&connection).await?;
-
-            info!("Completed!");
+        }
+        Some(TaskCommands::Catalogue { force }) => {
+            catalogue(&connection, force).await?;
         }
         Some(TaskCommands::Grype { alerts }) => {
             info!("Running Grype Sync Task");
@@ -49,6 +55,7 @@ pub async fn run(
             info!("No subcommand provided, running interactive mode");
         }
     }
+    info!("Completed!");
 
     Ok(())
 }
