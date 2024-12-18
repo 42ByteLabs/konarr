@@ -9,10 +9,12 @@ use tokio_schedule::Job;
 
 pub mod advisories;
 pub mod alerts;
+pub mod catalogue;
 pub mod statistics;
 
 pub use advisories::sync_advisories;
 pub use alerts::alert_calculator;
+pub use catalogue::catalogue;
 pub use statistics::statistics;
 
 use crate::Config;
