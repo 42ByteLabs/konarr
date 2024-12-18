@@ -463,6 +463,34 @@ impl Snapshot {
                     }
                     if let Some(link) = vuln_metadata.urls {
                         advisory.add_metadata(connection, "urls", link).await?;
+                    } else {
+                        match advisory.source {
+                            AdvisorySource::NationalVulnerabilityDatabase => {
+                                advisory
+                                    .add_metadata(
+                                        connection,
+                                        "urls",
+                                        format!(
+                                            "https://nvd.nist.gov/vuln/detail/{}",
+                                            vuln_metadata.id
+                                        ),
+                                    )
+                                    .await?
+                            }
+                            AdvisorySource::GitHubAdvisoryDatabase => {
+                                advisory
+                                    .add_metadata(
+                                        connection,
+                                        "urls",
+                                        format!(
+                                            "https://github.com/advisories/{}",
+                                            vuln_metadata.id
+                                        ),
+                                    )
+                                    .await?
+                            }
+                            _ => {}
+                        }
                     }
 
                     advisory

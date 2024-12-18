@@ -20,7 +20,7 @@ pub enum ComponentType {
     #[geekorm(aliases = "os,operatingsystem,operating_system")]
     OperatingSystem,
     /// Package Manager
-    #[geekorm(aliases = "packagemanager,package_manager")]
+    #[geekorm(aliases = "packagemanager,package_manager,package-manager")]
     PackageManager,
     /// Container
     #[geekorm(aliases = "container,docker")]
@@ -37,6 +37,9 @@ pub enum ComponentType {
     /// Database
     #[geekorm(aliases = "db,database")]
     Database,
+    /// Compression Library
+    #[geekorm(aliases = "compression,compressionlibrary,compression_library")]
+    CompressionLibrary,
     /// Operating Environment
     #[geekorm(aliases = "oe,operatingenvironment,operating_environment")]
     OperatingEnvironment,
