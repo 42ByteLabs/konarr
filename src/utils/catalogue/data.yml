@@ -1,0 +1,176 @@
+
+aliases:
+  "pkg:deb/alpine": "pkg:apk/alpine"
+
+catalogue:
+  # =================
+  # Operating Systems
+  # =================
+  # Alpine
+  "pkg:apk/alpine": "os"
+  "pkg:apk/alpine/apk-tools": "package-manager"
+  "pkg:apk/alpine/alpine-sdk": "package-manager"
+  "pkg:apk/alpine/alpine-conf": "package-manager"
+  "pkg:apk/alpine/alpine-baselayout": "oe"
+  "pkg:apk/alpine/alpine-baselayout-data": "oe"
+  "pkg:apk/alpine/coreutils": "oe"
+  "pkg:apk/alpine/coreutils-env": "oe"
+  "pkg:apk/alpine/coreutils-fmt": "oe"
+  "pkg:apk/alpine/coreutils-sha512sum": "cryptography"
+  "pkg:apk/alpine/busybox": "oe"
+
+  # Debian
+  "pkg:deb/debian": "os"
+  "pkg:deb/debian/debianutils": "oe"
+
+  # ============================
+  # Operating System Environment
+  # ============================
+  "pkg:*/busybox": "oe"
+  "pkg:*/busybox-sh": "oe"
+  "pkg:*/busybox-binsh": "oe"
+  "pkg:*/apr": "oe"
+  "pkg:*/apr-util": "oe"
+  "pkg:*/musl": "oe"
+  "pkg:*/musl-dev": "oe"
+  "pkg:*/musl-libs": "oe"
+  "pkg:*/musl-utils": "oe"
+  "pkg:*/libc": "oe"
+  "pkg:*/libc-utils": "oe"
+  "pkg:*/glibc": "oe"
+  "pkg:*/glibc-dev": "oe"
+
+  # ============
+  # Applications
+  # ============
+  "pkg:*/bash": "application"
+  "pkg:*/sh": "application"
+  "pkg:*/dash": "application"
+  "pkg:*/ksh": "application"
+  "pkg:*/zsh": "application"
+  "pkg:*/fish": "application"
+  "pkg:*/curl": "application"
+  "pkg:*/wget": "application"
+  "pkg:*/git": "application"
+  "pkg:*/openssh": "application"
+  "pkg:*/openssh-client": "application"
+  "pkg:*/openssh-server": "application"
+  "pkg:*/openssh-sftp-server": "application"
+  "pkg:*/openssh-keygen": "application"
+  "pkg:*/grep": "application"
+  "pkg:*/sed": "application"
+  "pkg:*/awk": "application"
+  "pkg:*/jq": "application"
+  "pkg:*/bc": "application"
+  "pkg:*/file": "application"
+  "pkg:*/find": "application"
+
+  # ======================
+  # Cryptography Libraries
+  # ======================
+  "pkg:*/ca-certificates": "cryptography"
+  "pkg:*/ca-certificates-bundle": "cryptography"
+  "pkg:*/openssl": "cryptography"
+  "pkg:*/libssl": "cryptography"
+  "pkg:*/libssl-dev": "cryptography"
+  "pkg:*/libssl3": "cryptography"
+  "pkg:*/libssl3-dev": "cryptography"
+  "pkg:*/libcrypto": "cryptography"
+  "pkg:*/libcrypto-dev": "cryptography"
+  "pkg:*/argon2-libs": "cryptography"
+  "pkg:*/ssl_client": "cryptography"
+
+  # =====================
+  # Middleware / Services
+  # =====================
+  "pkg:*/nginx": "middleware"
+  "pkg:*/tomcat": "middleware"
+  "pkg:*/traefik": "middleware"
+
+  # ============================================
+  # Programming Languages / Runtimes / Compilers
+  # ============================================
+  # Python
+  "pkg:*/python2": "language"
+  "pkg:*/python3": "language"
+  "pkg:*/python3-dev": "language"
+  "pkg:*/python3-pip": "package-manager"
+  # Rust / Cargo
+  "pkg:*/cargo": "package-manager"
+  "pkg:*/rust": "language"
+  "pkg:*/rustc": "language"
+  # Node / NPM
+  "pkg:*/nodejs": "language"
+  "pkg:*/npm": "package-manager"
+  # Java
+  "pkg:*/openjdk8": "language"
+  "pkg:*/openjdk8-jre": "language"
+  "pkg:*/openjdk8-jre-base": "language"
+  "pkg:*/openjdk8-jre-lib": "language"
+  "pkg:*/openjdk8-jre-headless": "language"
+  "pkg:*/gradle": "package-manager"
+  "pkg:*/maven": "package-manager"
+  # GoLang 
+  "pkg:golang/cloud.google.com/go": "language"
+  "pkg:golang.org/x/crypto": "cryptography"
+  # PHP
+  "pkg:*/php": "language"
+  "pkg:*/php7": "language"
+  "pkg:*/php7-dev": "language"
+  "pkg:*/php8": "language"
+  "pkg:*/php8-dev": "language"
+  "pkg:*/composer": "package-manager"
+  "pkg:composer/*": "library"
+  "pkg:composer/laravel/*": "framework"
+  # Ruby
+  "pkg:*/ruby": "language"
+  "pkg:*/ruby-dev": "language"
+  "pkg:*/gem": "package-manager"
+  "pkg:gem/*": "library"
+  # C/C++
+  "pkg:*/gcc": "language"
+  "pkg:*/libgcc": "library"
+  "pkg:*/g++": "language"
+  "pkg:*/clang": "language"
+  "pkg:*/llvm": "language"
+  "pkg:*/make": "language"
+  "pkg:*/cmake": "language"
+
+  # =========
+  # Databases
+  # =========
+  "pkg:*/sqlite": "database"
+  "pkg:*/sqlite3": "database"
+  "pkg:*/sqlite-dev": "database"
+  "pkg:*/sqlite-libs": "database"
+  "pkg:*/mysql": "database"
+  "pkg:*/mysql-dev": "database"
+  "pkg:*/mysql-libs": "database"
+  "pkg:*/mariadb": "database"
+  "pkg:*/mariadb-dev": "database"
+  "pkg:*/mariadb-libs": "database"
+  "pkg:*/postgresql": "database"
+  "pkg:*/postgresql-dev": "database"
+  "pkg:*/postgresql-libs": "database"
+  "pkg:*/mongodb": "database"
+  "pkg:*/mongodb-dev": "database"
+  "pkg:*/redis": "database"
+  "pkg:*/redis-dev": "database"
+  "pkg:*/cassandra": "database"
+  "pkg:*/cassandra-dev": "database"
+
+  # =====================
+  # Compression Libraries
+  # =====================
+  "pkg:*/gzip": "compression"
+  "pkg:*/bzip2": "compression"
+  "pgk:*/tar": "compression"
+  "pkg:*/unzip": "compression"
+  "pkg:*/zip": "compression"
+  "pkg:*/zlib": "compression"
+  "pkg:*/zlib-dev": "compression"
+  "pkg:*/zlib-libs": "compression"
+  "pkg:*/zlib1": "compression"
+  "pkg:*/libbz2": "compression"
+
+
