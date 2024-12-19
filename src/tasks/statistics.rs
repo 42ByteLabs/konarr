@@ -94,19 +94,43 @@ where
     )
     .await?;
 
-    // Count the number of components that are programming languages
-    ServerSettings::update_statistic(
-        connection,
-        Setting::StatsDependenciesLanguages,
-        Component::row_count(
+    let stats = vec![
+        (ComponentType::Library, Setting::StatsLibraries),
+        (ComponentType::Application, Setting::StatsApplications),
+        (ComponentType::Framework, Setting::StatsFrameworks),
+        (ComponentType::ProgrammingLanguage, Setting::StatsLanguages),
+        (
+            ComponentType::OperatingSystem,
+            Setting::StatsOperatingSystems,
+        ),
+        (
+            ComponentType::CompressionLibrary,
+            Setting::StatsCompressionLibraries,
+        ),
+        (ComponentType::Database, Setting::StatsDatabases),
+        (
+            ComponentType::CryptographyLibrary,
+            Setting::StatsCryptographicLibraries,
+        ),
+        (ComponentType::PackageManager, Setting::StatsPackageManagers),
+        (
+            ComponentType::OperatingEnvironment,
+            Setting::StatsOperatingEnvironments,
+        ),
+        (ComponentType::Middleware, Setting::StatsMiddleware),
+    ];
+
+    for (component_type, setting) in stats {
+        log::debug!("Calculating Statistics for: {:?}", component_type);
+        let count = Component::row_count(
             connection,
             Component::query_count()
-                .where_eq("component_type", ComponentType::ProgrammingLanguage)
+                .where_eq("component_type", component_type)
                 .build()?,
         )
-        .await?,
-    )
-    .await?;
+        .await?;
 
+        ServerSettings::update_statistic(connection, setting, count).await?;
+    }
     Ok(())
 }
