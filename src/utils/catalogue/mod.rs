@@ -6,7 +6,7 @@ use crate::models::{Component, ComponentManager, ComponentType};
 const CATALOGUE: &str = include_str!("data.yml");
 
 /// Catalogger
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Catalogue {
     /// Aliases for components
     aliases: HashMap<String, String>,
@@ -29,7 +29,7 @@ impl Catalogue {
     /// Catalogue the component
     ///
     /// Match manager -> type
-    pub fn catalogue(&self, component: &mut Component) -> Result<bool, geekorm::Error> {
+    pub fn catalogue(&self, component: &mut Component) -> Result<bool, crate::KonarrError> {
         let comp_purl = component.purl();
 
         // Exact PURL matching
@@ -63,7 +63,7 @@ impl Catalogue {
     /// This is a simple and quick method to set the component type based on the name of the
     /// component. It is not exhaustive and should be used in conjunction with the `catalogue`
     /// function to ensure the most accurate component type is set.
-    pub fn catalogue_old(component: &mut Component) -> Result<(), geekorm::Error> {
+    pub fn catalogue_old(component: &mut Component) -> Result<(), crate::KonarrError> {
         if component.manager == ComponentManager::Apk || component.manager == ComponentManager::Deb
         {
             // We don't care about the namespace for these package managers
@@ -134,6 +134,30 @@ impl Catalogue {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_wildcards() {
+        let mut catalogue = Catalogue::default();
+        catalogue.catalogue.insert(
+            "pkg:*/openssl".to_string(),
+            ComponentType::CryptographyLibrary,
+        );
+
+        let mut data = vec![
+            Component::from_purl("pkg:deb/debian/openssl").unwrap(),
+            Component::from_purl("pkg:apk/alpine/openssl").unwrap(),
+            Component::from_purl("pkg:rpm/fedora/openssl").unwrap(),
+            Component::from_purl("pkg:generic/openssl").unwrap(),
+            Component::from_purl("pkg:conan/openssl").unwrap(),
+            Component::from_purl("pkg:conan/openssl.org/openssl").unwrap(),
+            Component::from_purl("pkg:alpm/arch/openssl").unwrap(),
+        ];
+
+        for (comp, _ver) in data.iter_mut() {
+            let _output = catalogue.catalogue(comp).unwrap();
+            assert_eq!(comp.component_type, ComponentType::CryptographyLibrary);
+        }
+    }
 
     #[test]
     fn test_catalogue() {
