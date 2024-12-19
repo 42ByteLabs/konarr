@@ -63,6 +63,31 @@ pub struct ProjectsSummary {
 pub struct DependencySummary {
     /// Total Dependencies
     pub total: u32,
+    /// Libraries
+    pub libraries: u32,
+    /// Frameworks
+    pub frameworks: u32,
+    /// Operating Systems
+    #[serde(rename = "operating-systems")]
+    pub operating_systems: u32,
+    /// Programming Languages
+    pub languages: u32,
+    #[serde(rename = "package-managers")]
+    /// Package Managers
+    pub package_managers: u32,
+    /// Compression Libraries
+    #[serde(rename = "compression-libraries")]
+    pub compression_libraries: u32,
+    /// Cryptographic Libraries
+    #[serde(rename = "cryptographic-libraries")]
+    pub cryptographic_libraries: u32,
+    /// Database (Application or Libraries)
+    pub databases: u32,
+    /// Operating Environments
+    #[serde(rename = "operating-environments")]
+    pub operating_environments: u32,
+    /// Middleware
+    pub middleware: u32,
 }
 
 /// Security Summary
