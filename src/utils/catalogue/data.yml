@@ -80,6 +80,9 @@ catalogue:
   "pkg:*/libcrypto-dev": "cryptography"
   "pkg:*/argon2-libs": "cryptography"
   "pkg:*/ssl_client": "cryptography"
+  # GoLang
+  "pkg:golang.org/x/crypto": "cryptography"
+  "pkg:golang/github.com/ProtonMail/go-crypto": "cryptography"
 
   # =====================
   # Middleware / Services
@@ -96,13 +99,18 @@ catalogue:
   "pkg:*/python3": "language"
   "pkg:*/python3-dev": "language"
   "pkg:*/python3-pip": "package-manager"
+  "pkg:*/python3-setuptools": "package-manager"
+  "pkg:*/python3-wheel": "package-manager"
   # Rust / Cargo
   "pkg:*/cargo": "package-manager"
   "pkg:*/rust": "language"
   "pkg:*/rustc": "language"
+  "pkg:*/rustup": "package-manager"
   # Node / NPM
   "pkg:*/nodejs": "language"
   "pkg:*/npm": "package-manager"
+  "pkg:*/yarn": "package-manager"
+  "pkg:*/nvm": "package-manager"
   # Java
   "pkg:*/openjdk8": "language"
   "pkg:*/openjdk8-jre": "language"
@@ -111,12 +119,12 @@ catalogue:
   "pkg:*/openjdk8-jre-headless": "language"
   "pkg:*/gradle": "package-manager"
   "pkg:*/maven": "package-manager"
+  "pkg:*/ant": "package-manager"
+  "pkg:*/ivy": "package-manager"
+  "pkg:*/sbt": "package-manager"
   # GoLang 
   "pkg:golang/cloud.google.com/go": "language"
-  "pkg:golang.org/x/crypto": "cryptography"
-  "pkg:golang/github.com/ProtonMail/go-crypto": "cryptography"
-  "pkg:golang/github.com/therootcompany/xz": "compression"
-  "pkg:golang/github.com/klauspost/pgzip": "compression"
+  "pkg:golang/github.com/golang/go": "language"
   # PHP
   "pkg:*/php": "language"
   "pkg:*/php7": "language"
@@ -131,14 +139,18 @@ catalogue:
   "pkg:*/ruby-dev": "language"
   "pkg:*/gem": "package-manager"
   "pkg:gem/*": "library"
+  "pkg:gem/rails": "framework"
   # C/C++
   "pkg:*/gcc": "language"
   "pkg:*/libgcc": "library"
   "pkg:*/g++": "language"
   "pkg:*/clang": "language"
-  "pkg:*/llvm": "language"
-  "pkg:*/make": "language"
-  "pkg:*/cmake": "language"
+  "pkg:*/llvm": "application"
+  "pkg:*/make": "application"
+  "pkg:*/cmake": "application"
+  "pkg:*/autotools": "application"
+  "pkg:*/autoconf": "application"
+  "pkg:*/automake": "application"
 
   # =========
   # Databases
@@ -162,6 +174,10 @@ catalogue:
   "pkg:*/redis-dev": "database"
   "pkg:*/cassandra": "database"
   "pkg:*/cassandra-dev": "database"
+  "pkg:*/couchdb": "database"
+  "pkg:*/couchdb-dev": "database"
+  "pkg:*/couchbase": "database"
+  "pkg:*/couchbase-dev": "database"
 
   # =====================
   # Compression Libraries
@@ -176,5 +192,10 @@ catalogue:
   "pkg:*/zlib-libs": "compression"
   "pkg:*/zlib1": "compression"
   "pkg:*/libbz2": "compression"
+  "pkg:*/libbz2-dev": "compression"
+  "pkg:*/liblz4": "compression"
+  # GoLang
+  "pkg:golang/github.com/therootcompany/xz": "compression"
+  "pkg:golang/github.com/klauspost/pgzip": "compression"
 
 
