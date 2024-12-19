@@ -16,6 +16,7 @@ use utils::interactive::{prompt_input, prompt_password};
 
 async fn client(config: &Config) -> Result<(konarr::KonarrClient, konarr::client::ServerInfo)> {
     let client = if let Some(token) = &config.agent.token {
+        debug!("Using token for authentication");
         config.server.client_with_token(token.to_string())?
     } else {
         debug!("Interactively logging in");
@@ -99,10 +100,14 @@ async fn main() -> Result<()> {
             output,
         }) => {
             if list {
-                let tools = konarr::tools::get_available_tools().await?;
+                let tools = konarr::tools::ToolConfig::tools().await?;
                 info!("Available tools:");
                 for tool in tools {
-                    info!("> {}", tool);
+                    if !tool.version.is_empty() {
+                        info!("> {} (v{})", tool.name, tool.version);
+                    } else {
+                        info!("> {}", tool.name);
+                    }
                 }
                 return Ok(());
             }
@@ -207,33 +212,70 @@ async fn main() -> Result<()> {
             }
 
             if let Some(psummary) = serverinfo.projects {
-                info!("----- Project Statistics -----");
-                info!(" > ⚡ Projects: {}", psummary.total);
-                info!(" > 💻 Servers: {}", psummary.servers);
-                info!(" > 📦 Containers: {}", psummary.containers);
+                print_stats(
+                    "Projects Statistics",
+                    vec![
+                        ("⚡", "Projects", psummary.total),
+                        ("💻", "Servers", psummary.servers),
+                        ("📦", "Containers", psummary.containers),
+                    ],
+                );
             }
             if let Some(dsummary) = serverinfo.dependencies {
-                info!("----- Dependency Statistics -----");
-                info!(" > 🧰 Dependencies: {}", dsummary.total);
+                print_stats(
+                    "Dependency Statistics",
+                    vec![
+                        ("⚡", "Total", dsummary.total),
+                        ("📦", "Libraries", dsummary.libraries),
+                        ("📦", "Frameworks", dsummary.frameworks),
+                        ("🖥️ ", "Operating Systems", dsummary.operating_systems),
+                        ("📝", "Languages", dsummary.languages),
+                        ("📦", "Package Managers", dsummary.package_managers),
+                        (
+                            "⚡",
+                            "Compression Libraries",
+                            dsummary.compression_libraries,
+                        ),
+                        (
+                            "🔒",
+                            "Cryptographic Libraries",
+                            dsummary.cryptographic_libraries,
+                        ),
+                        ("🐐", "Databases", dsummary.databases),
+                        (
+                            "🛞",
+                            "Operating Environments",
+                            dsummary.operating_environments,
+                        ),
+                        ("🔍", "Middleware", dsummary.middleware),
+                    ],
+                );
             }
             if let Some(security) = serverinfo.security {
-                info!("----- Security Summary -----");
-                info!(" > Total: {}", security.total);
-                info!(" > 🔴 Critical: {}", security.critical);
-                info!(" > 🟠 High: {}", security.high);
-                info!(" > 🟡 Medium: {}", security.medium);
-                info!(" > 🟢 Low: {}", security.low);
-                info!(" > ℹ️  Informational: {}", security.informational);
-                info!(" > 🦠 Malware: {}", security.malware);
-                info!(" > 🛡️ Unmaintained: {}", security.unmaintained);
-                info!(" > ❓ Unknown: {}", security.unknown);
+                print_stats(
+                    "Security Statistics",
+                    vec![
+                        ("🔴", "Critical", security.critical),
+                        ("🟠", "High", security.high),
+                        ("🟡", "Medium", security.medium),
+                        ("🟢", "Low", security.low),
+                        ("ℹ️ ", "Informational", security.informational),
+                        ("🦠", "Malware", security.malware),
+                        ("🛡️ ", "Unmaintained", security.unmaintained),
+                        ("❓", "Unknown", security.unknown),
+                    ],
+                );
             }
             // info!("Dependencies :: {}", serverinfo.dependencies.total);
 
             if let Some(agent_settings) = serverinfo.agent {
-                info!("----- Agent Settings -----");
-                let tools = konarr::tools::get_available_tools().await?;
-                let tool_available = if tools.contains(&agent_settings.tool.to_lowercase()) {
+                info!("----- {:^26} -----", "Agent Settings");
+                let tools = konarr::tools::ToolConfig::tools().await?;
+                let tool_available = if tools
+                    .iter()
+                    .find(|t| t.name == agent_settings.tool.to_lowercase())
+                    .is_some()
+                {
                     "✅"
                 } else {
                     "❌"
@@ -244,9 +286,25 @@ async fn main() -> Result<()> {
                     " > {} Tool to use: {} ",
                     tool_available, agent_settings.tool
                 );
+
+                info!("Other tools available:");
+                for tool in tools.iter() {
+                    if !tool.version.is_empty() {
+                        info!(" > {} (v{})", tool.name, tool.version);
+                    } else {
+                        info!(" > {}", tool.name);
+                    }
+                }
             }
 
             Ok(())
         }
+    }
+}
+
+fn print_stats(title: &str, stats: Vec<(&str, &str, u32)>) {
+    info!("----- {:^26} -----", title);
+    for (emoji, name, value) in stats.iter() {
+        info!(" > {} {:<24}: {}", emoji, name, value);
     }
 }
