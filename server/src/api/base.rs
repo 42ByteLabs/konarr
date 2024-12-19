@@ -67,6 +67,21 @@ pub struct ProjectsSummary {
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct DependenciesSummary {
     pub total: u64,
+    pub libraries: u64,
+    pub frameworks: u64,
+    #[serde(rename = "operating-systems")]
+    pub operating_systems: u64,
+    pub languages: u64,
+    #[serde(rename = "package-managers")]
+    pub package_managers: u64,
+    #[serde(rename = "compression-libraries")]
+    pub compression_libraries: u64,
+    #[serde(rename = "cryptographic-libraries")]
+    pub cryptographic_libraries: u64,
+    pub databases: u64,
+    #[serde(rename = "operating-environments")]
+    pub operating_environments: u64,
+    pub middleware: u64,
 }
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
@@ -173,10 +188,7 @@ pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResul
                 servers: find_statistic(&stats, Setting::StatsProjectsServers),
                 ..Default::default()
             }),
-            dependencies: Some(DependenciesSummary {
-                total: find_statistic(&stats, Setting::StatsDependenciesTotal),
-                ..Default::default()
-            }),
+            dependencies: Some(DependenciesSummary::from(stats)),
             security,
             agent,
             ..Default::default()
@@ -216,6 +228,40 @@ impl From<Vec<ServerSettings>> for SecuritySummary {
                 summary.unmaintained = setting.value.parse().unwrap_or(0);
             } else if setting.name == Setting::SecurityAlertsUnknown {
                 summary.unknown = setting.value.parse().unwrap_or(0);
+            }
+        }
+
+        summary
+    }
+}
+
+impl From<Vec<ServerSettings>> for DependenciesSummary {
+    fn from(value: Vec<ServerSettings>) -> Self {
+        let mut summary = DependenciesSummary::default();
+
+        for setting in value.iter() {
+            if setting.name == Setting::StatsDependenciesTotal {
+                summary.total = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsLibraries {
+                summary.libraries = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsFrameworks {
+                summary.frameworks = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsOperatingSystems {
+                summary.operating_systems = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsLanguages {
+                summary.languages = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsPackageManagers {
+                summary.package_managers = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsCompressionLibraries {
+                summary.compression_libraries = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsCryptographicLibraries {
+                summary.cryptographic_libraries = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsDatabases {
+                summary.databases = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsOperatingEnvironments {
+                summary.operating_environments = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsMiddleware {
+                summary.middleware = setting.value.parse().unwrap_or(0);
             }
         }
 
