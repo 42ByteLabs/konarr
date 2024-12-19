@@ -64,6 +64,10 @@ pub enum KonarrError {
     #[error("Tool Error: {0}")]
     ToolError(String),
 
+    /// From Utf8 Error
+    #[error("{0}")]
+    FromUtf8Error(#[from] std::string::FromUtf8Error),
+
     /// URL Parse Error
     #[error("{0}")]
     UrlParseError(#[from] url::ParseError),

@@ -228,7 +228,7 @@ async fn run_docker(
                 None => {
                     info!("Creating new Project for Container: {}", name);
                     let mut proj = KonarrProject::new(name.clone(), "container".to_string());
-                    proj.parent = Some(server_project.id as i32);
+                    proj.parent = Some(server_project.id);
                     proj.description = description.clone();
                     proj.create(client).await?;
                     proj
@@ -237,7 +237,7 @@ async fn run_docker(
         } else {
             info!("Creating new Project for Container: {}", name);
             let mut proj = KonarrProject::new(name.clone(), "container".to_string());
-            proj.parent = Some(server_project.id as i32);
+            proj.parent = Some(server_project.id);
             proj.description = description.clone();
             proj.create(client).await?;
             proj
