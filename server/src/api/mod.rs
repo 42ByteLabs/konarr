@@ -74,22 +74,49 @@ pub type ApiResult<T> = Result<Json<T>, KonarrServerError>;
 
 impl<'r> Responder<'r, 'r> for KonarrServerError {
     fn respond_to(self, request: &'r Request<'_>) -> response::Result<'r> {
-        let status = match self {
-            KonarrServerError::KonarrError(KonarrError::GeekOrm(geekorm::Error::NoRowsFound))
-            | KonarrServerError::GeekOrmError(geekorm::Error::NoRowsFound) => Status::NotFound,
-            _ => Status::InternalServerError,
-        };
-
-        ApiErrorResponse::InternalServerError {
-            inner: (
-                status,
-                Json(ApiError {
-                    message: "Internal Server Error".to_string(),
-                    #[cfg(debug_assertions)]
-                    details: self.to_string(),
-                    status: status.code as i16,
-                }),
-            ),
+        match self {
+            // Not Found
+            KonarrServerError::GeekOrmError(geekorm::Error::NoRowsFound)
+            | KonarrServerError::KonarrError(KonarrError::GeekOrm(geekorm::Error::NoRowsFound)) => {
+                ApiErrorResponse::NotFound {
+                    inner: (
+                        Status::NotFound,
+                        Json(ApiError {
+                            message: "Not Found".to_string(),
+                            #[cfg(debug_assertions)]
+                            details: self.to_string(),
+                            status: 404,
+                        }),
+                    ),
+                }
+            }
+            // Unauthorized
+            KonarrServerError::Unauthorized
+            | KonarrServerError::KonarrError(KonarrError::AuthenticationError(_))
+            | KonarrServerError::KonarrError(KonarrError::Unauthorized) => {
+                ApiErrorResponse::Unauthorized {
+                    inner: (
+                        Status::Unauthorized,
+                        Json(ApiError {
+                            message: "Unauthorized".to_string(),
+                            #[cfg(debug_assertions)]
+                            details: self.to_string(),
+                            status: 401,
+                        }),
+                    ),
+                }
+            }
+            _ => ApiErrorResponse::InternalServerError {
+                inner: (
+                    Status::InternalServerError,
+                    Json(ApiError {
+                        message: "Internal Server Error".to_string(),
+                        #[cfg(debug_assertions)]
+                        details: self.to_string(),
+                        status: 500,
+                    }),
+                ),
+            },
         }
         .respond_to(request)
     }
@@ -113,33 +140,27 @@ impl From<ApiError> for ApiErrorResponse {
 
 impl From<konarr::KonarrError> for ApiError {
     fn from(value: konarr::KonarrError) -> ApiError {
-        ApiError {
-            message: "Internal Server Error".to_string(),
-            #[cfg(debug_assertions)]
-            details: value.to_string(),
-            status: 500,
-        }
-    }
-}
-
-impl From<geekorm::Error> for ApiError {
-    fn from(error: geekorm::Error) -> Self {
-        ApiError {
-            message: "Internal Server Error".to_string(),
-            #[cfg(debug_assertions)]
-            details: error.to_string(),
-            status: 500,
-        }
-    }
-}
-
-impl From<libsql::Error> for ApiError {
-    fn from(error: libsql::Error) -> Self {
-        ApiError {
-            message: "Internal Server Error".to_string(),
-            #[cfg(debug_assertions)]
-            details: error.to_string(),
-            status: 500,
+        match value {
+            konarr::KonarrError::GeekOrm(geekorm::Error::NoRowsFound) => ApiError {
+                message: "Not Found".to_string(),
+                #[cfg(debug_assertions)]
+                details: value.to_string(),
+                status: 404,
+            },
+            konarr::KonarrError::Unauthorized | konarr::KonarrError::AuthenticationError(_) => {
+                ApiError {
+                    message: "Unauthorized".to_string(),
+                    #[cfg(debug_assertions)]
+                    details: value.to_string(),
+                    status: 401,
+                }
+            }
+            _ => ApiError {
+                message: "Internal Server Error".to_string(),
+                #[cfg(debug_assertions)]
+                details: value.to_string(),
+                status: 500,
+            },
         }
     }
 }
