@@ -1,4 +1,5 @@
 Dockerfile
+.env
 target/
 examples/
 frontend/node_modules/
