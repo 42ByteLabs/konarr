@@ -20,6 +20,22 @@ pub trait Tool {
     where
         Self: Sized;
 
+    /// Get the version of the Tool
+    async fn version(config: &ToolConfig) -> Result<String, KonarrError>
+    where
+        Self: Sized,
+    {
+        let output = tokio::process::Command::new(&config.path)
+            .args(&["--version"])
+            .output()
+            .await?;
+        if !output.status.success() {
+            return Err(KonarrError::ToolError("Failed to get version".to_string()));
+        }
+        let version = String::from_utf8(output.stdout)?;
+        Ok(version)
+    }
+
     /// Find the Tool
     fn find(binary: &str) -> Result<PathBuf, KonarrError>
     where
@@ -56,14 +72,17 @@ pub async fn run(config: &Config, image: impl Into<String>) -> Result<String, Ko
         match tool_name.as_str() {
             "grype" => {
                 let grype = Grype::init()?;
+                log::info!("Running Grype :: {}", Grype::version(&grype).await?);
                 Grype::run(&grype, image).await
             }
             "syft" => {
                 let syft = Syft::init()?;
+                log::info!("Running Syft :: {}", Syft::version(&syft).await?);
                 Syft::run(&syft, image).await
             }
             "trivy" => {
                 let trivy = Trivy::init()?;
+                log::info!("Running Trivy :: {}", Trivy::version(&trivy).await?);
                 Trivy::run(&trivy, image).await
             }
             _ => Err(KonarrError::ToolError(format!(
@@ -75,10 +94,13 @@ pub async fn run(config: &Config, image: impl Into<String>) -> Result<String, Ko
         log::info!("No tool specified, trying to find a tool");
 
         if let Ok(grype) = Grype::init() {
+            log::info!("Running Grype :: {}", Grype::version(&grype).await?);
             Grype::run(&grype, image).await
         } else if let Ok(trivy) = Trivy::init() {
+            log::info!("Running Trivy :: {}", Trivy::version(&trivy).await?);
             Trivy::run(&trivy, image).await
         } else if let Ok(syft) = Syft::init() {
+            log::info!("Running Syft :: {}", Syft::version(&syft).await?);
             Syft::run(&syft, image).await
         } else {
             Err(KonarrError::ToolError("No tools found".to_string()))
@@ -134,5 +156,12 @@ impl ToolConfig {
         T: Tool,
     {
         T::run(self, image).await
+    }
+
+    /// Read the output file
+    pub async fn read_output(&self) -> Result<String, KonarrError> {
+        tokio::fs::read_to_string(&self.output)
+            .await
+            .map_err(|e| KonarrError::ToolError(format!("Failed to read output: {}", e)))
     }
 }

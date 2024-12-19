@@ -46,6 +46,6 @@ where
         }
 
         // Read the output file
-        Ok(tokio::fs::read_to_string(output_path).await?)
+        Ok(config.read_output().await?)
     }
 }

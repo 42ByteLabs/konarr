@@ -10,7 +10,7 @@ use log::{debug, info};
 pub enum DisplayCommands {
     Snapshots {
         #[clap(short, long)]
-        id: Option<i32>,
+        id: Option<u32>,
     },
 }
 
@@ -29,7 +29,7 @@ pub async fn run(
             info!("Displaying Snapshots");
 
             if let Some(id) = id {
-                let mut snapshot = Snapshot::fetch_by_primary_key(&connection, id).await?;
+                let mut snapshot = Snapshot::fetch_by_primary_key(&connection, id as i32).await?;
                 snapshot.fetch_metadata(&connection).await?;
 
                 println!("Snapshot ID: {:?}", snapshot.id);

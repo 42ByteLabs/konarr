@@ -54,6 +54,6 @@ impl Tool for Trivy {
         log::info!("Successfully ran Trivy");
 
         // Read the output file
-        Ok(tokio::fs::read_to_string(config.output.clone()).await?)
+        Ok(config.read_output().await?)
     }
 }
