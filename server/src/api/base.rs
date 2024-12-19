@@ -68,6 +68,7 @@ pub struct ProjectsSummary {
 pub struct DependenciesSummary {
     pub total: u64,
     pub libraries: u64,
+    pub applications: u64,
     pub frameworks: u64,
     #[serde(rename = "operating-systems")]
     pub operating_systems: u64,
@@ -244,6 +245,8 @@ impl From<Vec<ServerSettings>> for DependenciesSummary {
                 summary.total = setting.value.parse().unwrap_or(0);
             } else if setting.name == Setting::StatsLibraries {
                 summary.libraries = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsApplications {
+                summary.applications = setting.value.parse().unwrap_or(0);
             } else if setting.name == Setting::StatsFrameworks {
                 summary.frameworks = setting.value.parse().unwrap_or(0);
             } else if setting.name == Setting::StatsOperatingSystems {
