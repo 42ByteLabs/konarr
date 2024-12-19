@@ -32,8 +32,8 @@ pub trait Tool {
         if !output.status.success() {
             return Err(KonarrError::ToolError("Failed to get version".to_string()));
         }
-        let version = String::from_utf8(output.stdout)?;
-        Ok(version)
+        let version = String::from_utf8(output.stdout)?.replace(&config.name, "");
+        Ok(version.trim().to_string())
     }
 
     /// Find the Tool
@@ -54,6 +54,11 @@ pub trait Tool {
         )))
     }
 
+    /// Get the remote version of the Tool
+    async fn remote_version<'a>(config: &'a mut ToolConfig) -> Result<String, KonarrError>
+    where
+        Self: Sized;
+
     /// Run the Tool
     async fn run(
         config: &ToolConfig,
@@ -71,18 +76,18 @@ pub async fn run(config: &Config, image: impl Into<String>) -> Result<String, Ko
         log::info!("Using tool: {}", tool_name);
         match tool_name.as_str() {
             "grype" => {
-                let grype = Grype::init()?;
-                log::info!("Running Grype :: {}", Grype::version(&grype).await?);
+                let mut grype = Grype::init()?;
+                log::info!("Running Grype :: {}", Grype::version(&mut grype).await?);
                 Grype::run(&grype, image).await
             }
             "syft" => {
-                let syft = Syft::init()?;
-                log::info!("Running Syft :: {}", Syft::version(&syft).await?);
+                let mut syft = Syft::init()?;
+                log::info!("Running Syft :: {}", Syft::version(&mut syft).await?);
                 Syft::run(&syft, image).await
             }
             "trivy" => {
-                let trivy = Trivy::init()?;
-                log::info!("Running Trivy :: {}", Trivy::version(&trivy).await?);
+                let mut trivy = Trivy::init()?;
+                log::info!("Running Trivy :: {}", Trivy::version(&mut trivy).await?);
                 Trivy::run(&trivy, image).await
             }
             _ => Err(KonarrError::ToolError(format!(
@@ -93,14 +98,14 @@ pub async fn run(config: &Config, image: impl Into<String>) -> Result<String, Ko
     } else {
         log::info!("No tool specified, trying to find a tool");
 
-        if let Ok(grype) = Grype::init() {
-            log::info!("Running Grype :: {}", Grype::version(&grype).await?);
+        if let Ok(mut grype) = Grype::init() {
+            log::info!("Running Grype :: {}", Grype::version(&mut grype).await?);
             Grype::run(&grype, image).await
-        } else if let Ok(trivy) = Trivy::init() {
-            log::info!("Running Trivy :: {}", Trivy::version(&trivy).await?);
+        } else if let Ok(mut trivy) = Trivy::init() {
+            log::info!("Running Trivy :: {}", Trivy::version(&mut trivy).await?);
             Trivy::run(&trivy, image).await
-        } else if let Ok(syft) = Syft::init() {
-            log::info!("Running Syft :: {}", Syft::version(&syft).await?);
+        } else if let Ok(mut syft) = Syft::init() {
+            log::info!("Running Syft :: {}", Syft::version(&mut syft).await?);
             Syft::run(&syft, image).await
         } else {
             Err(KonarrError::ToolError("No tools found".to_string()))
@@ -108,26 +113,15 @@ pub async fn run(config: &Config, image: impl Into<String>) -> Result<String, Ko
     }
 }
 
-/// Gets a list of available tools
-pub async fn get_available_tools() -> Result<Vec<String>, KonarrError> {
-    let mut tools = vec![];
-    if let Ok(grype) = Grype::init() {
-        tools.push(grype.name);
-    }
-    if let Ok(syft) = Syft::init() {
-        tools.push(syft.name);
-    }
-    if let Ok(trivy) = Trivy::init() {
-        tools.push(trivy.name);
-    }
-    Ok(tools)
-}
-
 /// Tool Configuration
 #[derive(Debug, Clone)]
 pub struct ToolConfig {
     /// Tool name
     pub name: String,
+    /// Version of the tool
+    pub version: String,
+    /// Remote version of the tool
+    pub remote_version: Option<String>,
     /// Tool path
     pub path: PathBuf,
     /// Output path for the SBOM file
@@ -145,9 +139,31 @@ impl ToolConfig {
 
         Self {
             name: name.to_string(),
+            version: String::new(),
+            remote_version: None,
             path,
             output,
         }
+    }
+
+    /// Get the list of available tools
+    pub async fn tools() -> Result<Vec<ToolConfig>, KonarrError> {
+        let mut tools = vec![];
+
+        if let Ok(mut grype) = Grype::init() {
+            grype.version = Grype::version(&grype).await?;
+            tools.push(grype);
+        }
+        if let Ok(mut syft) = Syft::init() {
+            syft.version = Syft::version(&syft).await?;
+            tools.push(syft);
+        }
+        if let Ok(mut trivy) = Trivy::init() {
+            trivy.version = Trivy::version(&trivy).await?;
+            tools.push(trivy);
+        }
+
+        Ok(tools)
     }
 
     /// Run the Tool
@@ -163,5 +179,46 @@ impl ToolConfig {
         tokio::fs::read_to_string(&self.output)
             .await
             .map_err(|e| KonarrError::ToolError(format!("Failed to read output: {}", e)))
+    }
+
+    /// Get the remote version of the Tool from GitHub releases
+    ///
+    /// https://docs.github.com/en/rest/releases/releases?apiVersion=2022-11-28#get-the-latest-release
+    pub(crate) async fn github_release(
+        &mut self,
+        repository: impl Into<String>,
+    ) -> Result<String, KonarrError> {
+        let repository = repository.into();
+        let url = format!(
+            "https://api.github.com/repos/{}/releases/latest",
+            repository
+        );
+        log::debug!("Getting release from GitHub: {}", url);
+        // Accept header: application/vnd.github.v3+json
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            reqwest::header::ACCEPT,
+            reqwest::header::HeaderValue::from_static("application/vnd.github.v3+json"),
+        );
+
+        let client = reqwest::Client::builder()
+            .user_agent(format!("Konarr/{}", crate::KONARR_VERSION))
+            .default_headers(headers)
+            .build()?;
+        let response = client.get(&url).send().await?;
+
+        if !response.status().is_success() {
+            log::error!("Failed to get release from GitHub: {}", repository);
+            return Err(KonarrError::ToolError(format!(
+                "Failed to get release: {}",
+                response.status()
+            )));
+        }
+        let json: serde_json::Value = response.json().await?;
+        let version = json["tag_name"]
+            .as_str()
+            .ok_or(KonarrError::ToolError("No tag_name".to_string()))?;
+        self.remote_version = Some(version.to_string());
+        Ok(version.to_string())
     }
 }

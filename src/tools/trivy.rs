@@ -20,6 +20,24 @@ impl Tool for Trivy {
         }
     }
 
+    async fn version(config: &ToolConfig) -> Result<String, KonarrError>
+    where
+        Self: Sized,
+    {
+        let output = tokio::process::Command::new(&config.path)
+            .args(&["--version"])
+            .output()
+            .await?;
+        if !output.status.success() {
+            return Err(KonarrError::ToolError("Failed to get version".to_string()));
+        }
+        let data = String::from_utf8(output.stdout)?;
+        // Read the first line of the output
+        let first_line = data.lines().next().unwrap_or_default();
+        let version = first_line.replace("Version: ", "");
+        Ok(version)
+    }
+
     async fn run(
         config: &ToolConfig,
         image: impl Into<String> + Send,
@@ -55,5 +73,9 @@ impl Tool for Trivy {
 
         // Read the output file
         Ok(config.read_output().await?)
+    }
+
+    async fn remote_version<'a>(config: &'a mut ToolConfig) -> Result<String, KonarrError> {
+        config.github_release("aquasecurity/trivy").await
     }
 }

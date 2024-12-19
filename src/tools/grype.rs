@@ -49,6 +49,10 @@ impl Tool for Grype {
         log::info!("Successfully ran Grype");
 
         // Read the output file
-        Ok(tokio::fs::read_to_string(config.output.clone()).await?)
+        Ok(config.read_output().await?)
+    }
+
+    async fn remote_version<'a>(config: &'a mut ToolConfig) -> Result<String, KonarrError> {
+        config.github_release("anchore/grype").await
     }
 }
