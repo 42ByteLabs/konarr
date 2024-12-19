@@ -48,4 +48,8 @@ where
         // Read the output file
         Ok(config.read_output().await?)
     }
+
+    async fn remote_version<'a>(config: &'a mut ToolConfig) -> Result<String, KonarrError> {
+        config.github_release("anchore/syft").await
+    }
 }
