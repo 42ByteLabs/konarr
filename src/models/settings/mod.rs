@@ -154,10 +154,23 @@ impl ServerSettings {
     where
         T: GeekConnection<Connection = T> + 'a,
     {
-        ServerSettings::fetch_by_name(connection, name)
-            .await?
-            .set_update(connection, &value.to_string())
-            .await?;
+        match ServerSettings::fetch_by_name(connection, &name).await {
+            Ok(mut setting) => {
+                if value != setting.value.parse().unwrap_or(0) {
+                    debug!(
+                        "Updating statistic: {:?} = {} (was {})",
+                        name, value, setting.value
+                    );
+                    setting.value = value.to_string();
+                    setting.update(connection).await?;
+                }
+            }
+            Err(_) => {
+                let mut setting =
+                    ServerSettings::new(name, SettingType::Statistics, value.to_string());
+                setting.save(connection).await?;
+            }
+        }
         Ok(())
     }
 

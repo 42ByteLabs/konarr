@@ -68,8 +68,28 @@ pub enum Setting {
     // Statistics - Dependencies
     #[geekorm(key = "stats.dependencies.total")]
     StatsDependenciesTotal,
+    #[geekorm(key = "stats.dependencies.libraries")]
+    StatsLibraries,
+    #[geekorm(key = "stats.dependencies.applications")]
+    StatsApplications,
+    #[geekorm(key = "stats.dependencies.frameworks")]
+    StatsFrameworks,
+    #[geekorm(key = "stats.dependencies.operating-systems")]
+    StatsOperatingSystems,
+    #[geekorm(key = "stats.dependencies.package-managers")]
+    StatsPackageManagers,
     #[geekorm(key = "stats.dependencies.languages")]
-    StatsDependenciesLanguages,
+    StatsLanguages,
+    #[geekorm(key = "stats.dependencies.databases")]
+    StatsDatabases,
+    #[geekorm(key = "stats.dependencies.cryptographic-libraries")]
+    StatsCryptographicLibraries,
+    #[geekorm(key = "stats.dependencies.compression")]
+    StatsCompressionLibraries,
+    #[geekorm(key = "stats.dependencies.operating-environments")]
+    StatsOperatingEnvironments,
+    #[geekorm(key = "stats.dependencies.middleware")]
+    StatsMiddleware,
 
     #[geekorm(key = "stats.dependencies.secure")]
     StatsDependenciesSecure,
@@ -119,7 +139,7 @@ pub enum Setting {
 }
 
 /// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 36] = [
+pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 35] = [
     // Registration Settings
     (Setting::Registration, SettingType::Toggle, "enabled"),
     // If we are already initialized
@@ -140,11 +160,6 @@ pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 36] =
     ),
     (
         Setting::StatsDependenciesTotal,
-        SettingType::Statistics,
-        "0",
-    ),
-    (
-        Setting::StatsDependenciesLanguages,
         SettingType::Statistics,
         "0",
     ),
