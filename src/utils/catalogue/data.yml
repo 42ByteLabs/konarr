@@ -13,6 +13,7 @@ catalogue:
   "pkg:apk/alpine/alpine-conf": "package-manager"
   "pkg:apk/alpine/alpine-baselayout": "oe"
   "pkg:apk/alpine/alpine-baselayout-data": "oe"
+  "pkg:apk/alpine/alpine-keys": "oe"
   "pkg:apk/alpine/coreutils": "oe"
   "pkg:apk/alpine/coreutils-env": "oe"
   "pkg:apk/alpine/coreutils-fmt": "oe"
@@ -113,6 +114,9 @@ catalogue:
   # GoLang 
   "pkg:golang/cloud.google.com/go": "language"
   "pkg:golang.org/x/crypto": "cryptography"
+  "pkg:golang/github.com/ProtonMail/go-crypto": "cryptography"
+  "pkg:golang/github.com/therootcompany/xz": "compression"
+  "pkg:golang/github.com/klauspost/pgzip": "compression"
   # PHP
   "pkg:*/php": "language"
   "pkg:*/php7": "language"
