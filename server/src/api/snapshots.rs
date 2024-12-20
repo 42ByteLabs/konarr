@@ -78,7 +78,20 @@ pub(crate) async fn create_snapshot(
 
     info!("Creating snapshot for Project: {}", snapshot.project_id);
     let mut project =
-        models::Projects::fetch_by_primary_key(&connection, snapshot.project_id as i32).await?;
+        match models::Projects::fetch_by_primary_key(&connection, snapshot.project_id as i32).await
+        {
+            Ok(project) => project,
+            Err(geekorm::Error::NoRowsFound) => {
+                log::error!("Project not found: {}", snapshot.project_id);
+                return Err(
+                    KonarrServerError::ProjectNotFoundError(snapshot.project_id as i32).into(),
+                );
+            }
+            Err(e) => {
+                log::error!("Failed to fetch project: {:?}", e);
+                return Err(KonarrServerError::InternalServerError.into());
+            }
+        };
     debug!("Project: {:?}", project);
 
     let snapshot = match models::Snapshot::create(&connection).await {
@@ -100,7 +113,7 @@ pub(crate) async fn patch_snapshot_metadata(
     id: u32,
     metadata: Json<HashMap<String, String>>,
 ) -> ApiResult<SnapshotResp> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     info!("Updating metadata for snapshot: {}", id);
     let mut snapshot = match models::Snapshot::fetch_by_primary_key(&connection, id as i32).await {
@@ -135,16 +148,6 @@ pub(crate) async fn patch_snapshot_metadata(
             .await?;
     }
 
-    // Run the statistics task in the background
-    tokio::spawn(async move {
-        konarr::tasks::statistics(&connection)
-            .await
-            .map_err(|e| {
-                log::error!("Failed to run alert calculator: {:?}", e);
-            })
-            .ok();
-    });
-
     Ok(Json(snapshot.into()))
 }
 
@@ -155,7 +158,7 @@ pub(crate) async fn upload_bom(
     id: u32,
     data: rocket::data::Data<'_>,
 ) -> ApiResult<SnapshotResp> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     info!("Uploading SBOM for snapshot: {}", id);
     let mut snapshot = models::Snapshot::fetch_by_primary_key(&connection, id as i32).await?;
@@ -168,27 +171,12 @@ pub(crate) async fn upload_bom(
         .map_err(|_| konarr::KonarrError::ParseSBOM("Failed to read data".to_string()))?;
 
     info!("Read SBOM data: {} bytes", data.len());
-    let bom = Parsers::parse(&data)?;
+    let bom = Parsers::parse(&data)
+        .map_err(|e| KonarrServerError::BillOfMaterialsParseError(e.to_string()))?;
     debug!("Parsed SBOM: {:?}", bom);
 
     info!("Adding SBOM to snapshot: {}", snapshot.id);
     snapshot.add_bom(&connection, &bom).await?;
-
-    tokio::spawn(async move {
-        info!("Running statistics and alert calculator tasks");
-        konarr::tasks::statistics(&connection)
-            .await
-            .map_err(|e| {
-                log::error!("Failed to run statistics: {:?}", e);
-            })
-            .ok();
-        konarr::tasks::alerts::alert_calculator(&connection)
-            .await
-            .map_err(|e| {
-                log::error!("Failed to run alert calculator: {:?}", e);
-            })
-            .ok();
-    });
 
     Ok(Json(snapshot.into()))
 }
@@ -202,7 +190,7 @@ pub(crate) async fn get_snapshot_dependencies(
     page: Option<u32>,
     limit: Option<u32>,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let page = page.unwrap_or(0) as usize;
     let limit = limit.unwrap_or(10) as usize;

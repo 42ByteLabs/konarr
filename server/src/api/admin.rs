@@ -60,7 +60,7 @@ pub struct AdminResponse {
 
 #[get("/")]
 pub async fn settings(state: &State<AppState>, _session: AdminSession) -> ApiResult<AdminResponse> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let settings = ServerSettings::fetch_settings(&connection).await?;
     log::debug!("Fetched {} settings", settings.len());
@@ -100,7 +100,7 @@ pub async fn update_settings(
     _session: AdminSession,
     settings: Json<HashMap<String, String>>,
 ) -> ApiResult<AdminResponse> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     info!("Updating settings: {:?}", settings);
 
@@ -154,7 +154,7 @@ pub(crate) async fn get_users(
     state: &State<AppState>,
     _session: AdminSession,
 ) -> ApiResult<Vec<AdminUserSummary>> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let users =
         konarr::models::Users::query(&connection, konarr::models::Users::query_all()).await?;
@@ -189,7 +189,7 @@ pub(crate) async fn update_users(
     id: u32,
     data: Json<UserPatchReq>,
 ) -> ApiResult<AdminUserSummary> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let mut user = konarr::models::Users::fetch_by_primary_key(&connection, id as i32).await?;
     log::info!("Updating user :: {}", user.username);
