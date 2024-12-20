@@ -35,9 +35,12 @@ services:
     environment:
       # Project name of the Konarr server
       KONARR_HOST: konarr-server
+      KONARR_AUTO_INSTALL: "true"
     volumes:
       # Share the configuration with the server
       - config:/config
+      # Toolcache directory for storing downloaded tools
+      - ./toolcache:/usr/local/toolcache
       # Docker socket
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
