@@ -20,6 +20,10 @@ pub enum Setting {
     AgentKey,
     #[geekorm(key = "agent.tool")]
     AgentTool,
+    #[geekorm(key = "agent.tool.auto-install")]
+    AgentToolAutoInstall,
+    #[geekorm(key = "agent.tool.auto-update")]
+    AgentToolAutoUpdate,
 
     // Statistics - Projects
     #[geekorm(key = "stats.projects.total")]
@@ -139,13 +143,23 @@ pub enum Setting {
 }
 
 /// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 35] = [
+pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 37] = [
     // Registration Settings
     (Setting::Registration, SettingType::Toggle, "enabled"),
     // If we are already initialized
     (Setting::Initialized, SettingType::Boolean, "false"),
     // Agent Settings
     (Setting::Agent, SettingType::Toggle, "disabled"),
+    (
+        Setting::AgentToolAutoInstall,
+        SettingType::Toggle,
+        "disabled",
+    ),
+    (
+        Setting::AgentToolAutoUpdate,
+        SettingType::Toggle,
+        "disabled",
+    ),
     // Statistics
     (Setting::StatsProjectsTotal, SettingType::Statistics, "0"),
     (Setting::StatsProjectsActive, SettingType::Statistics, "0"),
