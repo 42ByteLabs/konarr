@@ -120,4 +120,8 @@ pub struct SecuritySummary {
 pub struct AgentSettings {
     /// Agent tool name
     pub tool: String,
+    /// Agent Auto-Install Tools
+    pub auto_install: bool,
+    /// Agent Auto-Update Tools
+    pub auto_update: bool,
 }
