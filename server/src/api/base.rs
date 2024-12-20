@@ -105,6 +105,10 @@ pub struct SecuritySummary {
 pub struct AgentResponse {
     /// Tool name
     pub tool: AgentTool,
+    /// Auto-install setting
+    pub auto_install: bool,
+    /// Auto-update setting
+    pub auto_update: bool,
 }
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
@@ -168,6 +172,18 @@ pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResul
                         .await?
                         .value,
                 ),
+                auto_install: ServerSettings::fetch_by_name(
+                    &connection,
+                    Setting::AgentToolAutoInstall,
+                )
+                .await?
+                .boolean(),
+                auto_update: ServerSettings::fetch_by_name(
+                    &connection,
+                    Setting::AgentToolAutoUpdate,
+                )
+                .await?
+                .boolean(),
             })
         } else {
             None

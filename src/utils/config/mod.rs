@@ -487,6 +487,12 @@ pub struct AgentConfig {
     pub docker_socket: Option<String>,
     /// Tool to use
     pub tool: Option<String>,
+    /// Tool Auto-Install
+    #[serde(default)]
+    pub tool_auto_install: bool,
+    /// Tool Auto-Update
+    #[serde(default)]
+    pub tool_auto_update: bool,
 }
 
 impl AgentConfig {
