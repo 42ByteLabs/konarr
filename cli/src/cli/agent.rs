@@ -1,5 +1,6 @@
 use bollard::{container::ListContainersOptions, API_DEFAULT_VERSION};
 use konarr::{
+    bom::{BomParser, Parsers},
     client::{
         projects::{KonarrProject, KonarrProjects},
         snapshot::KonarrSnapshot,
@@ -292,6 +293,32 @@ async fn run_docker(
 
         info!("Container Snapshot: {}", container_snapshot.id);
 
+        // TODO: Auto-install tool
+        if state {
+            let results = konarr::tools::run(&config, container_image).await?;
+
+            log::info!("Parsing and validating SBOM with Konarr...");
+            match Parsers::parse(&results.as_bytes()) {
+                Ok(bom) => {
+                    info!("Validate SBOM spec supported by Konarr: {}", bom.sbom_type);
+                }
+                Err(e) => {
+                    return Err(KonarrError::UnknownError(
+                        format!("Error parsing SBOM: {:?}", e).to_string(),
+                    ));
+                }
+            }
+
+            info!("Uploading BOM to Server...");
+            let json_data: serde_json::Value = serde_json::from_slice(&results.as_bytes())?;
+
+            let result = container_snapshot.upload_bom(client, json_data).await?;
+            info!("Uploaded BOM to Server");
+            debug!("Snapshot: {:#?}", result);
+        } else {
+            info!("Container Snapshot already exists for Container: {}", name);
+        }
+
         // TODO: Docker Compose metadata
         // TODO: Creation time of the container
 
@@ -333,15 +360,6 @@ async fn run_docker(
         container_snapshot
             .update_metadata(client, snapshot_metadata)
             .await?;
-
-        if state {
-            let results = konarr::tools::run(&config, container_image).await?;
-
-            info!("Uploading BOM to Server");
-            container_snapshot.upload_bom(client, results).await?;
-        } else {
-            info!("Container Snapshot already exists for Container: {}", name);
-        }
 
         info!("Done with Container: {}", name);
     }
