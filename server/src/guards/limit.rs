@@ -13,8 +13,7 @@ pub async fn rate_limit() -> ApiErrorResponse {
             rocket::http::Status::TooManyRequests,
             Json(ApiError {
                 message: "Rate limit exceeded".to_string(),
-                #[cfg(debug_assertions)]
-                details: "".to_string(),
+                details: None,
                 status: 429,
             }),
         ),
