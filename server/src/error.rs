@@ -22,6 +22,11 @@ pub enum KonarrServerError {
     /// Snapshot Not Found Error
     #[error("Snapshot {0} not found")]
     SnapshotNotFoundError(i32),
+
+    /// Bill of Materials Parsing Error
+    #[error("Failed to parse bill of materials: {0}")]
+    BillOfMaterialsParseError(String),
+
     /// Unauthorized Error
     #[error("Unauthorized")]
     Unauthorized,
