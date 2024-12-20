@@ -70,7 +70,7 @@ pub(crate) async fn get_project(
     _session: Session,
     id: i32,
 ) -> ApiResult<ProjectResp> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let mut project = models::Projects::fetch_by_primary_key(&connection, id).await?;
 
@@ -99,7 +99,7 @@ pub(crate) async fn get_projects(
     r#type: Option<String>,
     parents: Option<bool>,
 ) -> ApiResult<ApiResponse<Vec<ProjectResp>>> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let limit = limit.unwrap_or(10) as usize;
     let offset = page.unwrap_or(0) as usize * limit as usize;
@@ -149,7 +149,7 @@ pub async fn create_project(
     _session: Session,
     project_req: Json<ProjectReq>,
 ) -> ApiResult<ProjectResp> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let mut project: models::Projects = project_req.into_inner().into();
     project.fetch_or_create(&connection).await?;
@@ -185,7 +185,7 @@ pub async fn patch_project(
     project_req: Json<ProjectUpdateRequest>,
     id: Option<u32>,
 ) -> ApiResult<ProjectResp> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let project_id = if let Some(id) = id {
         id
@@ -241,7 +241,7 @@ pub(crate) async fn update_project_metadata(
     _session: Session,
     id: i32,
 ) -> ApiResult<ProjectResp> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let mut project = models::Projects::fetch_by_primary_key(&connection, id).await?;
     // Fetch Children and Latest Snapshot
@@ -258,7 +258,7 @@ pub async fn delete_project(
     session: AdminSession,
     id: i32,
 ) -> ApiResult<ProjectResp> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let mut project = match models::Projects::fetch_by_primary_key(&connection, id).await {
         Ok(project) => project,

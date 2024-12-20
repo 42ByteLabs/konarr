@@ -47,7 +47,7 @@ pub(crate) async fn get_dependency(
     id: i32,
     snapshot: Option<u32>,
 ) -> ApiResult<DependencyResp> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     if let Some(snapshot_id) = snapshot {
         let mut dep =
@@ -98,7 +98,7 @@ pub async fn get_dependencies(
     page: Option<u32>,
     limit: Option<u32>,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let page = Pagination::from((page, limit));
 

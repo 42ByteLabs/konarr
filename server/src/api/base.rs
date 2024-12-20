@@ -143,7 +143,7 @@ impl Default for BaseResponse {
 
 #[get("/")]
 pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResult<BaseResponse> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let init: bool = ServerSettings::fetch_by_name(&connection, Setting::Initialized)
         .await?

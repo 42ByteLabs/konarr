@@ -55,7 +55,7 @@ pub(crate) async fn get_alerts(
     search: Option<String>,
     severity: Option<String>,
 ) -> ApiResult<ApiResponse<Vec<AlertResp>>> {
-    let connection = app_state.db.connect()?;
+    let connection = std::sync::Arc::clone(&app_state.connection);
 
     let page = Pagination::from((page, limit));
 
@@ -97,7 +97,7 @@ pub(crate) async fn get_alert(
     _session: Session,
     id: i32,
 ) -> ApiResult<AlertResp> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let mut alert = Alerts::fetch_by_primary_key(&connection, id).await?;
 

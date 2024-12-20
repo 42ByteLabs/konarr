@@ -44,7 +44,7 @@ pub async fn login(
     payload: Json<LoginRequest>,
     _limiter: RocketGovernor<'_, crate::guards::limit::RateLimit>,
 ) -> ApiResult<LoginResponse> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let (user, session) = Users::login(
         &connection,
@@ -70,7 +70,7 @@ pub async fn logout(
     session: Session,
     cookies: &CookieJar<'_>,
 ) -> ApiResult<LogoutResponse> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let mut user = session.user.clone();
     user.logout(&connection).await?;
@@ -100,7 +100,7 @@ pub async fn register(
     if session.is_some() {
         return Ok(Json(LoginResponse::failed("Already logged in")));
     }
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
     let registration: String = ServerSettings::fetch_by_name(&connection, "registration")
         .await?
         .value;
