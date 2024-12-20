@@ -65,8 +65,8 @@ pub enum ApiErrorResponse {
 #[serde(crate = "rocket::serde")]
 pub struct ApiError {
     pub message: String,
-    #[cfg(debug_assertions)]
-    pub details: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<String>,
     pub status: i16,
 }
 
@@ -83,8 +83,7 @@ impl<'r> Responder<'r, 'r> for KonarrServerError {
                         Status::NotFound,
                         Json(ApiError {
                             message: "Not Found".to_string(),
-                            #[cfg(debug_assertions)]
-                            details: self.to_string(),
+                            details: Some(self.to_string()),
                             status: 404,
                         }),
                     ),
@@ -99,8 +98,7 @@ impl<'r> Responder<'r, 'r> for KonarrServerError {
                         Status::Unauthorized,
                         Json(ApiError {
                             message: "Unauthorized".to_string(),
-                            #[cfg(debug_assertions)]
-                            details: self.to_string(),
+                            details: Some(self.to_string()),
                             status: 401,
                         }),
                     ),
@@ -111,8 +109,7 @@ impl<'r> Responder<'r, 'r> for KonarrServerError {
                     Status::InternalServerError,
                     Json(ApiError {
                         message: "Internal Server Error".to_string(),
-                        #[cfg(debug_assertions)]
-                        details: self.to_string(),
+                        details: Some(self.to_string()),
                         status: 500,
                     }),
                 ),
@@ -140,25 +137,29 @@ impl From<ApiError> for ApiErrorResponse {
 
 impl From<konarr::KonarrError> for ApiError {
     fn from(value: konarr::KonarrError) -> ApiError {
+        // We only want to include the details in the error message if the log level is set to debug
+        let details: Option<String> = if log::max_level().to_string().as_str() == "debug" {
+            Some(value.to_string())
+        } else {
+            None
+        };
+
         match value {
             konarr::KonarrError::GeekOrm(geekorm::Error::NoRowsFound) => ApiError {
                 message: "Not Found".to_string(),
-                #[cfg(debug_assertions)]
-                details: value.to_string(),
+                details,
                 status: 404,
             },
             konarr::KonarrError::Unauthorized | konarr::KonarrError::AuthenticationError(_) => {
                 ApiError {
                     message: "Unauthorized".to_string(),
-                    #[cfg(debug_assertions)]
-                    details: value.to_string(),
+                    details,
                     status: 401,
                 }
             }
             _ => ApiError {
                 message: "Internal Server Error".to_string(),
-                #[cfg(debug_assertions)]
-                details: value.to_string(),
+                details,
                 status: 500,
             },
         }
