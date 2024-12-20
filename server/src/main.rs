@@ -4,8 +4,6 @@
 extern crate rocket;
 extern crate geekorm;
 
-use std::sync::{Arc, RwLock};
-
 use anyhow::Result;
 use konarr::{
     models::{database_create, settings::keys::Setting, ServerSettings},
@@ -14,6 +12,8 @@ use konarr::{
 use log::{debug, error, info, warn};
 use rocket::{fs::FileServer, Rocket};
 use rocket_cors::{Cors, CorsOptions};
+use std::sync::{Arc, RwLock};
+use tokio::sync::Mutex;
 
 mod api;
 mod cli;
@@ -24,6 +24,7 @@ mod routes;
 /// Application State
 pub struct AppState {
     db: libsql::Database,
+    connection: Arc<Mutex<libsql::Connection>>,
     sessions: Arc<RwLock<Vec<guards::Session>>>,
     agent_token: Arc<RwLock<String>>,
     config: Config,
@@ -173,6 +174,7 @@ async fn server(config: Config) -> Result<()> {
 
     let state = AppState {
         db: database,
+        connection: Arc::new(Mutex::new(connection)),
         sessions: Arc::new(RwLock::new(Vec::new())),
         agent_token: Arc::new(RwLock::new(agent_token)),
         config: config.clone(),
