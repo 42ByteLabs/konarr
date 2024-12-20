@@ -6,7 +6,7 @@ use log::{debug, error, info, warn};
 mod cli;
 mod utils;
 
-use cli::init;
+use cli::{init, update_config};
 use konarr::{
     bom::{BomParser, Parsers},
     client::snapshot::KonarrSnapshot,
@@ -62,22 +62,12 @@ async fn main() -> Result<()> {
             Config::default()
         }
     };
-    if let Some(instance) = arguments.instance {
-        config.server.set_instance(&instance)?;
-    }
+    // Update the agent settings
+    update_config(&mut config, &arguments)?;
 
     match arguments.commands {
         Some(cli::ArgumentCommands::Agent { docker_socket }) => {
-            // HACK: Manually set some stuff for now
-
             config.agent.docker_socket = docker_socket;
-            config.agent.project_id = arguments.project_id;
-            config.agent.create = arguments.auto_create;
-            config.agent.host = arguments.hostname;
-
-            if let Some(token) = arguments.agent_token {
-                config.agent.token = Some(token);
-            }
 
             let (client, serverinfo) = client(&config).await?;
 
@@ -91,29 +81,43 @@ async fn main() -> Result<()> {
                 serverinfo.user.unwrap().username
             );
 
+            if let Some(agent_config) = &serverinfo.agent {
+                info!(
+                    "Loading agent configuration from server: {:?}",
+                    agent_config
+                );
+                config.agent.tool = Some(agent_config.tool.to_lowercase());
+                config.agent.tool_auto_install = agent_config.auto_install;
+                config.agent.tool_auto_update = agent_config.auto_update;
+            }
+
             Ok(cli::agent::setup(&config, &client).await?)
         }
         Some(cli::ArgumentCommands::Scan {
             image,
             list,
-            tool,
             output,
         }) => {
+            let tools = konarr::tools::ToolConfig::tools().await?;
+
             if list {
-                let tools = konarr::tools::ToolConfig::tools().await?;
                 info!("Available tools:");
                 for tool in tools {
-                    if !tool.version.is_empty() {
-                        info!("> {} (v{})", tool.name, tool.version);
+                    if tool.is_available() {
+                        info!(" > {:<6} (v{})", tool.name, tool.version);
                     } else {
-                        info!("> {}", tool.name);
+                        if tool.install_path.is_some() {
+                            info!(" > {:<6} (Not Installed, install available)", tool.name);
+                        } else {
+                            info!(" > {:<6} (Not Available)", tool.name);
+                        }
                     }
+                    debug!("   > {:?}", tool);
                 }
                 return Ok(());
             }
 
             if let Some(image) = image {
-                config.agent.tool = tool;
                 let result = konarr::tools::run(&config, image).await?;
 
                 if let Some(output) = output {
