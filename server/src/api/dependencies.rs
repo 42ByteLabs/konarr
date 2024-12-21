@@ -47,28 +47,29 @@ pub(crate) async fn get_dependency(
     id: i32,
     snapshot: Option<u32>,
 ) -> ApiResult<DependencyResp> {
-    let connection = std::sync::Arc::clone(&state.connection);
-
     if let Some(snapshot_id) = snapshot {
-        let mut dep =
-            models::Dependencies::fetch_dependency_by_snapshot(&connection, snapshot_id as i32, id)
-                .await?;
-        dep.fetch(&connection).await?;
+        let mut dep = models::Dependencies::fetch_dependency_by_snapshot(
+            &state.connection,
+            snapshot_id as i32,
+            id,
+        )
+        .await?;
+        dep.fetch(&state.connection).await?;
 
         Ok(Json(dep.into()))
     } else {
-        let mut dep = models::Component::fetch_by_primary_key(&connection, id).await?;
-        dep.fetch(&connection).await?;
+        let mut dep = models::Component::fetch_by_primary_key(&state.connection, id).await?;
+        dep.fetch(&state.connection).await?;
 
         let projects: Vec<ProjectResp> =
-            models::Projects::find_project_by_component(&connection, dep.id.into())
+            models::Projects::find_project_by_component(&state.connection, dep.id.into())
                 .await?
                 .iter()
                 .map(|p| p.clone().into())
                 .collect();
 
         let versions: Vec<String> =
-            models::ComponentVersion::fetch_by_component_id(&connection, dep.id)
+            models::ComponentVersion::fetch_by_component_id(&state.connection, dep.id)
                 .await?
                 .iter()
                 .map(|v| v.clone().version)
@@ -98,33 +99,31 @@ pub async fn get_dependencies(
     page: Option<u32>,
     limit: Option<u32>,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
-    let connection = std::sync::Arc::clone(&state.connection);
-
     let page = Pagination::from((page, limit));
 
     let deps = if let Some(search) = search {
-        models::Component::find_by_name(&connection, search, &page).await?
+        models::Component::find_by_name(&state.connection, search, &page).await?
     } else if let Some(dtyp) = deptype {
         models::Component::find_by_component_type(
-            &connection,
+            &state.connection,
             models::ComponentType::from(dtyp),
             &page,
         )
         .await?
     } else if top.unwrap_or(false) {
-        models::Component::top(&connection, &page).await?
+        models::Component::top(&state.connection, &page).await?
     } else {
         // Fetch all
         models::Component::query(
-            &connection,
+            &state.connection,
             models::Component::query_select().page(&page).build()?,
         )
         .await?
     };
 
     let total: u32 =
-        models::Component::row_count(&connection, models::Component::query_count().build()?).await?
-            as u32;
+        models::Component::row_count(&state.connection, models::Component::query_count().build()?)
+            .await? as u32;
     let pages = (total as f64 / page.limit() as f64).ceil() as u32;
 
     Ok(Json(ApiResponse::new(
