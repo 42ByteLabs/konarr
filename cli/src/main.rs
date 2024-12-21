@@ -6,7 +6,7 @@ use log::{debug, error, info, warn};
 mod cli;
 mod utils;
 
-use cli::init;
+use cli::{init, update_config};
 use konarr::{
     bom::{BomParser, Parsers},
     client::snapshot::KonarrSnapshot,
@@ -16,6 +16,7 @@ use utils::interactive::{prompt_input, prompt_password};
 
 async fn client(config: &Config) -> Result<(konarr::KonarrClient, konarr::client::ServerInfo)> {
     let client = if let Some(token) = &config.agent.token {
+        debug!("Using token for authentication");
         config.server.client_with_token(token.to_string())?
     } else {
         debug!("Interactively logging in");
@@ -61,22 +62,12 @@ async fn main() -> Result<()> {
             Config::default()
         }
     };
-    if let Some(instance) = arguments.instance {
-        config.server.set_instance(&instance)?;
-    }
+    // Update the agent settings
+    update_config(&mut config, &arguments)?;
 
     match arguments.commands {
         Some(cli::ArgumentCommands::Agent { docker_socket }) => {
-            // HACK: Manually set some stuff for now
-
             config.agent.docker_socket = docker_socket;
-            config.agent.project_id = arguments.project_id;
-            config.agent.create = arguments.auto_create;
-            config.agent.host = arguments.hostname;
-
-            if let Some(token) = arguments.agent_token {
-                config.agent.token = Some(token);
-            }
 
             let (client, serverinfo) = client(&config).await?;
 
@@ -90,25 +81,43 @@ async fn main() -> Result<()> {
                 serverinfo.user.unwrap().username
             );
 
+            if let Some(agent_config) = &serverinfo.agent {
+                info!(
+                    "Loading agent configuration from server: {:?}",
+                    agent_config
+                );
+                config.agent.tool = Some(agent_config.tool.to_lowercase());
+                config.agent.tool_auto_install = agent_config.auto_install;
+                config.agent.tool_auto_update = agent_config.auto_update;
+            }
+
             Ok(cli::agent::setup(&config, &client).await?)
         }
         Some(cli::ArgumentCommands::Scan {
             image,
             list,
-            tool,
             output,
         }) => {
+            let tools = konarr::tools::ToolConfig::tools().await?;
+
             if list {
-                let tools = konarr::tools::get_available_tools().await?;
                 info!("Available tools:");
                 for tool in tools {
-                    info!("> {}", tool);
+                    if tool.is_available() {
+                        info!(" > {:<6} (v{})", tool.name, tool.version);
+                    } else {
+                        if tool.install_path.is_some() {
+                            info!(" > {:<6} (Not Installed, install available)", tool.name);
+                        } else {
+                            info!(" > {:<6} (Not Available)", tool.name);
+                        }
+                    }
+                    debug!("   > {:?}", tool);
                 }
                 return Ok(());
             }
 
             if let Some(image) = image {
-                config.agent.tool = tool;
                 let result = konarr::tools::run(&config, image).await?;
 
                 if let Some(output) = output {
@@ -195,6 +204,111 @@ async fn main() -> Result<()> {
         Some(cli::ArgumentCommands::Tasks { subcommands }) => {
             Ok(cli::tasks::run(&config, subcommands).await?)
         }
-        None => Err(anyhow!("No subcommand provided")),
+        None => {
+            info!("No command provided, showing server info");
+            let (_client, serverinfo) = client(&config).await?;
+
+            // Check if the user is authenticated
+            if !serverinfo.user.is_some() {
+                info!("User is not authenticated");
+            } else {
+                info!("User is authenticated!");
+            }
+
+            if let Some(psummary) = serverinfo.projects {
+                print_stats(
+                    "Projects Statistics",
+                    vec![
+                        ("⚡", "Projects", psummary.total),
+                        ("💻", "Servers", psummary.servers),
+                        ("📦", "Containers", psummary.containers),
+                    ],
+                );
+            }
+            if let Some(dsummary) = serverinfo.dependencies {
+                print_stats(
+                    "Dependency Statistics",
+                    vec![
+                        ("⚡", "Total", dsummary.total),
+                        ("📦", "Libraries", dsummary.libraries),
+                        ("📦", "Frameworks", dsummary.frameworks),
+                        ("🖥️ ", "Operating Systems", dsummary.operating_systems),
+                        ("📝", "Languages", dsummary.languages),
+                        ("📦", "Package Managers", dsummary.package_managers),
+                        (
+                            "⚡",
+                            "Compression Libraries",
+                            dsummary.compression_libraries,
+                        ),
+                        (
+                            "🔒",
+                            "Cryptographic Libraries",
+                            dsummary.cryptographic_libraries,
+                        ),
+                        ("🐐", "Databases", dsummary.databases),
+                        (
+                            "🛞",
+                            "Operating Environments",
+                            dsummary.operating_environments,
+                        ),
+                        ("🔍", "Middleware", dsummary.middleware),
+                    ],
+                );
+            }
+            if let Some(security) = serverinfo.security {
+                print_stats(
+                    "Security Statistics",
+                    vec![
+                        ("🔴", "Critical", security.critical),
+                        ("🟠", "High", security.high),
+                        ("🟡", "Medium", security.medium),
+                        ("🟢", "Low", security.low),
+                        ("ℹ️ ", "Informational", security.informational),
+                        ("🦠", "Malware", security.malware),
+                        ("🛡️ ", "Unmaintained", security.unmaintained),
+                        ("❓", "Unknown", security.unknown),
+                    ],
+                );
+            }
+            // info!("Dependencies :: {}", serverinfo.dependencies.total);
+
+            if let Some(agent_settings) = serverinfo.agent {
+                info!("----- {:^26} -----", "Agent Settings");
+                let tools = konarr::tools::ToolConfig::tools().await?;
+                let tool_available = if tools
+                    .iter()
+                    .find(|t| t.name == agent_settings.tool.to_lowercase())
+                    .is_some()
+                {
+                    "✅"
+                } else {
+                    "❌"
+                };
+
+                info!("Agent settings");
+                info!(
+                    " > {} Tool to use: {} ",
+                    tool_available, agent_settings.tool
+                );
+
+                info!("Other tools available:");
+                for tool in tools.iter() {
+                    if !tool.version.is_empty() {
+                        info!(" > {} (v{})", tool.name, tool.version);
+                    } else {
+                        info!(" > {}", tool.name);
+                    }
+                }
+            }
+
+            Ok(())
+        }
+    }
+}
+
+fn print_stats(title: &str, stats: Vec<(&str, &str, u32)>) {
+    info!("----- {:^26} -----", title);
+    for (emoji, name, value) in stats.iter() {
+        info!(" > {} {:<24}: {}", emoji, name, value);
     }
 }

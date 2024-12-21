@@ -20,6 +20,10 @@ pub enum Setting {
     AgentKey,
     #[geekorm(key = "agent.tool")]
     AgentTool,
+    #[geekorm(key = "agent.tool.auto-install")]
+    AgentToolAutoInstall,
+    #[geekorm(key = "agent.tool.auto-update")]
+    AgentToolAutoUpdate,
 
     // Statistics - Projects
     #[geekorm(key = "stats.projects.total")]
@@ -68,8 +72,28 @@ pub enum Setting {
     // Statistics - Dependencies
     #[geekorm(key = "stats.dependencies.total")]
     StatsDependenciesTotal,
+    #[geekorm(key = "stats.dependencies.libraries")]
+    StatsLibraries,
+    #[geekorm(key = "stats.dependencies.applications")]
+    StatsApplications,
+    #[geekorm(key = "stats.dependencies.frameworks")]
+    StatsFrameworks,
+    #[geekorm(key = "stats.dependencies.operating-systems")]
+    StatsOperatingSystems,
+    #[geekorm(key = "stats.dependencies.package-managers")]
+    StatsPackageManagers,
     #[geekorm(key = "stats.dependencies.languages")]
-    StatsDependenciesLanguages,
+    StatsLanguages,
+    #[geekorm(key = "stats.dependencies.databases")]
+    StatsDatabases,
+    #[geekorm(key = "stats.dependencies.cryptographic-libraries")]
+    StatsCryptographicLibraries,
+    #[geekorm(key = "stats.dependencies.compression")]
+    StatsCompressionLibraries,
+    #[geekorm(key = "stats.dependencies.operating-environments")]
+    StatsOperatingEnvironments,
+    #[geekorm(key = "stats.dependencies.middleware")]
+    StatsMiddleware,
 
     #[geekorm(key = "stats.dependencies.secure")]
     StatsDependenciesSecure,
@@ -82,6 +106,10 @@ pub enum Setting {
     // Security
     #[geekorm(key = "security")]
     Security,
+    /// Security tool name to use by default
+    #[geekorm(key = "security.tools.name")]
+    SecurityToolsName,
+    /// Allow Security tools to submit alerts
     #[geekorm(key = "security.tools.alerts")]
     SecurityToolsAlerts,
 
@@ -115,13 +143,23 @@ pub enum Setting {
 }
 
 /// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 35] = [
+pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 37] = [
     // Registration Settings
     (Setting::Registration, SettingType::Toggle, "enabled"),
     // If we are already initialized
     (Setting::Initialized, SettingType::Boolean, "false"),
     // Agent Settings
     (Setting::Agent, SettingType::Toggle, "disabled"),
+    (
+        Setting::AgentToolAutoInstall,
+        SettingType::Toggle,
+        "disabled",
+    ),
+    (
+        Setting::AgentToolAutoUpdate,
+        SettingType::Toggle,
+        "disabled",
+    ),
     // Statistics
     (Setting::StatsProjectsTotal, SettingType::Statistics, "0"),
     (Setting::StatsProjectsActive, SettingType::Statistics, "0"),
@@ -139,16 +177,12 @@ pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 35] =
         SettingType::Statistics,
         "0",
     ),
-    (
-        Setting::StatsDependenciesLanguages,
-        SettingType::Statistics,
-        "0",
-    ),
     (Setting::StatsUsersTotal, SettingType::Statistics, "0"),
     (Setting::StatsUsersActive, SettingType::Statistics, "0"),
     (Setting::StatsUsersInactive, SettingType::Statistics, "0"),
     // Security Features
     (Setting::Security, SettingType::Toggle, "disabled"),
+    (Setting::SecurityToolsName, SettingType::SetString, "syft"),
     // Tools Settings
     (Setting::SecurityToolsAlerts, SettingType::Toggle, "enabled"),
     // Advisories Settings

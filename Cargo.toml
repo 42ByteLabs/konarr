@@ -52,8 +52,8 @@ models = ["dep:geekorm", "dep:libsql"]
 tools = ["dep:tokio", "client"]
 tools-grypedb = ["tools", "models", "dep:hex", "dep:flate2", "dep:tar"]
 # Client
-client = ["dep:reqwest", "dep:openssl", "dep:tokio"]
-websocket = []
+client = ["websocket", "dep:reqwest", "dep:openssl", "dep:tokio"]
+websocket = ["dep:tokio-tungstenite"]
 docker = ["dep:bollard"]
 
 [dependencies]
@@ -70,7 +70,7 @@ flate2 = { version = "1.0", optional = true }
 tar = { version = "0.4", optional = true }
 
 # Database / Models
-geekorm = { version = "^0.8", features = ["all", "semver", "libsql"], optional = true }
+geekorm = { version = "^0.8.3", features = ["all", "semver", "libsql", "backends-tokio"], optional = true }
 libsql = { version = "^0.6", optional = true }
 
 # SBOM
@@ -90,7 +90,7 @@ openssl = { version = "0.10", features = ["vendored"], optional = true }
 # Docker
 bollard = { version = "^0.18", optional = true }
 figment = { version = "0.10.19", features = ["env", "serde_yaml", "yaml"] }
-tokio-tungstenite = { version = "0.24.0", features = ["url", "native-tls"] }
+tokio-tungstenite = { version = "0.26.0", features = ["url", "native-tls"], optional = true }
 
 [dev-dependencies]
 konarr = { path = ".", features = ["client"] }

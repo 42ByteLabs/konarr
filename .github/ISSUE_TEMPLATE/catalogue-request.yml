@@ -1,0 +1,50 @@
+name: Component Catalogue Request 
+description: Component Catalogue Request
+title: "[Catalogue]: ..."
+labels: ["comp-catalogue", "enhancement"]
+assignees:
+  - GeekMasher
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this catalogue request!
+  - type: textarea
+    id: feature
+    attributes:
+      label: What is the PURL of the package you wish to request to add?
+      description: Please provide the PURL of the package you wish to request to add to the catalogue.
+      placeholder: pkg:...
+      value: "pkg:"
+    validations:
+      required: true
+  - type: dropdown
+    id: catalogue-type 
+    attributes:
+      label: Catalogue Type 
+      description: What type of component is this?
+      options:
+        - "Library"
+        - "Application"
+        - "Operating System"
+        - "Package Manager"
+        - "Framework"
+        - "Cryptography Library"
+        - "Service"
+        - "Database"
+        - "Compression Library"
+        - "Operating System Environment"
+        - "Programming Language"
+        - "Other"
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-information
+    attributes:
+      label: Additional Information
+      description: Any additional information you would like to provide.
+      placeholder: "..."
+

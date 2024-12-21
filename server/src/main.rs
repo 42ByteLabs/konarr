@@ -12,6 +12,8 @@ use konarr::{
 use log::{debug, error, info, warn};
 use rocket::{fs::FileServer, Rocket};
 use rocket_cors::{Cors, CorsOptions};
+use std::sync::{Arc, RwLock};
+use tokio::sync::Mutex;
 
 mod api;
 mod cli;
@@ -21,7 +23,9 @@ mod routes;
 
 /// Application State
 pub struct AppState {
-    db: libsql::Database,
+    connection: Arc<Mutex<libsql::Connection>>,
+    sessions: Arc<RwLock<Vec<guards::Session>>>,
+    agent_token: Arc<RwLock<String>>,
     config: Config,
     init: bool,
 }
@@ -43,6 +47,11 @@ async fn main() -> Result<()> {
 
     // Database
     create(&mut config).await?;
+
+    // Tasks
+    let task_config = Arc::new(config.clone());
+    let database = Arc::new(config.database().await?);
+    konarr::tasks::init(task_config, database).await?;
 
     // Server
     server(config).await?;
@@ -153,6 +162,9 @@ async fn server(config: Config) -> Result<()> {
 
     // Check if we have init Konarr
     let init: bool = ServerSettings::get_bool(&connection, Setting::Initialized).await?;
+    let agent_token: String = ServerSettings::fetch_by_name(&connection, Setting::AgentKey)
+        .await?
+        .value;
 
     if !frontend.exists() {
         info!("No Frontend found, creating directory and running in API-only mode");
@@ -160,7 +172,9 @@ async fn server(config: Config) -> Result<()> {
     }
 
     let state = AppState {
-        db: database,
+        connection: Arc::new(Mutex::new(connection)),
+        sessions: Arc::new(RwLock::new(Vec::new())),
+        agent_token: Arc::new(RwLock::new(agent_token)),
         config: config.clone(),
         init,
     };

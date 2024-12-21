@@ -336,7 +336,7 @@ impl Snapshot {
     pub async fn scan_with_grype<'a, T>(
         &mut self,
         connection: &'a T,
-        grypedb_connection: &'a T,
+        grypedb_connection: &libsql::Connection,
     ) -> Result<Vec<Alerts>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
@@ -380,48 +380,135 @@ impl Snapshot {
             );
 
             for vuln in &vulns {
-                let vuln_metadata =
-                    GrypeVulnerabilityMetadata::fetch_by_id(grypedb_connection, vuln.id.clone())
-                        .await?;
+                debug!("Vulnerability: {:?}", vuln);
 
-                let severity = SecuritySeverity::from(vuln_metadata.severity.clone());
+                let vuln_metadata: Option<GrypeVulnerabilityMetadata> =
+                    if vuln.id.starts_with("CVE-") {
+                        // Look for the metadata in GrypeDB based on ID + namespace
+                        GrypeVulnerabilityMetadata::query_first(
+                            grypedb_connection,
+                            GrypeVulnerabilityMetadata::query_select()
+                                .where_eq("id", &vuln.id)
+                                .and()
+                                // TODO: Support multiple namespaces
+                                .where_eq("namespace", "nvd:cpe")
+                                .build()?,
+                        )
+                        .await
+                        .ok()
+                    } else if vuln.id.starts_with("GHSA-") {
+                        GrypeVulnerabilityMetadata::query_first(
+                            grypedb_connection,
+                            GrypeVulnerabilityMetadata::query_select()
+                                .where_eq("id", &vuln.id)
+                                .and()
+                                .where_like("namespace", format!("{}%", "github:"))
+                                .build()?,
+                        )
+                        .await
+                        .ok()
+                    } else {
+                        debug!("Skipping non-supported VULN IDs");
+                        continue;
+                    };
 
-                // Advisory
-                let mut advisory =
-                    Advisories::new(vuln.id.clone(), AdvisorySource::Anchore, severity.clone());
-                advisory.fetch_or_create(connection).await?;
-                advisory.fetch_metadata(connection).await?;
+                let mut severity = SecuritySeverity::Unknown;
 
-                // Description
-                if advisory
-                    .get_metadata(connection, "description")
-                    .await?
-                    .is_none()
-                {
-                    if !vuln_metadata.description.is_empty() {
+                let mut advisory = if let Some(vuln_metadata) = vuln_metadata {
+                    debug!("Vulnerability Metadata: {:?}", vuln_metadata);
+                    severity = SecuritySeverity::from(vuln_metadata.severity.clone());
+                    let source = vuln_metadata.source();
+
+                    // Advisory
+                    let mut advisory = Advisories::new(vuln.id.clone(), source, severity.clone());
+                    debug!("Advisory: {:?}", advisory);
+                    advisory.fetch_or_create(connection).await?;
+                    advisory.fetch_metadata(connection).await?;
+
+                    // Description
+                    if advisory
+                        .get_metadata(connection, "description")
+                        .await?
+                        .is_none()
+                    {
+                        if !vuln_metadata.description.is_empty() {
+                            advisory
+                                .add_metadata(
+                                    connection,
+                                    "description",
+                                    vuln_metadata.description.clone(),
+                                )
+                                .await?;
+                        }
+                    }
+                    if advisory
+                        .get_metadata(connection, "description")
+                        .await?
+                        .is_none()
+                    {
+                        if !vuln_metadata.description.is_empty() {
+                            advisory
+                                .add_metadata(
+                                    connection,
+                                    "description",
+                                    vuln_metadata.description.clone(),
+                                )
+                                .await?;
+                        }
+                    }
+                    if let Some(cvss) = vuln_metadata.cvss {
                         advisory
-                            .add_metadata(
-                                connection,
-                                "description",
-                                vuln_metadata.description.clone(),
-                            )
+                            .add_metadata(connection, "cvss", cvss.to_string())
                             .await?;
                     }
-                }
-                if let Some(cvss) = vuln_metadata.cvss {
+                    if let Some(link) = vuln_metadata.urls {
+                        advisory.add_metadata(connection, "urls", link).await?;
+                    } else {
+                        match advisory.source {
+                            AdvisorySource::NationalVulnerabilityDatabase => {
+                                advisory
+                                    .add_metadata(
+                                        connection,
+                                        "urls",
+                                        format!(
+                                            "https://nvd.nist.gov/vuln/detail/{}",
+                                            vuln_metadata.id
+                                        ),
+                                    )
+                                    .await?
+                            }
+                            AdvisorySource::GitHubAdvisoryDatabase => {
+                                advisory
+                                    .add_metadata(
+                                        connection,
+                                        "urls",
+                                        format!(
+                                            "https://github.com/advisories/{}",
+                                            vuln_metadata.id
+                                        ),
+                                    )
+                                    .await?
+                            }
+                            _ => {}
+                        }
+                    }
+
                     advisory
-                        .add_metadata(connection, "cvss", cvss.to_string())
-                        .await?;
-                }
-                if let Some(link) = vuln_metadata.urls {
-                    advisory.add_metadata(connection, "urls", link).await?;
-                }
+                } else {
+                    debug!("No metadata found for vulnerability, creating generic advisory");
+                    let mut advisory =
+                        Advisories::new(vuln.id.clone(), AdvisorySource::Anchore, severity.clone());
+                    advisory.fetch_or_create(connection).await?;
+
+                    advisory
+                };
                 advisory
                     .add_metadata(connection, "data.source", "GrypeDB".to_string())
                     .await?;
 
                 let mut alert = Alerts::new(vuln.id.clone(), self.id, dependency.id, advisory.id);
                 alert.find_or_create(connection).await?;
+                debug!("Created Alert: {}", alert.id);
 
                 *summary.entry(severity).or_insert(0) += 1;
 

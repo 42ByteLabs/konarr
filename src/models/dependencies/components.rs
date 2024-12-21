@@ -6,6 +6,8 @@ use purl::GenericPurl;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+use crate::{tasks, utils::catalogue::Catalogue};
+
 use super::ComponentType;
 
 /// Component Model
@@ -44,28 +46,8 @@ impl Component {
             comp.find_or_create(connection).await?;
         }
 
-        let mut counter = 0;
-        let mut comps = Component::fetch_all(connection).await?;
-        debug!("Checking component types for `{}` Components", comps.len());
-
-        for mut comp in comps.iter_mut() {
-            match comp.component_type {
-                ComponentType::Unknown | ComponentType::Library | ComponentType::Application => {
-                    let og_type = comp.component_type.clone();
-                    Self::set_purl_comptype(&mut comp);
-
-                    if og_type != comp.component_type {
-                        debug!("Updating component_type: {}", comp.component_type);
-                        comp.update(connection).await?;
-                        counter += 1;
-                    }
-                }
-                _ => {}
-            }
-        }
-        if counter != 0 {
-            info!("Updated `{}` component out of `{}`", counter, comps.len());
-        }
+        info!("Checking and updating component types for unknown, library, and application components");
+        tasks::catalogue(connection, false).await?;
 
         Ok(())
     }
@@ -90,7 +72,7 @@ impl Component {
             .map_err(|e| crate::KonarrError::UnknownError(e.to_string()))?;
 
         let mut component = Component::new(purl.package_type(), purl.name().to_string());
-        Self::set_purl_comptype(&mut component);
+        Catalogue::catalogue_old(&mut component)?;
 
         if let Some(namespace) = purl.namespace() {
             component.namespace = Some(namespace.to_string());
@@ -104,70 +86,6 @@ impl Component {
         };
 
         Ok((component, version))
-    }
-
-    /// Set the component type based on the name of the component
-    ///
-    /// TODO: This is a little bit of a hack, but it works for now
-    fn set_purl_comptype(component: &mut Component) {
-        if component.manager == ComponentManager::Apk || component.manager == ComponentManager::Deb
-        {
-            // We don't care about the namespace for these package managers
-
-            match component.name.to_lowercase().as_str() {
-                // Operating Systems
-                "alpine" | "alpine-linux" | "debian" | "debian-linux" | "ubuntu"
-                | "ubuntu-linux" | "redhat" | "fedora" | "centos" | "centos-linux" | "arch"
-                | "arch-linux" => {
-                    component.component_type = ComponentType::OperatingSystem;
-                }
-                // Programming Languages (compilers / interpreters / runtimes)
-                "python" | "python3" | "node" | "nodejs" | "ruby" | "rustc" | "rust" | "go"
-                | "java" | "javac" | "kotlinc" | "gcc" | "g++" | "gpp" | "dotnet" | "csharp"
-                | "c" | "cpp" | "php83" | "perl" | "bash" | "sh" => {
-                    component.component_type = ComponentType::ProgrammingLanguage;
-                }
-                // Package Managers
-                "apk" | "apk-tools" | "deb" | "dpkg" | "rpm" | "cargo" | "npm" | "pip"
-                | "composer" | "maven" | "nuget" | "gradle" | "gem" => {
-                    component.component_type = ComponentType::PackageManager;
-                }
-                // Cryptography Libraries
-                "openssl" | "libssl" | "libssl3" | "libcrypto" | "libcrypto3" | "libssl-dev"
-                | "libcrypto-dev" | "argon2-libs" | "ssl_client" => {
-                    component.component_type = ComponentType::CryptographyLibrary;
-                }
-                // Databases
-                "mysql" | "mariadb" | "postgresql" | "sqlite" | "mongodb" | "redis"
-                | "cassandra" => {
-                    component.component_type = ComponentType::Database;
-                }
-                // Applications
-                "curl" | "wget" | "git" | "grep" | "jq" | "nginx" => {
-                    component.component_type = ComponentType::Application;
-                }
-                "apr" | "apr-util" | "busybox" | "busybox-binsh" => {
-                    component.component_type = ComponentType::OperatingEnvironment;
-                }
-                _ => {
-                    component.component_type = ComponentType::Library;
-                }
-            }
-        } else if component.manager == ComponentManager::Golang {
-            // Official Go namespaces
-            if component.namespace == Some("golang.org/x".to_string())
-                || component.namespace == Some("cloud.google.com".to_string())
-            {
-                if component.name == "go" {
-                    component.component_type = ComponentType::ProgrammingLanguage;
-                } else if component.name == "crypto" {
-                    component.component_type = ComponentType::CryptographyLibrary;
-                }
-            }
-        } else if component.manager == ComponentManager::Generic {
-            // Generic manager are typically applications
-            component.component_type = ComponentType::Application;
-        }
     }
 
     /// Find or Create Component
@@ -311,7 +229,7 @@ impl ComponentVersion {
 /// Dependency Manager Enum
 ///
 /// https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst
-#[derive(Data, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Data, Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[geekorm(from_string = "lowercase", to_string = "lowercase")]
 pub enum ComponentManager {
     /// Alpine Linux

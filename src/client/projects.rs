@@ -123,7 +123,7 @@ pub struct KonarrProject {
 
     /// Parent Project
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub parent: Option<i32>,
+    pub parent: Option<u32>,
 
     /// Project Children
     #[serde(skip_serializing)]

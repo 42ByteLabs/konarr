@@ -67,6 +67,22 @@ pub struct ProjectsSummary {
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct DependenciesSummary {
     pub total: u64,
+    pub libraries: u64,
+    pub applications: u64,
+    pub frameworks: u64,
+    #[serde(rename = "operating-systems")]
+    pub operating_systems: u64,
+    pub languages: u64,
+    #[serde(rename = "package-managers")]
+    pub package_managers: u64,
+    #[serde(rename = "compression-libraries")]
+    pub compression_libraries: u64,
+    #[serde(rename = "cryptographic-libraries")]
+    pub cryptographic_libraries: u64,
+    pub databases: u64,
+    #[serde(rename = "operating-environments")]
+    pub operating_environments: u64,
+    pub middleware: u64,
 }
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
@@ -89,12 +105,21 @@ pub struct SecuritySummary {
 pub struct AgentResponse {
     /// Tool name
     pub tool: AgentTool,
+    /// Auto-install setting
+    pub auto_install: bool,
+    /// Auto-update setting
+    pub auto_update: bool,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 pub enum AgentTool {
+    /// Syft
+    #[default]
     Syft,
+    /// Grype
     Grype,
+    /// Trivy
+    Trivy,
 }
 
 impl Default for BaseResponse {
@@ -118,27 +143,50 @@ impl Default for BaseResponse {
 
 #[get("/")]
 pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResult<BaseResponse> {
-    let connection = state.db.connect()?;
-
-    let init: bool = ServerSettings::fetch_by_name(&connection, Setting::Initialized)
+    let init: bool = ServerSettings::fetch_by_name(&state.connection, Setting::Initialized)
         .await?
         .boolean();
-    let registration: bool = ServerSettings::fetch_by_name(&connection, Setting::Registration)
-        .await?
-        .boolean();
+    let registration: bool =
+        ServerSettings::fetch_by_name(&state.connection, Setting::Registration)
+            .await?
+            .boolean();
 
     if let Some(session) = &session {
-        let stats = ServerSettings::fetch_statistics(&connection).await?;
+        let stats = ServerSettings::fetch_statistics(&state.connection).await?;
 
         let security: Option<SecuritySummary> =
-            if ServerSettings::get_bool(&connection, Setting::Security).await? {
+            if ServerSettings::get_bool(&state.connection, Setting::Security).await? {
                 let security_counts =
-                    ServerSettings::get_namespace(&connection, "security.alerts").await?;
+                    ServerSettings::get_namespace(&state.connection, "security.alerts").await?;
 
                 Some(SecuritySummary::from(security_counts))
             } else {
                 None
             };
+
+        let agent: Option<AgentResponse> = if session.user.username == "konarr-agent" {
+            Some(AgentResponse {
+                tool: AgentTool::from(
+                    ServerSettings::fetch_by_name(&state.connection, Setting::SecurityToolsName)
+                        .await?
+                        .value,
+                ),
+                auto_install: ServerSettings::fetch_by_name(
+                    &state.connection,
+                    Setting::AgentToolAutoInstall,
+                )
+                .await?
+                .boolean(),
+                auto_update: ServerSettings::fetch_by_name(
+                    &state.connection,
+                    Setting::AgentToolAutoUpdate,
+                )
+                .await?
+                .boolean(),
+            })
+        } else {
+            None
+        };
 
         Ok(Json(BaseResponse {
             config: ConfigResponse {
@@ -156,11 +204,9 @@ pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResul
                 servers: find_statistic(&stats, Setting::StatsProjectsServers),
                 ..Default::default()
             }),
-            dependencies: Some(DependenciesSummary {
-                total: find_statistic(&stats, Setting::StatsDependenciesTotal),
-                ..Default::default()
-            }),
+            dependencies: Some(DependenciesSummary::from(stats)),
             security,
+            agent,
             ..Default::default()
         }))
     } else {
@@ -202,5 +248,51 @@ impl From<Vec<ServerSettings>> for SecuritySummary {
         }
 
         summary
+    }
+}
+
+impl From<Vec<ServerSettings>> for DependenciesSummary {
+    fn from(value: Vec<ServerSettings>) -> Self {
+        let mut summary = DependenciesSummary::default();
+
+        for setting in value.iter() {
+            if setting.name == Setting::StatsDependenciesTotal {
+                summary.total = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsLibraries {
+                summary.libraries = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsApplications {
+                summary.applications = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsFrameworks {
+                summary.frameworks = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsOperatingSystems {
+                summary.operating_systems = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsLanguages {
+                summary.languages = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsPackageManagers {
+                summary.package_managers = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsCompressionLibraries {
+                summary.compression_libraries = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsCryptographicLibraries {
+                summary.cryptographic_libraries = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsDatabases {
+                summary.databases = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsOperatingEnvironments {
+                summary.operating_environments = setting.value.parse().unwrap_or(0);
+            } else if setting.name == Setting::StatsMiddleware {
+                summary.middleware = setting.value.parse().unwrap_or(0);
+            }
+        }
+
+        summary
+    }
+}
+
+impl From<String> for AgentTool {
+    fn from(value: String) -> Self {
+        match value.to_lowercase().as_str() {
+            "grype" => Self::Grype,
+            "trivy" => Self::Trivy,
+            _ => Self::Syft,
+        }
     }
 }

@@ -70,17 +70,15 @@ pub(crate) async fn get_project(
     _session: Session,
     id: i32,
 ) -> ApiResult<ProjectResp> {
-    let connection = state.db.connect()?;
-
-    let mut project = models::Projects::fetch_by_primary_key(&connection, id).await?;
+    let mut project = models::Projects::fetch_by_primary_key(&state.connection, id).await?;
 
     if project.status == models::ProjectStatus::Archived {
         info!("Tried accessing an archived project: {}", project.id);
         Err(KonarrServerError::ProjectNotFoundError(id))
     } else {
         // Fetch Children and Latest Snapshot
-        project.fetch_children(&connection).await?;
-        project.fetch_snapshots(&connection).await?;
+        project.fetch_children(&state.connection).await?;
+        project.fetch_snapshots(&state.connection).await?;
 
         info!("{:?} (snapshots: {})", project.id, project.snapshots.len());
 
@@ -99,34 +97,32 @@ pub(crate) async fn get_projects(
     r#type: Option<String>,
     parents: Option<bool>,
 ) -> ApiResult<ApiResponse<Vec<ProjectResp>>> {
-    let connection = state.db.connect()?;
-
     let limit = limit.unwrap_or(10) as usize;
     let offset = page.unwrap_or(0) as usize * limit as usize;
 
-    let total = models::Projects::count_active(&connection).await?;
+    let total = models::Projects::count_active(&state.connection).await?;
     let pages = (total as f32 / limit as f32).ceil() as u32;
 
     let projects = if let Some(search) = search {
         info!("Searching for projects with name: '{}'", search);
-        models::Projects::search_title(&connection, search).await?
+        models::Projects::search_title(&state.connection, search).await?
     } else if parents.unwrap_or(false) {
         info!("Get the parent projects");
-        models::Projects::find_parents(&connection).await?
+        models::Projects::find_parents(&state.connection).await?
     } else if top.unwrap_or(false) {
         info!("Fetching the top level projects");
-        models::Projects::fetch_top_level(&connection, limit, offset).await?
+        models::Projects::fetch_top_level(&state.connection, limit, offset).await?
     } else if let Some(prjtype) = r#type {
         if prjtype.as_str() == "all" {
             info!("Fetching all projects");
-            models::Projects::all(&connection, limit, offset).await?
+            models::Projects::all(&state.connection, limit, offset).await?
         } else {
             info!("Fetching by type: {}", prjtype);
-            models::Projects::fetch_project_type(&connection, prjtype, limit, offset).await?
+            models::Projects::fetch_project_type(&state.connection, prjtype, limit, offset).await?
         }
     } else {
         models::Projects::query(
-            &connection,
+            &state.connection,
             models::Projects::query_select()
                 .order_by("created_at", geekorm::QueryOrder::Desc)
                 .limit(limit)
@@ -149,12 +145,12 @@ pub async fn create_project(
     _session: Session,
     project_req: Json<ProjectReq>,
 ) -> ApiResult<ProjectResp> {
-    let connection = state.db.connect()?;
-
+    log::info!("Creating Project: `{}`", project_req.name);
     let mut project: models::Projects = project_req.into_inner().into();
-    project.fetch_or_create(&connection).await?;
+    project.fetch_or_create(&state.connection).await?;
 
     // Run the statistics task in the background
+    let connection = std::sync::Arc::clone(&state.connection);
     tokio::spawn(async move {
         konarr::tasks::statistics(&connection)
             .await
@@ -185,7 +181,7 @@ pub async fn patch_project(
     project_req: Json<ProjectUpdateRequest>,
     id: Option<u32>,
 ) -> ApiResult<ProjectResp> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let project_id = if let Some(id) = id {
         id
@@ -241,7 +237,7 @@ pub(crate) async fn update_project_metadata(
     _session: Session,
     id: i32,
 ) -> ApiResult<ProjectResp> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let mut project = models::Projects::fetch_by_primary_key(&connection, id).await?;
     // Fetch Children and Latest Snapshot
@@ -258,7 +254,7 @@ pub async fn delete_project(
     session: AdminSession,
     id: i32,
 ) -> ApiResult<ProjectResp> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let mut project = match models::Projects::fetch_by_primary_key(&connection, id).await {
         Ok(project) => project,

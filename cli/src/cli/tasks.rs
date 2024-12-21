@@ -1,12 +1,23 @@
 use clap::Subcommand;
-use geekorm::GeekConnector;
-use konarr::{models::Projects, utils::grypedb::GrypeDatabase, Config};
+use konarr::{
+    tasks::{advisories::scan_projects, alert_calculator, catalogue},
+    utils::grypedb::GrypeDatabase,
+    Config,
+};
 use log::{debug, info};
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum TaskCommands {
+    /// Run the Alert Calculator
     Alerts {},
+    /// Run the Catalogue Sync Task
+    Catalogue {
+        #[clap(short, long, default_value = "false")]
+        force: bool,
+    },
+    /// Run the Grype Sync Task
     Grype {
+        /// Run the Grype Alerts Tas
         #[clap(short, long, default_value = "false")]
         alerts: bool,
     },
@@ -20,9 +31,10 @@ pub async fn run(
 
     match subcommands {
         Some(TaskCommands::Alerts {}) => {
-            konarr::tasks::alerts::alert_calculator(&connection).await?;
-
-            info!("Completed!");
+            alert_calculator(&connection).await?;
+        }
+        Some(TaskCommands::Catalogue { force }) => {
+            catalogue(&connection, force).await?;
         }
         Some(TaskCommands::Grype { alerts }) => {
             info!("Running Grype Sync Task");
@@ -36,24 +48,14 @@ pub async fn run(
                 info!("Running Grype Alerts Task");
                 let grype_conn = GrypeDatabase::connect(&grype_path).await?;
 
-                let mut projects = Projects::fetch_all(&connection).await?;
-                info!("Projects Count: {}", projects.len());
-
-                for project in projects.iter_mut() {
-                    info!("Project: {}", project.name);
-                    if let Some(mut snapshot) = project.fetch_latest_snapshot(&connection).await? {
-                        info!("Snapshot: {} :: {}", snapshot.id, snapshot.components.len());
-
-                        let results = snapshot.scan_with_grype(&connection, &grype_conn).await?;
-                        info!("Vulnerabilities: {}", results.len());
-                    }
-                }
+                scan_projects(&connection, &grype_conn).await?;
             }
         }
         None => {
             info!("No subcommand provided, running interactive mode");
         }
     }
+    info!("Completed!");
 
     Ok(())
 }

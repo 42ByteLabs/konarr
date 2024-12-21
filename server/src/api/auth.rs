@@ -44,7 +44,7 @@ pub async fn login(
     payload: Json<LoginRequest>,
     _limiter: RocketGovernor<'_, crate::guards::limit::RateLimit>,
 ) -> ApiResult<LoginResponse> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let (user, session) = Users::login(
         &connection,
@@ -53,8 +53,13 @@ pub async fn login(
     )
     .await?;
 
-    cookies.add_private(("x-konarr-token", session.token));
+    cookies.add_private(("x-konarr-token", session.token.clone()));
+
     log::info!("Successfull logged in: {:?}", user.id);
+    if let Ok(mut sessions) = state.sessions.write() {
+        log::debug!("Adding user session to in-memory cache - User({})", user.id);
+        sessions.push(Session { user, session });
+    }
 
     Ok(Json(LoginResponse::success()))
 }
@@ -65,12 +70,20 @@ pub async fn logout(
     session: Session,
     cookies: &CookieJar<'_>,
 ) -> ApiResult<LogoutResponse> {
-    let connection = state.db.connect()?;
+    let connection = std::sync::Arc::clone(&state.connection);
 
     let mut user = session.user.clone();
     user.logout(&connection).await?;
 
     cookies.remove_private("x-konarr-token");
+
+    if let Ok(mut sessions) = state.sessions.write() {
+        log::debug!(
+            "Removing user session from in-memory cache - User({})",
+            user.id
+        );
+        sessions.retain(|s| s.user.id != user.id);
+    }
 
     Ok(Json(LogoutResponse {
         status: String::from("success"),
@@ -87,8 +100,7 @@ pub async fn register(
     if session.is_some() {
         return Ok(Json(LoginResponse::failed("Already logged in")));
     }
-    let connection = state.db.connect()?;
-    let registration: String = ServerSettings::fetch_by_name(&connection, "registration")
+    let registration: String = ServerSettings::fetch_by_name(&state.connection, "registration")
         .await?
         .value;
 
@@ -104,7 +116,7 @@ pub async fn register(
         };
 
         let mut session = models::Sessions::new(SessionType::User, SessionState::Active);
-        session.save(&connection).await?;
+        session.save(&state.connection).await?;
 
         let mut user = Users::new(
             payload.username.clone(),
@@ -112,15 +124,17 @@ pub async fn register(
             role,
             session.id,
         );
-        user.save(&connection).await?;
+        user.save(&state.connection).await?;
 
         if !state.init {
-            let mut deinit = ServerSettings::fetch_by_name(&connection, "initialized").await?;
+            let mut deinit =
+                ServerSettings::fetch_by_name(&state.connection, "initialized").await?;
             deinit.set_boolean("true");
-            deinit.update(&connection).await?;
+            deinit.update(&state.connection).await?;
             info!("Server is now initialized");
         }
 
+        let connection = std::sync::Arc::clone(&state.connection);
         tokio::spawn(async move {
             konarr::tasks::statistics(&connection)
                 .await

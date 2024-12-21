@@ -10,17 +10,26 @@ use crate::KonarrError;
 pub struct Syft;
 
 #[async_trait]
-impl Tool for Syft
-where
-    Self: Sized,
-{
-    fn init() -> Result<ToolConfig, KonarrError> {
+impl Tool for Syft {
+    async fn init() -> ToolConfig {
         // Initialize Syft (confirm it exists)
-        if let Ok(path) = Self::find("syft") {
-            Ok(ToolConfig::new("syft", path))
+        let mut config = if let Ok(path) = Self::find("syft") {
+            log::debug!("Found Syft at: {}", path.display());
+            ToolConfig::new("syft", path)
         } else {
-            return Err(KonarrError::ToolError("Syft not found".to_string()));
+            ToolConfig {
+                name: "syft".to_string(),
+                ..Default::default()
+            }
+        };
+        if let Ok(version) = Self::version(&config).await {
+            config.version = version;
         }
+        if let Ok(ipath) = Self::find("install-syft") {
+            config.install_path = Some(ipath.clone());
+        }
+        log::debug!("Syft Config: {:?}", config);
+        config
     }
 
     async fn run(
@@ -32,20 +41,28 @@ where
     {
         let image = image.into();
 
-        info!("Running Syft on image: {}", image);
-        let output_path = format!("cyclonedx-json={}", config.output.display());
+        if let Some(path) = &config.path {
+            info!("Running Syft on image: {}", image);
+            let output_path = format!("cyclonedx-json={}", config.output.display());
 
-        // Run Syft
-        let output = tokio::process::Command::new(&config.path)
-            .args(&["scan", "-o", output_path.as_str(), image.as_str()])
-            .output()
-            .await?;
+            // Run Syft
+            let output = tokio::process::Command::new(&path)
+                .args(&["scan", "-o", output_path.as_str(), image.as_str()])
+                .output()
+                .await?;
 
-        if !output.status.success() {
-            return Err(KonarrError::ToolError("Failed to run tool".to_string()));
+            if !output.status.success() {
+                return Err(KonarrError::ToolError("Failed to run tool".to_string()));
+            }
+
+            // Read the output file
+            Ok(config.read_output().await?)
+        } else {
+            return Err(KonarrError::ToolError("No tool path".to_string()));
         }
+    }
 
-        // Read the output file
-        Ok(tokio::fs::read_to_string(output_path).await?)
+    async fn remote_version<'a>(config: &'a mut ToolConfig) -> Result<String, KonarrError> {
+        config.github_release("anchore/syft").await
     }
 }
