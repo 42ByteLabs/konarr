@@ -4,9 +4,9 @@ use geekorm::{GeekConnection, GeekConnector, QueryBuilderTrait};
 use crate::models::{Component, ComponentType, Projects, ServerSettings, Setting, Users};
 
 /// Calculate Statistics Task
-pub async fn statistics<T>(connection: &T) -> Result<(), crate::KonarrError>
+pub async fn statistics<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
 where
-    T: GeekConnection<Connection = T> + Send + Sync + 'static,
+    T: GeekConnection<Connection = T> + Send + Sync + 'a,
 {
     log::info!("Task - Calculating Statistics");
     user_statistics(connection).await?;
@@ -17,9 +17,9 @@ where
 }
 
 /// User Statistics Task
-pub async fn user_statistics<T>(connection: &T) -> Result<(), crate::KonarrError>
+pub async fn user_statistics<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
 where
-    T: GeekConnection<Connection = T> + Send + Sync + 'static,
+    T: GeekConnection<Connection = T> + Send + Sync + 'a,
 {
     ServerSettings::update_statistic(
         connection,
@@ -44,9 +44,9 @@ where
 }
 
 /// Project Statistics Task
-pub async fn project_statistics<T>(connection: &T) -> Result<(), crate::KonarrError>
+pub async fn project_statistics<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
 where
-    T: GeekConnection<Connection = T> + Send + Sync + 'static,
+    T: GeekConnection<Connection = T> + Send + Sync + 'a,
 {
     ServerSettings::update_statistic(
         connection,
@@ -83,9 +83,9 @@ where
 }
 
 /// Dependency Statistics Task
-pub async fn dependencies_statistics<T>(connection: &T) -> Result<(), crate::KonarrError>
+pub async fn dependencies_statistics<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
 where
-    T: GeekConnection<Connection = T> + Send + Sync + 'static,
+    T: GeekConnection<Connection = T> + Send + Sync + 'a,
 {
     ServerSettings::update_statistic(
         connection,
