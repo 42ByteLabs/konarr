@@ -1,4 +1,6 @@
 //! # Guards
+use std::sync::Arc;
+
 use konarr::models::{
     settings::{keys::Setting, ServerSettings},
     Sessions, UserRole, Users,
@@ -8,6 +10,7 @@ use rocket::{
     request::{FromRequest, Outcome, Request},
     State,
 };
+use tokio::sync::Mutex;
 
 pub mod limit;
 
@@ -35,14 +38,11 @@ impl<'r> FromRequest<'r> for Session {
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         let appstate: &State<AppState> = try_outcome!(req.guard::<&State<AppState>>().await);
 
-        let connection = match appstate.db.connect() {
-            Ok(connection) => connection,
-            Err(_) => return Outcome::Error((rocket::http::Status::InternalServerError, ())),
-        };
+        let connection = Arc::clone(&appstate.connection);
 
         // Agent
         if let Some(token) = req.headers().get_one("Authorization") {
-            if agent_validation(appstate, &connection, &token).await {
+            if agent_validation(appstate, connection, &token).await {
                 // This is a Agent User, no need to check the session
                 // Return a dummy session
                 return Outcome::Success(Session {
@@ -66,7 +66,7 @@ impl<'r> FromRequest<'r> for Session {
             return Outcome::Error((rocket::http::Status::Unauthorized, ()));
         };
 
-        let session = match find_session(appstate, &connection, token.as_str()).await {
+        let session = match find_session(appstate, connection, token.as_str()).await {
             Ok(session) => session,
             Err(e) => {
                 log::warn!("Failed to get session: {}", e);
@@ -86,7 +86,7 @@ impl<'r> FromRequest<'r> for Session {
 /// - Checks the database
 async fn find_session(
     appstate: &AppState,
-    connection: &libsql::Connection,
+    connection: Arc<Mutex<libsql::Connection>>,
     token: &str,
 ) -> Result<Session, KonarrServerError> {
     let config = &appstate.config.sessions();
@@ -102,7 +102,7 @@ async fn find_session(
     }
 
     // Check the database for the session (this is an expensive check)
-    let session = match Sessions::fetch_by_token(connection, token.to_string()).await {
+    let session = match Sessions::fetch_by_token(&connection, token.to_string()).await {
         Ok(session) => session,
         Err(_) => {
             log::error!("Provided session token is invalid");
@@ -110,7 +110,7 @@ async fn find_session(
         }
     };
 
-    let mut user = match Users::fetch_by_sessions(connection, session.id).await {
+    let mut user = match Users::fetch_by_sessions(&connection, session.id).await {
         Ok(user) => user.first().unwrap().clone(),
         Err(_) => return Err(KonarrServerError::InternalServerError),
     };
@@ -121,7 +121,7 @@ async fn find_session(
         return Err(KonarrServerError::Unauthorized);
     }
 
-    match user.update_access(connection).await {
+    match user.update_access(&connection).await {
         Ok(_) => {
             log::debug!("Updated user access - User({})", user.id);
         }
@@ -150,7 +150,7 @@ async fn find_session(
 /// - Checks the database for the token
 async fn agent_validation(
     appstate: &AppState,
-    connection: &libsql::Connection,
+    connection: Arc<Mutex<libsql::Connection>>,
     token: &str,
 ) -> bool {
     // Check the cached agent token
@@ -162,7 +162,7 @@ async fn agent_validation(
         log::debug!("Cached Agent Key Mismatch, checking database");
     }
     // Check the database for the agent key (expensive check)
-    match ServerSettings::fetch_by_name(connection, Setting::AgentKey).await {
+    match ServerSettings::fetch_by_name(&connection, Setting::AgentKey).await {
         Ok(key) => {
             if token == key.value {
                 log::info!("Agent performing action");

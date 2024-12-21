@@ -47,17 +47,16 @@ pub(crate) async fn get_snapshot(
     _session: Session,
     id: u32,
 ) -> ApiResult<SnapshotResp> {
-    let connection = state.db.connect()?;
-
     info!("Fetching snapshot: {}", id);
-    let mut snapshot = match models::Snapshot::fetch_by_primary_key(&connection, id as i32).await {
-        Ok(snapshot) => snapshot,
-        Err(e) => {
-            log::error!("Failed to fetch snapshot: {:?}", e);
-            return Err(KonarrServerError::SnapshotNotFoundError(id as i32).into());
-        }
-    };
-    snapshot.fetch_metadata(&connection).await?;
+    let mut snapshot =
+        match models::Snapshot::fetch_by_primary_key(&state.connection, id as i32).await {
+            Ok(snapshot) => snapshot,
+            Err(e) => {
+                log::error!("Failed to fetch snapshot: {:?}", e);
+                return Err(KonarrServerError::SnapshotNotFoundError(id as i32).into());
+            }
+        };
+    snapshot.fetch_metadata(&state.connection).await?;
 
     Ok(Json(snapshot.into()))
 }
@@ -74,11 +73,11 @@ pub(crate) async fn create_snapshot(
     _session: Session,
     snapshot: Json<SnapshotCreateReq>,
 ) -> ApiResult<SnapshotResp> {
-    let connection = state.db.connect()?;
-
     info!("Creating snapshot for Project: {}", snapshot.project_id);
+
     let mut project =
-        match models::Projects::fetch_by_primary_key(&connection, snapshot.project_id as i32).await
+        match models::Projects::fetch_by_primary_key(&state.connection, snapshot.project_id as i32)
+            .await
         {
             Ok(project) => project,
             Err(geekorm::Error::NoRowsFound) => {
@@ -94,14 +93,16 @@ pub(crate) async fn create_snapshot(
         };
     debug!("Project: {:?}", project);
 
-    let snapshot = match models::Snapshot::create(&connection).await {
+    let snapshot = match models::Snapshot::create(&state.connection).await {
         Ok(snapshot) => snapshot,
         Err(e) => {
             log::error!("Failed to create snapshot: {:?}", e);
             return Err(KonarrServerError::InternalServerError.into());
         }
     };
-    project.add_snapshot(&connection, snapshot.clone()).await?;
+    project
+        .add_snapshot(&state.connection, snapshot.clone())
+        .await?;
 
     Ok(Json(snapshot.into()))
 }
@@ -113,17 +114,16 @@ pub(crate) async fn patch_snapshot_metadata(
     id: u32,
     metadata: Json<HashMap<String, String>>,
 ) -> ApiResult<SnapshotResp> {
-    let connection = std::sync::Arc::clone(&state.connection);
-
     info!("Updating metadata for snapshot: {}", id);
-    let mut snapshot = match models::Snapshot::fetch_by_primary_key(&connection, id as i32).await {
-        Ok(snapshot) => snapshot,
-        Err(e) => {
-            log::error!("Failed to fetch snapshot: {:?}", e);
-            return Err(KonarrServerError::SnapshotNotFoundError(id as i32).into());
-        }
-    };
-    snapshot.fetch_metadata(&connection).await?;
+    let mut snapshot =
+        match models::Snapshot::fetch_by_primary_key(&state.connection, id as i32).await {
+            Ok(snapshot) => snapshot,
+            Err(e) => {
+                log::error!("Failed to fetch snapshot: {:?}", e);
+                return Err(KonarrServerError::SnapshotNotFoundError(id as i32).into());
+            }
+        };
+    snapshot.fetch_metadata(&state.connection).await?;
 
     for (key, value) in metadata.iter() {
         if value.is_empty() {
@@ -144,7 +144,7 @@ pub(crate) async fn patch_snapshot_metadata(
         log::info!("Setting metadata: {} = {}", metadata_key, value);
 
         snapshot
-            .set_metadata(&connection, metadata_key, value)
+            .set_metadata(&state.connection, metadata_key, value)
             .await?;
     }
 
@@ -158,10 +158,8 @@ pub(crate) async fn upload_bom(
     id: u32,
     data: rocket::data::Data<'_>,
 ) -> ApiResult<SnapshotResp> {
-    let connection = std::sync::Arc::clone(&state.connection);
-
     info!("Uploading SBOM for snapshot: {}", id);
-    let mut snapshot = models::Snapshot::fetch_by_primary_key(&connection, id as i32).await?;
+    let mut snapshot = models::Snapshot::fetch_by_primary_key(&state.connection, id as i32).await?;
 
     // TODO: Implement file upload
     let data = data
@@ -176,7 +174,7 @@ pub(crate) async fn upload_bom(
     debug!("Parsed SBOM: {:?}", bom);
 
     info!("Adding SBOM to snapshot: {}", snapshot.id);
-    snapshot.add_bom(&connection, &bom).await?;
+    snapshot.add_bom(&state.connection, &bom).await?;
 
     Ok(Json(snapshot.into()))
 }
@@ -190,26 +188,24 @@ pub(crate) async fn get_snapshot_dependencies(
     page: Option<u32>,
     limit: Option<u32>,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
-    let connection = std::sync::Arc::clone(&state.connection);
-
     let page = page.unwrap_or(0) as usize;
     let limit = limit.unwrap_or(10) as usize;
 
-    let mut snapshot = models::Snapshot::fetch_by_primary_key(&connection, id as i32).await?;
-    snapshot.fetch_metadata(&connection).await?;
+    let mut snapshot = models::Snapshot::fetch_by_primary_key(&state.connection, id as i32).await?;
+    snapshot.fetch_metadata(&state.connection).await?;
 
     let total = snapshot.find_metadata_usize("bom.dependencies.count");
 
     let mut deps = if let Some(search) = search {
-        models::Dependencies::search(&connection, snapshot.id, search).await?
+        models::Dependencies::search(&state.connection, snapshot.id, search).await?
     } else {
         snapshot
-            .fetch_dependencies(&connection, page, limit)
+            .fetch_dependencies(&state.connection, page, limit)
             .await?
     };
 
     for dep in &mut deps {
-        dep.fetch(&connection).await?;
+        dep.fetch(&state.connection).await?;
     }
 
     Ok(Json(ApiResponse::new(
@@ -229,10 +225,8 @@ pub(crate) async fn get_snapshot_alerts(
     page: Option<u32>,
     limit: Option<u32>,
 ) -> ApiResult<ApiResponse<Vec<AlertResp>>> {
-    let connection = state.db.connect()?;
-
-    let snapshot = models::Snapshot::fetch_by_primary_key(&connection, id as i32).await?;
-    let total = snapshot.fetch_alerts_count(&connection).await?;
+    let snapshot = models::Snapshot::fetch_by_primary_key(&state.connection, id as i32).await?;
+    let total = snapshot.fetch_alerts_count(&state.connection).await?;
 
     let page = Pagination::from((page, limit));
     let pages = (total as f32 / page.limit() as f32).ceil() as u32;
@@ -244,7 +238,7 @@ pub(crate) async fn get_snapshot_alerts(
 
         info!("Filtering alerts by severity: {:?}", severity);
         let mut alerts = Alerts::query(
-            &connection,
+            &state.connection,
             Alerts::query_select()
                 .join(Advisories::table())
                 .where_eq("snapshot_id", snapshot.id)
@@ -255,11 +249,11 @@ pub(crate) async fn get_snapshot_alerts(
         )
         .await?;
         for alert in alerts.iter_mut() {
-            alert.fetch(&connection).await?;
+            alert.fetch(&state.connection).await?;
         }
         alerts
     } else {
-        snapshot.fetch_alerts_page(&connection, &page).await?
+        snapshot.fetch_alerts_page(&state.connection, &page).await?
     };
     info!(
         "Found `{}` alerts in snapshot `{}`",
@@ -281,13 +275,11 @@ pub async fn get_snapshots(
     page: Option<u32>,
     limit: Option<u32>,
 ) -> ApiResult<Vec<SnapshotResp>> {
-    let connection = state.db.connect()?;
-
     let page = page.unwrap_or(0) as usize;
     let limit = limit.unwrap_or(25) as usize;
 
     let mut snapshots = models::Snapshot::query(
-        &connection,
+        &state.connection,
         models::Snapshot::query_select()
             .limit(limit)
             .offset(page * limit)
@@ -298,7 +290,7 @@ pub async fn get_snapshots(
     let mut resp = Vec::new();
 
     for snapshot in snapshots.iter_mut() {
-        snapshot.fetch_metadata(&connection).await?;
+        snapshot.fetch_metadata(&state.connection).await?;
 
         let mut count = 0;
 

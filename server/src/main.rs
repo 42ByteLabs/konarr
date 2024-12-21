@@ -23,7 +23,6 @@ mod routes;
 
 /// Application State
 pub struct AppState {
-    db: libsql::Database,
     connection: Arc<Mutex<libsql::Connection>>,
     sessions: Arc<RwLock<Vec<guards::Session>>>,
     agent_token: Arc<RwLock<String>>,
@@ -173,7 +172,6 @@ async fn server(config: Config) -> Result<()> {
     }
 
     let state = AppState {
-        db: database,
         connection: Arc::new(Mutex::new(connection)),
         sessions: Arc::new(RwLock::new(Vec::new())),
         agent_token: Arc::new(RwLock::new(agent_token)),

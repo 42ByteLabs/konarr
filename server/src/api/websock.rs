@@ -1,5 +1,7 @@
 //! # Konarr Agent Websocket
 
+use std::sync::Arc;
+
 use konarr::models::Projects;
 use rocket::{
     futures::{SinkExt, StreamExt},
@@ -26,7 +28,7 @@ pub async fn agent<'a>(
 ) -> ws::Channel<'a> {
     ws.channel(move |mut stream| {
         Box::pin(async move {
-            let connection = state.db.connect().unwrap();
+            let connection = Arc::clone(&state.connection);
             let mut projects = vec![];
 
             while let Some(Ok(message)) = stream.next().await {

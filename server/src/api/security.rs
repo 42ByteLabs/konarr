@@ -55,26 +55,24 @@ pub(crate) async fn get_alerts(
     search: Option<String>,
     severity: Option<String>,
 ) -> ApiResult<ApiResponse<Vec<AlertResp>>> {
-    let connection = std::sync::Arc::clone(&app_state.connection);
-
     let page = Pagination::from((page, limit));
 
-    let total = Alerts::count_vulnerable(&connection).await?;
+    let total = Alerts::count_vulnerable(&app_state.connection).await?;
     let pages = (total as f32 / page.limit() as f32).ceil() as u32;
 
     let state = SecurityState::from(state);
 
     let alerts = if let Some(search) = search {
         info!("Searching for alerts: {}", search);
-        Alerts::search(&connection, search).await?
+        Alerts::search(&app_state.connection, search).await?
     } else if let Some(severity) = severity {
         let severity = SecuritySeverity::from(severity);
         info!("Filtering alerts by severity: {:?}", severity);
-        Alerts::filter_severity(&connection, severity, &page).await?
+        Alerts::filter_severity(&app_state.connection, severity, &page).await?
     } else {
         info!("Getting alerts");
         Alerts::query(
-            &connection,
+            &app_state.connection,
             Alerts::query_select()
                 .where_eq("state", state)
                 .order_by("id", QueryOrder::Asc)
@@ -97,18 +95,16 @@ pub(crate) async fn get_alert(
     _session: Session,
     id: i32,
 ) -> ApiResult<AlertResp> {
-    let connection = std::sync::Arc::clone(&state.connection);
+    let mut alert = Alerts::fetch_by_primary_key(&state.connection, id).await?;
 
-    let mut alert = Alerts::fetch_by_primary_key(&connection, id).await?;
+    alert.fetch_advisory_id(&state.connection).await?;
+    alert.fetch_metadata(&state.connection).await?;
 
-    alert.fetch_advisory_id(&connection).await?;
-    alert.fetch_metadata(&connection).await?;
-
-    alert.fetch_snapshot_id(&connection).await?;
+    alert.fetch_snapshot_id(&state.connection).await?;
 
     // Fetch the dependency
-    alert.fetch_dependency_id(&connection).await?;
-    alert.dependency_id.data.fetch(&connection).await?;
+    alert.fetch_dependency_id(&state.connection).await?;
+    alert.dependency_id.data.fetch(&state.connection).await?;
 
     info!(
         "Fetched alert: {} (dep: {})",
