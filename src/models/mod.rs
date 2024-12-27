@@ -1,8 +1,10 @@
 //! # Konarr Models
 
+use geekorm::prelude::*;
 use log::debug;
 
 pub mod auth;
+pub mod components;
 pub mod dependencies;
 pub mod projects;
 pub mod security;
@@ -10,18 +12,16 @@ pub mod settings;
 
 pub use auth::sessions::{SessionState, SessionType, Sessions};
 pub use auth::users::{UserRole, Users};
-pub use dependencies::components::{Component, ComponentManager, ComponentVersion};
-pub use dependencies::components_type::ComponentType;
+pub use components::{Component, ComponentManager, ComponentType, ComponentVersion};
 pub use dependencies::snapshots::{Snapshot, SnapshotMetadata};
 pub use dependencies::Dependencies;
 pub use projects::{ProjectSnapshots, ProjectStatus, ProjectType, Projects};
-use security::advisories::AdvisoriesMetadata;
-use security::{Advisories, Alerts};
+pub use security::advisories::AdvisoriesMetadata;
+pub use security::{Advisories, Alerts};
 
 pub use settings::{ServerSettings, Setting};
 
 use crate::KonarrError;
-use geekorm::prelude::*;
 
 /// Initialize the database with the necessary tables.
 pub async fn database_create<'a, T>(connection: &'a T) -> Result<(), KonarrError>
