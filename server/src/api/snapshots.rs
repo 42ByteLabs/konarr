@@ -3,8 +3,8 @@ use konarr::{
     bom::{BomParser, Parsers},
     models::{
         self,
-        dependencies::snapshots::metadata::SnapshotMetadataKey,
         security::{Advisories, Alerts, SecuritySeverity},
+        SnapshotMetadataKey,
     },
 };
 use log::{debug, info};
@@ -175,6 +175,19 @@ pub(crate) async fn upload_bom(
 
     info!("Adding SBOM to snapshot: {}", snapshot.id);
     snapshot.add_bom(&state.connection, &bom).await?;
+
+    let id = uuid::Uuid::new_v4();
+    let file_name = format!("{}.{}.json", id, bom.sbom_type.to_file_name());
+    let sbom_path = state.config.sboms_path()?.join(&file_name);
+
+    info!("Writing SBOM to file: {}", sbom_path.display());
+    tokio::fs::write(&sbom_path, &*data)
+        .await
+        .map_err(|e| KonarrServerError::BillOfMaterialsParseError(e.to_string()))?;
+
+    snapshot
+        .set_metadata(&state.connection, SnapshotMetadataKey::BomPath, &file_name)
+        .await?;
 
     Ok(Json(snapshot.into()))
 }
