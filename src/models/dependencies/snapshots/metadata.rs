@@ -218,12 +218,11 @@ pub enum SnapshotMetadataKey {
     BomSha,
     #[geekorm(key = "bom.tool")]
     BomTool,
+    #[geekorm(key = "bom.tool.name")]
+    BomToolName,
     #[geekorm(key = "bom.tool.version")]
     BomToolVersion,
-<<<<<<< Updated upstream
     /// Path to where the SBOM is stored
-=======
->>>>>>> Stashed changes
     #[geekorm(key = "bom.path")]
     BomPath,
 
