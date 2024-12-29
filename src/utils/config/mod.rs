@@ -172,6 +172,16 @@ impl Config {
         Ok(path)
     }
 
+    /// SBOMs Path in data directory
+    pub fn sboms_path(&self) -> Result<PathBuf, Error> {
+        let path = self.data_path()?.join("sboms");
+        if !path.exists() {
+            log::debug!("Creating SBOMs path");
+            std::fs::create_dir_all(&path)?;
+        }
+        Ok(path)
+    }
+
     #[cfg(feature = "models")]
     /// Get Database Connection
     pub async fn database(&self) -> Result<libsql::Database, Error> {
