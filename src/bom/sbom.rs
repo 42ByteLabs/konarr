@@ -71,11 +71,24 @@ impl Display for BomType {
     }
 }
 
+impl BomType {
+    /// Convert the SBOM type to a file name
+    pub fn to_file_name(&self) -> String {
+        match self {
+            BomType::CycloneDX_1_5 | BomType::CycloneDX_1_6 => "cdx",
+            BomType::SPDX => "spdx",
+        }
+        .to_string()
+    }
+}
+
 /// Dependency Model
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BomComponent {
     /// Package URL
     pub purl: String,
+    /// CPE
+    pub cpe: Option<String>,
     /// Package Name
     pub name: String,
     /// The type of component
