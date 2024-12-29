@@ -6,9 +6,8 @@ use purl::GenericPurl;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+use super::{ComponentManager, ComponentType, ComponentVersion};
 use crate::{tasks, utils::catalogue::Catalogue};
-
-use super::ComponentType;
 
 /// Component Model
 #[derive(Table, Debug, Default, Clone, Serialize, Deserialize)]
@@ -181,101 +180,10 @@ impl Component {
     }
 }
 
-/// Component Dependency Model
-#[derive(Table, Debug, Default, Clone, Serialize, Deserialize)]
-pub struct ComponentVersion {
-    /// Primary Key
-    #[geekorm(primary_key, auto_increment)]
-    pub id: PrimaryKey<i32>,
-
-    /// Component ID
-    #[geekorm(foreign_key = "Component.id")]
-    pub component_id: ForeignKey<i32, Component>,
-
-    /// Version (semver or other format)
-    pub version: String,
-}
-
-impl ComponentVersion {
-    /// Semver Version
-    pub fn version(&self) -> Result<semver::Version, crate::KonarrError> {
-        Ok(semver::Version::parse(self.version.as_str())?)
-    }
-
-    /// Find or Create Component Version
-    pub async fn find_or_crate<'a, T>(
-        &mut self,
-        connection: &'a T,
-    ) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
-        let select = ComponentVersion::query_select()
-            .where_eq("component_id", self.component_id.clone())
-            .and()
-            .where_eq("version", self.version.clone())
-            .build()?;
-
-        match ComponentVersion::query_first(connection, select).await {
-            Ok(dep) => {
-                self.id = dep.id;
-                Ok(())
-            }
-            Err(_) => self.save(connection).await.map_err(|e| e.into()),
-        }
-    }
-}
-
-/// Dependency Manager Enum
-///
-/// https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst
-#[derive(Data, Debug, Default, Clone, PartialEq, Eq, Hash)]
-#[geekorm(from_string = "lowercase", to_string = "lowercase")]
-pub enum ComponentManager {
-    /// Alpine Linux
-    #[geekorm(aliases = "apk,alpine")]
-    Apk,
-    /// Cargo / Rust
-    #[geekorm(aliases = "cargo,rust,rustc,rustlang")]
-    Cargo,
-    /// Composer / PHP
-    #[geekorm(aliases = "composer,php")]
-    Composer,
-    /// Debian / Ubuntu
-    #[geekorm(aliases = "deb,debian")]
-    Deb,
-    /// Ruby Gem
-    #[geekorm(aliases = "gem,ruby")]
-    Gem,
-    /// Generic
-    #[geekorm(aliases = "generic")]
-    Generic,
-    /// NPM
-    #[geekorm(aliases = "npm,node,javascript")]
-    Npm,
-    /// Go Modules
-    #[geekorm(aliases = "go,golang")]
-    Golang,
-    /// Maven / Java / Kotlin
-    #[geekorm(aliases = "maven,gradle,java,kotlin,jvm")]
-    Maven,
-    /// Python Pip
-    #[geekorm(aliases = "pypi,pip,python")]
-    PyPi,
-    /// Nuget
-    #[geekorm(aliases = "nuget,csharp")]
-    Nuget,
-    /// RPM (Redhat Package Manager)
-    #[geekorm(aliases = "rpm,redhat")]
-    Rpm,
-    /// Unknown Package Manager
-    #[default]
-    Unknown,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::ComponentManager;
 
     #[test]
     fn test_parsing() {
