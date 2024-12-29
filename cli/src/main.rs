@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 use log::{debug, error, info, warn};
 
 mod cli;
+mod statistics;
 mod utils;
 
 use cli::{init, update_config};
@@ -205,110 +206,9 @@ async fn main() -> Result<()> {
             Ok(cli::tasks::run(&config, subcommands).await?)
         }
         None => {
-            info!("No command provided, showing server info");
-            let (_client, serverinfo) = client(&config).await?;
+            debug!("No command provided, showing server info");
 
-            // Check if the user is authenticated
-            if !serverinfo.user.is_some() {
-                info!("User is not authenticated");
-            } else {
-                info!("User is authenticated!");
-            }
-
-            if let Some(psummary) = serverinfo.projects {
-                print_stats(
-                    "Projects Statistics",
-                    vec![
-                        ("⚡", "Projects", psummary.total),
-                        ("💻", "Servers", psummary.servers),
-                        ("📦", "Containers", psummary.containers),
-                    ],
-                );
-            }
-            if let Some(dsummary) = serverinfo.dependencies {
-                print_stats(
-                    "Dependency Statistics",
-                    vec![
-                        ("⚡", "Total", dsummary.total),
-                        ("📦", "Libraries", dsummary.libraries),
-                        ("📦", "Frameworks", dsummary.frameworks),
-                        ("🖥️ ", "Operating Systems", dsummary.operating_systems),
-                        ("📝", "Languages", dsummary.languages),
-                        ("📦", "Package Managers", dsummary.package_managers),
-                        (
-                            "⚡",
-                            "Compression Libraries",
-                            dsummary.compression_libraries,
-                        ),
-                        (
-                            "🔒",
-                            "Cryptographic Libraries",
-                            dsummary.cryptographic_libraries,
-                        ),
-                        ("🐐", "Databases", dsummary.databases),
-                        (
-                            "🛞",
-                            "Operating Environments",
-                            dsummary.operating_environments,
-                        ),
-                        ("🔍", "Middleware", dsummary.middleware),
-                    ],
-                );
-            }
-            if let Some(security) = serverinfo.security {
-                print_stats(
-                    "Security Statistics",
-                    vec![
-                        ("🔴", "Critical", security.critical),
-                        ("🟠", "High", security.high),
-                        ("🟡", "Medium", security.medium),
-                        ("🟢", "Low", security.low),
-                        ("ℹ️ ", "Informational", security.informational),
-                        ("🦠", "Malware", security.malware),
-                        ("🛡️ ", "Unmaintained", security.unmaintained),
-                        ("❓", "Unknown", security.unknown),
-                    ],
-                );
-            }
-            // info!("Dependencies :: {}", serverinfo.dependencies.total);
-
-            if let Some(agent_settings) = serverinfo.agent {
-                info!("----- {:^26} -----", "Agent Settings");
-                let tools = konarr::tools::ToolConfig::tools().await?;
-                let tool_available = if tools
-                    .iter()
-                    .find(|t| t.name == agent_settings.tool.to_lowercase())
-                    .is_some()
-                {
-                    "✅"
-                } else {
-                    "❌"
-                };
-
-                info!("Agent settings");
-                info!(
-                    " > {} Tool to use: {} ",
-                    tool_available, agent_settings.tool
-                );
-
-                info!("Other tools available:");
-                for tool in tools.iter() {
-                    if !tool.version.is_empty() {
-                        info!(" > {} (v{})", tool.name, tool.version);
-                    } else {
-                        info!(" > {}", tool.name);
-                    }
-                }
-            }
-
-            Ok(())
+            statistics::statistics(&config).await
         }
-    }
-}
-
-fn print_stats(title: &str, stats: Vec<(&str, &str, u32)>) {
-    info!("----- {:^26} -----", title);
-    for (emoji, name, value) in stats.iter() {
-        info!(" > {} {:<24}: {}", emoji, name, value);
     }
 }
