@@ -135,7 +135,7 @@ impl Snapshot {
             SnapshotMetadata::update_or_create(
                 connection,
                 self.id,
-                &SnapshotMetadataKey::BomTool,
+                &SnapshotMetadataKey::BomToolName,
                 tool.name.clone(),
             )
             .await?;
@@ -148,6 +148,15 @@ impl Snapshot {
                 )
                 .await?;
             }
+
+            let name = format!("{}@{}", tool.name, tool.version);
+            SnapshotMetadata::update_or_create(
+                connection,
+                self.id,
+                &SnapshotMetadataKey::BomTool,
+                name,
+            )
+            .await?;
         }
 
         // Container Metadata
