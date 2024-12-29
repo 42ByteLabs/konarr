@@ -13,7 +13,7 @@ pub mod settings;
 pub use auth::sessions::{SessionState, SessionType, Sessions};
 pub use auth::users::{UserRole, Users};
 pub use components::{Component, ComponentManager, ComponentType, ComponentVersion};
-pub use dependencies::snapshots::{Snapshot, SnapshotMetadata};
+pub use dependencies::snapshots::{Snapshot, SnapshotMetadata, SnapshotMetadataKey};
 pub use dependencies::Dependencies;
 pub use projects::{ProjectSnapshots, ProjectStatus, ProjectType, Projects};
 pub use security::advisories::AdvisoriesMetadata;
@@ -55,7 +55,7 @@ where
     debug!("Security tables...");
     Advisories::create_table(connection).await?;
     AdvisoriesMetadata::create_table(connection).await?;
-    Alerts::create_table(connection).await?;
+    Alerts::init(connection).await?;
 
     debug!("Creating Projects tables...");
     Projects::init(connection).await?;

@@ -220,6 +220,12 @@ pub enum SnapshotMetadataKey {
     BomTool,
     #[geekorm(key = "bom.tool.version")]
     BomToolVersion,
+<<<<<<< Updated upstream
+    /// Path to where the SBOM is stored
+=======
+>>>>>>> Stashed changes
+    #[geekorm(key = "bom.path")]
+    BomPath,
 
     // Dependency Info
     #[geekorm(key = "dependencies.total", aliases = "bom.dependencies.count")]
