@@ -1,31 +1,44 @@
 //! # Grype Database
 #![allow(missing_docs)]
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use chrono::Timelike;
 use geekorm::prelude::*;
 use log::{debug, error, trace, warn};
 use semver::Version;
 use sha2::Digest;
+use tokio::sync::Mutex;
 use url::Url;
 
 use crate::{models::security::AdvisorySource, KonarrError};
 
+mod matcher;
+
 /// Grype Database
-pub struct GrypeDatabase;
+pub struct GrypeDatabase {
+    /// Connection to the Grype database
+    pub connection: Arc<Mutex<libsql::Connection>>,
+    /// All of the Grype vulnerabilities
+    ///
+    /// Acts like a cache
+    pub vulnerabilities: Vec<GrypeVulnerability>,
+}
 
 impl GrypeDatabase {
     /// Create a connection to the Grype database
     ///
     /// Path can be a directory (with vulnerability.db) or the database file
-    pub async fn connect(path: &PathBuf) -> Result<libsql::Connection, KonarrError> {
+    pub async fn connect(path: &PathBuf) -> Result<Self, KonarrError> {
         let db = if path.is_dir() {
             let fpath = path.join("vulnerability.db");
             libsql::Builder::new_local(fpath).build().await?
         } else {
             libsql::Builder::new_local(path).build().await?
         };
-        Ok(db.connect()?)
+        Ok(Self {
+            connection: Arc::new(Mutex::new(db.connect()?)),
+            vulnerabilities: Vec::new(),
+        })
     }
 
     /// Sync the Grype database
@@ -58,7 +71,7 @@ impl GrypeDatabase {
 
         // Open the Grype database and fetch the db ID metadata
         let grype_db = GrypeDatabase::connect(&dbpath).await?;
-        let grype = GrypeDatabase::fetch_grype(&grype_db).await?;
+        let grype = grype_db.fetch_grype().await?;
         let build_timestamp = grype.build_timestamp.with_nanosecond(0).unwrap();
 
         debug!("Grype DB build time: {}", build_timestamp);
@@ -184,11 +197,79 @@ impl GrypeDatabase {
     }
 
     /// Load the Grype database
-    pub async fn fetch_grype<'a, T>(connection: &'a T) -> Result<GrypeId, KonarrError>
-    where
-        T: geekorm::GeekConnection<Connection = T> + 'a,
-    {
-        Ok(GrypeId::query_first(connection, GrypeId::query_select().limit(1).build()?).await?)
+    pub async fn fetch_grype(&self) -> Result<GrypeId, KonarrError> {
+        Ok(
+            GrypeId::query_first(&self.connection, GrypeId::query_select().limit(1).build()?)
+                .await?,
+        )
+    }
+
+    pub async fn fetch_vulnerabilities(&mut self) -> Result<&Vec<GrypeVulnerability>, KonarrError> {
+        if self.vulnerabilities.is_empty() {
+            debug!("Loading Grype vulnerabilities");
+            self.vulnerabilities = GrypeVulnerability::query(
+                &self.connection,
+                GrypeVulnerability::query_select().build()?,
+            )
+            .await?;
+            debug!(
+                "Loaded {} Grype vulnerabilities",
+                self.vulnerabilities.len()
+            );
+        }
+        Ok(&self.vulnerabilities)
+    }
+
+    /// Find a vulnerability in the Grype database
+    pub fn find_vulnerability(
+        &self,
+        comp: &crate::models::Component,
+        compversion: &crate::models::ComponentVersion,
+    ) -> Result<Vec<GrypeVulnerability>, crate::KonarrError> {
+        if compversion.version.is_empty() {
+            warn!("Component version is empty, skipping Grype check");
+            return Ok(vec![]);
+        }
+        if compversion.version.as_str() == "0.0.0" {
+            warn!("Unsure what the version of the package is");
+            return Ok(vec![]);
+        }
+
+        // TODO: Only semver for now
+        let version = if let Ok(v) = Version::parse(compversion.version.as_str()) {
+            v
+        } else {
+            debug!(
+                "Unable to parse version `{}` for component `{}`",
+                compversion.version, comp.name
+            );
+            return Ok(vec![]);
+        };
+
+        let mut results = vec![];
+
+        // TODO: This is a issue, this has 4million+ entries
+        for vuln in self.vulnerabilities.iter() {
+            // Skip if no version constraint
+            if vuln.version_constraint.is_empty() {
+                continue;
+            }
+            // Name matching
+            if vuln.package_name != comp.name {
+                continue;
+            }
+
+            // Version matching
+            if let Ok(versions) = semver::VersionReq::parse(vuln.version_constraint.as_str()) {
+                if versions.matches(&version) {
+                    results.push(vuln.clone());
+                }
+            } else {
+                trace!("Unable to parse version req: {}", vuln.version_constraint);
+            }
+        }
+
+        Ok(results)
     }
 }
 
@@ -250,6 +331,14 @@ pub struct GrypeVulnerability {
 
 #[cfg(feature = "models")]
 impl GrypeVulnerability {
+    pub fn cpes(&self) -> Vec<String> {
+        if let Some(cpes) = &self.cpes {
+            serde_json::from_str(cpes).unwrap_or_default()
+        } else {
+            Vec::new()
+        }
+    }
+
     pub async fn find_vulnerabilities<'a, T>(
         connection: &'a T,
         component: &crate::models::Component,
@@ -293,6 +382,8 @@ impl GrypeVulnerability {
             if vuln.version_constraint.is_empty() {
                 continue;
             }
+
+            // Check against CPEs to check if it's a match
             if let Ok(versions) = semver::VersionReq::parse(vuln.version_constraint.as_str()) {
                 if versions.matches(&version) {
                     if results.iter().any(|v| v.id == vuln.id) {
