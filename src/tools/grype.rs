@@ -1,10 +1,12 @@
 //! # Grype
 
+use std::path::PathBuf;
+
 use async_trait::async_trait;
 use log::info;
 
 use super::{Tool, ToolConfig};
-use crate::KonarrError;
+use crate::{Config, KonarrError};
 
 /// Syft Tool
 #[derive(Debug)]
@@ -46,9 +48,23 @@ impl Tool for Grype {
             let opath = format!("cyclonedx-json={}", config.output.display());
             log::debug!("Output path: {}", config.output.display());
 
+            let db_cache = PathBuf::from(
+                std::env::var("KONARR_DATA_DIR").unwrap_or_else(|_| "/var/lib/konarr".to_string()),
+            )
+            .join("grypedb");
+
             log::debug!("Run Grype (all layers, output to temp file)");
             let output = tokio::process::Command::new(&path)
                 .args(&["-s", "all-layers", "-o", opath.as_str(), image.as_str()])
+                .envs([
+                    // Disable auto update
+                    ("GRYPE_DB_AUTO_UPDATE", "false"),
+                    // Use cache dir
+                    (
+                        "GRYPE_DB_CACHE_DIR",
+                        db_cache.display().to_string().as_str(),
+                    ),
+                ])
                 .output()
                 .await?;
 

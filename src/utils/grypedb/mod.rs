@@ -10,7 +10,12 @@ use sha2::Digest;
 use tokio::sync::Mutex;
 use url::Url;
 
-use crate::{models::security::AdvisorySource, KonarrError};
+use crate::{
+    bom::{BillOfMaterials, BomParser, Parsers},
+    models::security::AdvisorySource,
+    tools::{Grype, Tool, ToolConfig},
+    KonarrError,
+};
 
 mod matcher;
 
@@ -22,6 +27,9 @@ pub struct GrypeDatabase {
     ///
     /// Acts like a cache
     pub vulnerabilities: Vec<GrypeVulnerability>,
+
+    /// Grype tool configuration
+    pub tool: ToolConfig,
 }
 
 impl GrypeDatabase {
@@ -38,6 +46,7 @@ impl GrypeDatabase {
         Ok(Self {
             connection: Arc::new(Mutex::new(db.connect()?)),
             vulnerabilities: Vec::new(),
+            tool: Grype::init().await,
         })
     }
 
@@ -199,6 +208,16 @@ impl GrypeDatabase {
         debug!("Grype DB unarchived");
 
         Ok(())
+    }
+
+    /// Scan a SBOM with Grype
+    pub async fn scan_sbom(&self, path: &PathBuf) -> Result<BillOfMaterials, KonarrError> {
+        let sbom = format!("sbom:{}", path.display());
+        let output = Grype::run(&self.tool, sbom).await?;
+
+        let bom = Parsers::parse(output.as_bytes())?;
+
+        Ok(bom)
     }
 
     /// Load the Grype database
