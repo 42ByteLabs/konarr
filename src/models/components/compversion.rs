@@ -18,25 +18,21 @@ pub struct ComponentVersion {
 
     /// Version (semver or other format)
     pub version: String,
-
-    purl: Option<String>,
-
-    cpe: Option<String>,
 }
 
 impl ComponentVersion {
+    /// Initialise ComponentVersion
+    pub async fn init<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Self::create_table(connection).await?;
+        Ok(())
+    }
+
     /// Semver Version
     pub fn version(&self) -> Result<semver::Version, crate::KonarrError> {
         Ok(semver::Version::parse(self.version.as_str())?)
-    }
-
-    /// Get the purl for the component version
-    pub fn purl(&self) -> String {
-        if let Some(purl) = self.purl.clone() {
-            purl
-        } else {
-            self.component_id.data.purl()
-        }
     }
 
     /// Find or Create Component Version
