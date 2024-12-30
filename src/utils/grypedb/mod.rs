@@ -113,7 +113,12 @@ impl GrypeDatabase {
     ///
     /// This is the full process of updating the Grype database
     pub async fn download(path: &PathBuf, build: &GrypeDatabaseEntry) -> Result<(), KonarrError> {
-        let archive_path = GrypeDatabase::download_archive(path, &build.url).await?;
+        let path_version = path.join(build.version.to_string());
+        if !path.exists() {
+            std::fs::create_dir_all(path)?;
+        }
+
+        let archive_path = GrypeDatabase::download_archive(&path_version, &build.url).await?;
 
         if !GrypeDatabase::verify(&archive_path, &build.checksum)? {
             error!("Checksum verification failed, security risk!");
