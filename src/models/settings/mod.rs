@@ -1,5 +1,6 @@
 //! # Server Settings Model
 use geekorm::prelude::*;
+use keys::SERVER_SETTINGS_DEPRICATED;
 use log::{debug, error, warn};
 use serde::{Deserialize, Serialize};
 
@@ -85,12 +86,6 @@ impl ServerSettings {
         for (name, typ, value) in Self::defaults() {
             match ServerSettings::fetch_by_name(connection, name.to_string()).await {
                 Ok(mut setting) => {
-                    if setting.setting_type == SettingType::Delete {
-                        warn!("Deleting deprecated setting: {:?}", name);
-                        setting.delete(connection).await?;
-                        continue;
-                    }
-
                     // Update setting type in case it has changed in newer versions
                     if setting.setting_type != typ {
                         debug!("Updating setting: {:?}", name);
@@ -110,6 +105,14 @@ impl ServerSettings {
                     setting.save(connection).await?;
                 }
             };
+        }
+
+        // Deprecate old settings
+        for depricated in SERVER_SETTINGS_DEPRICATED {
+            if let Ok(setting) = ServerSettings::fetch_by_name(connection, &depricated).await {
+                warn!("Deprecating setting: {:?}", depricated);
+                setting.delete(connection).await?;
+            }
         }
 
         Ok(())
