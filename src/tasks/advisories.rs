@@ -1,7 +1,7 @@
 //! # Task - Advisories
 
 use crate::{
-    models::{Projects, ServerSettings, Setting},
+    models::{security::SecurityState, Alerts, Projects, ServerSettings, Setting},
     utils::grypedb::GrypeDatabase,
     Config, KonarrError,
 };
@@ -33,7 +33,8 @@ where
                 if new {
                     info!("New Advisory Data");
 
-                    let grypedb_connection = GrypeDatabase::connect(&grype_path).await?;
+                    let mut grypedb_connection = GrypeDatabase::connect(&grype_path).await?;
+                    grypedb_connection.fetch_vulnerabilities().await?;
 
                     scan_projects(connection, &grypedb_connection).await?;
                 }
@@ -51,15 +52,16 @@ where
         debug!("Advisory Polling Disabled");
     }
 
-    let grype_conn: libsql::Connection = match GrypeDatabase::connect(&grype_path).await {
-        Ok(conn) => conn,
+    let grype = match GrypeDatabase::connect(&grype_path).await {
+        Ok(db) => db,
         Err(_) => {
+            warn!("Errors loading Grype DB");
             return Ok(());
         }
     };
 
     // Set Version
-    let grype_id = match GrypeDatabase::fetch_grype(&grype_conn).await {
+    let grype_id = match grype.fetch_grype().await {
         Ok(grype) => grype,
         Err(_) => {
             warn!("Errors loading Grype DB");
@@ -79,7 +81,7 @@ where
 /// Scan every project for security alerts
 pub async fn scan_projects<'a, T>(
     connection: &'a T,
-    grypedb_connection: &libsql::Connection,
+    grypedb: &GrypeDatabase,
 ) -> Result<(), KonarrError>
 where
     T: GeekConnection<Connection = T> + 'a,
@@ -87,17 +89,37 @@ where
     info!("Scanning projects snapshots for security alerts");
 
     let mut projects = Projects::fetch_all(connection).await?;
-    debug!("Projects Count: {}", projects.len());
+    info!("Projects Count: {}", projects.len());
+    info!("Vulnerability DB: {}", grypedb.vulnerabilities.len());
 
     for project in projects.iter_mut() {
         debug!("Project: {}", project.name);
         if let Some(mut snapshot) = project.fetch_latest_snapshot(connection).await? {
             debug!("Snapshot: {} :: {}", snapshot.id, snapshot.components.len());
 
-            let results = snapshot
-                .scan_with_grype(connection, grypedb_connection)
-                .await?;
-            debug!("Vulnerabilities: {}", results.len());
+            // Fetch the alerts for the snapshot (previously stored)
+            let mut alerts = Alerts::fetch_by_snapshot_id(connection, snapshot.id).await?;
+
+            let results = GrypeDatabase::matcher(connection, grypedb, &mut snapshot).await?;
+
+            // Find all the alerts that are not in results
+            for alert in alerts.iter_mut() {
+                if !results.iter().any(|r| r.id == alert.id) {
+                    debug!("Marking Alert as Resolved: {}", alert.id);
+                    alert.state = SecurityState::Secure;
+                    alert.update(connection).await?;
+                }
+            }
+
+            info!(
+                "Project('{}', snapshot = '{}', components = '{}', vulnerabilities = '{}')",
+                project.name,
+                snapshot.id,
+                snapshot.components.len(),
+                results.len()
+            );
+        } else {
+            warn!("No snapshots for project: {}", project.name);
         }
     }
 
