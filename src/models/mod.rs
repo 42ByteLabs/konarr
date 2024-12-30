@@ -18,7 +18,6 @@ pub use dependencies::Dependencies;
 pub use projects::{ProjectSnapshots, ProjectStatus, ProjectType, Projects};
 pub use security::advisories::AdvisoriesMetadata;
 pub use security::{Advisories, Alerts};
-
 pub use settings::{ServerSettings, Setting};
 
 use crate::KonarrError;
@@ -43,7 +42,7 @@ where
 
     // Components
     debug!("Creating Components table...");
-    ComponentVersion::create_table(connection).await?;
+    ComponentVersion::init(connection).await?;
     Component::init(connection).await?;
 
     debug!("Creating Snapshots table...");
