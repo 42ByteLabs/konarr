@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use log::info;
 
 use super::{Tool, ToolConfig};
-use crate::{Config, KonarrError};
+use crate::KonarrError;
 
 /// Syft Tool
 #[derive(Debug)]
@@ -49,7 +49,7 @@ impl Tool for Grype {
             log::debug!("Output path: {}", config.output.display());
 
             let db_cache = PathBuf::from(
-                std::env::var("KONARR_DATA_DIR").unwrap_or_else(|_| "/var/lib/konarr".to_string()),
+                std::env::var("KONARR_DATA_DIR").unwrap_or_else(|_| "./data".to_string()),
             )
             .join("grypedb");
 
@@ -69,6 +69,11 @@ impl Tool for Grype {
                 .await?;
 
             if !output.status.success() {
+                log::error!(
+                    "Grype failed with status: {}",
+                    output.status.code().unwrap_or(-1)
+                );
+                log::error!("{}", String::from_utf8_lossy(&output.stderr).to_string());
                 return Err(KonarrError::ToolError("Failed to run tool".to_string()));
             }
             if !config.output.exists() {
