@@ -31,6 +31,8 @@ use url::Url;
 
 #[cfg(feature = "client")]
 use crate::client::KonarrClient;
+#[cfg(feature = "tools-grypedb")]
+use crate::utils::grypedb::GrypeDatabase;
 use crate::{error::KonarrError as Error, utils::rand::generate_random_string};
 
 /// Application Configuration
@@ -170,6 +172,12 @@ impl Config {
             std::fs::create_dir_all(&path)?;
         }
         Ok(path)
+    }
+
+    /// Connect to a Grype Database
+    #[cfg(feature = "tools-grypedb")]
+    pub async fn grype_connection(&self) -> Result<GrypeDatabase, Error> {
+        GrypeDatabase::connect(&self.grype_path()?).await
     }
 
     /// SBOMs Path in data directory

@@ -4,7 +4,7 @@ use konarr::{
     utils::grypedb::GrypeDatabase,
     Config,
 };
-use log::{debug, info};
+use log::info;
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum TaskCommands {
