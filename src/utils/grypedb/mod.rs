@@ -37,8 +37,9 @@ impl GrypeDatabase {
     ///
     /// Path can be a directory (with vulnerability.db) or the database file
     pub async fn connect(path: &PathBuf) -> Result<Self, KonarrError> {
+        log::debug!("Connecting to Grype DB at: {}", path.display());
         let db = if path.is_dir() {
-            let fpath = path.join("vulnerability.db");
+            let fpath = path.join("5").join("vulnerability.db");
             libsql::Builder::new_local(fpath).build().await?
         } else {
             libsql::Builder::new_local(path).build().await?
@@ -55,7 +56,7 @@ impl GrypeDatabase {
     /// The path is the directory where the Grype database is stored
     pub async fn sync(path: &PathBuf) -> Result<bool, KonarrError> {
         debug!("Syncing Grype DB");
-        let dbpath = path.join("vulnerability.db");
+        let dbpath = path.join("5").join("vulnerability.db");
         // let archive_path = path.join("vulnerability.tar.gz");
 
         // Fetch the latest Grype database listing
