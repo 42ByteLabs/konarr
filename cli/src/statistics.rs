@@ -15,6 +15,7 @@ pub async fn statistics(config: &Config) -> Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "database")]
 async fn database_statistics(config: &Config) -> Result<()> {
     let connection = &config.database().await?.connect()?;
 
@@ -207,6 +208,7 @@ fn find_emoji(name: &str) -> Option<&str> {
     EMOJIS.iter().find(|(_e, n)| *n == name).map(|(e, _)| *e)
 }
 
+#[cfg(feature = "database")]
 fn find_stat(name: &str, settings: &Vec<konarr::models::settings::ServerSettings>) -> u32 {
     settings
         .iter()
