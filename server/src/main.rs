@@ -188,7 +188,6 @@ async fn server(config: Config) -> Result<()> {
         // Mount Client files
         .mount("/", routes::routes())
         .mount("/", FileServer::from(frontend))
-        .register("/", catchers![routes::failed_not_found])
         // Mount API
         .mount("/api", routes![api::base::base])
         .mount("/api/auth", api::auth::routes())

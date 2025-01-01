@@ -1,11 +1,10 @@
-use rocket::{fs::NamedFile, Request};
+use rocket::fs::NamedFile;
 
-#[catch(404)]
-pub async fn failed_not_found<'r>(_req: &'r Request<'_>) -> NamedFile {
-    // TODO: Static page
+#[get("/<_..>", rank = 20, format = "text/html")]
+pub async fn index() -> NamedFile {
     NamedFile::open("dist/index.html").await.unwrap()
 }
 
 pub fn routes() -> Vec<rocket::Route> {
-    routes![]
+    routes![index]
 }
