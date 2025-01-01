@@ -80,6 +80,28 @@ where
     Ok(())
 }
 
+/// Scan for security alerts
+pub async fn scan<'a, T>(config: &'a Config, connection: &'a T) -> Result<(), KonarrError>
+where
+    T: GeekConnection<Connection = T> + 'a,
+{
+    if ServerSettings::get_bool(connection, Setting::SecurityAdvisoriesPolling).await? {
+        let grype_path = config.grype_path()?;
+
+        info!("Starting Advisory DB Polling");
+
+        let mut grypedb_connection = GrypeDatabase::connect(&grype_path).await?;
+        grypedb_connection.fetch_vulnerabilities().await?;
+
+        scan_projects(config, connection, &grypedb_connection).await?;
+        Ok(())
+    } else {
+        Err(KonarrError::UnknownError(
+            "Advisories Polling is disabled".to_string(),
+        ))
+    }
+}
+
 /// Scan every project for security alerts
 pub async fn scan_projects<'a, T>(
     config: &'a Config,
