@@ -38,7 +38,9 @@ where
                     let mut grypedb_connection = GrypeDatabase::connect(&grype_path).await?;
                     grypedb_connection.fetch_vulnerabilities().await?;
 
-                    scan_projects(config, connection, &grypedb_connection).await?;
+                    info!("Advisory Sync Complete");
+
+                    scan_projects(config, connection).await?;
                 }
             }
             Err(e) => {
@@ -85,15 +87,10 @@ pub async fn scan<'a, T>(config: &'a Config, connection: &'a T) -> Result<(), Ko
 where
     T: GeekConnection<Connection = T> + 'a,
 {
-    if ServerSettings::get_bool(connection, Setting::SecurityAdvisoriesPolling).await? {
-        let grype_path = config.grype_path()?;
+    if ServerSettings::get_bool(connection, Setting::Security).await? {
+        log::info!("Scanning projects for security alerts");
 
-        info!("Starting Advisory DB Polling");
-
-        let mut grypedb_connection = GrypeDatabase::connect(&grype_path).await?;
-        grypedb_connection.fetch_vulnerabilities().await?;
-
-        scan_projects(config, connection, &grypedb_connection).await?;
+        scan_projects(config, connection).await?;
         Ok(())
     } else {
         Err(KonarrError::UnknownError(
@@ -103,11 +100,7 @@ where
 }
 
 /// Scan every project for security alerts
-pub async fn scan_projects<'a, T>(
-    config: &'a Config,
-    connection: &'a T,
-    grypedb: &GrypeDatabase,
-) -> Result<(), KonarrError>
+pub async fn scan_projects<'a, T>(config: &'a Config, connection: &'a T) -> Result<(), KonarrError>
 where
     T: GeekConnection<Connection = T> + 'a,
 {
@@ -115,7 +108,6 @@ where
 
     let mut projects = Projects::fetch_all(connection).await?;
     info!("Projects Count: {}", projects.len());
-    info!("Vulnerability DB: {}", grypedb.vulnerabilities.len());
 
     for project in projects.iter_mut() {
         debug!("Project: {}", project.name);
@@ -125,6 +117,27 @@ where
 
             // Fetch the alerts for the snapshot (previously stored)
             let mut alerts = Alerts::fetch_by_snapshot_id(connection, snapshot.id).await?;
+
+            if let Some(tool_alerts) = snapshot.find_metadata("security.tools.alerts") {
+                if tool_alerts.as_bool() {
+                    // If the `tool alerts` setting is disabled, we
+                    if ServerSettings::get_bool(connection, Setting::SecurityToolsAlerts).await? {
+                        info!(
+                        "Project('{}', snapshot = '{}', components = '{}', vulnerabilities = '{}')",
+                        project.name,
+                        snapshot.id,
+                        snapshot.components.len(),
+                        alerts.len()
+                    );
+                        info!("Security Alerts coming from tools, skipping");
+                        continue;
+                    } else {
+                        info!(
+                            "Security Tools Alerts setting is disabled, scanning project for security alerts"
+                        );
+                    }
+                }
+            }
 
             let mut results = Vec::new();
 
