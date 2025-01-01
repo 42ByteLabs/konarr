@@ -18,6 +18,8 @@ pub async fn statistics(config: &Config) -> Result<()> {
 async fn database_statistics(config: &Config) -> Result<()> {
     let connection = &config.database().await?.connect()?;
 
+    konarr::tasks::statistics(connection).await?;
+
     info!("Database Statistics");
     let statistics = konarr::models::settings::ServerSettings::fetch_statistics(connection).await?;
 
