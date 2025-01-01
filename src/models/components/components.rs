@@ -210,6 +210,17 @@ mod tests {
     }
 
     #[test]
+    fn test_purl_to_comp_version() {
+        let purl = "pkg:deb/debian/python3.11-minimal@3.11.2-6".to_string();
+        let (comp, version) = Component::from_purl(purl).unwrap();
+        assert_eq!(comp.manager, ComponentManager::Deb);
+        assert_eq!(comp.namespace, Some("debian".to_string()));
+        assert_eq!(comp.name, "python3.11-minimal".to_string());
+        assert_eq!(comp.component_type, ComponentType::Library);
+        assert_eq!(version.version, "3.11.2-6".to_string());
+    }
+
+    #[test]
     fn test_purls() {
         let purls = vec!["pkg:deb/debian", "pkg:deb/debian/openssl", "pkg:apk/alpine"];
 
