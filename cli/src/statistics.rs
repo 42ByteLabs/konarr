@@ -217,7 +217,7 @@ fn find_stat(name: &str, settings: &Vec<konarr::models::settings::ServerSettings
         .unwrap_or(0)
 }
 
-const EMOJIS: [(&str, &str); 21] = [
+const EMOJIS: [(&str, &str); 22] = [
     ("⚡", "Projects"),
     ("💻", "Servers"),
     ("📦", "Containers"),
@@ -231,6 +231,7 @@ const EMOJIS: [(&str, &str); 21] = [
     ("🐐", "Databases"),
     ("🛞", "Operating Environments"),
     ("🔍", "Middleware"),
+    ("🔍", "Total"),
     ("🔴", "Critical"),
     ("🟠", "High"),
     ("🟡", "Medium"),
