@@ -188,6 +188,18 @@ pub(crate) async fn upload_bom(
         .set_metadata(&state.connection, SnapshotMetadataKey::BomPath, &file_name)
         .await?;
 
+    let connection = std::sync::Arc::clone(&state.connection);
+    let config = state.config.clone();
+
+    tokio::spawn(async move {
+        konarr::tasks::advisories::scan(&config, &connection)
+            .await
+            .map_err(|e| {
+                log::error!("Failed to scan projects: {:?}", e);
+            })
+            .ok();
+    });
+
     Ok(Json(snapshot.into()))
 }
 
