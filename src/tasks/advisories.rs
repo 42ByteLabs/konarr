@@ -1,7 +1,9 @@
 //! # Task - Advisories
 
 use crate::{
+    bom::{BomParser, Parsers},
     models::{security::SecurityState, Alerts, Projects, ServerSettings, Setting},
+    tools::{Grype, Tool},
     utils::grypedb::GrypeDatabase,
     Config, KonarrError,
 };
@@ -36,7 +38,7 @@ where
                     let mut grypedb_connection = GrypeDatabase::connect(&grype_path).await?;
                     grypedb_connection.fetch_vulnerabilities().await?;
 
-                    scan_projects(connection, &grypedb_connection).await?;
+                    scan_projects(config, connection, &grypedb_connection).await?;
                 }
             }
             Err(e) => {
@@ -80,6 +82,7 @@ where
 
 /// Scan every project for security alerts
 pub async fn scan_projects<'a, T>(
+    config: &'a Config,
     connection: &'a T,
     grypedb: &GrypeDatabase,
 ) -> Result<(), KonarrError>
@@ -96,11 +99,49 @@ where
         debug!("Project: {}", project.name);
         if let Some(mut snapshot) = project.fetch_latest_snapshot(connection).await? {
             debug!("Snapshot: {} :: {}", snapshot.id, snapshot.components.len());
+            snapshot.fetch_metadata(connection).await?;
 
             // Fetch the alerts for the snapshot (previously stored)
             let mut alerts = Alerts::fetch_by_snapshot_id(connection, snapshot.id).await?;
 
-            let results = GrypeDatabase::matcher(connection, grypedb, &mut snapshot).await?;
+            let mut results = Vec::new();
+
+            if let Some(bom_path) = snapshot.find_metadata("bom.path") {
+                let full_path = config.sboms_path()?.join(bom_path.as_string());
+                if !full_path.exists() {
+                    warn!("SBOM does not exist: {}", full_path.display());
+                    continue;
+                }
+                log::info!("Using Grype to scan SBOM: {}", full_path.display());
+
+                let config = Grype::init().await;
+                log::debug!("Grype Config: {:?}", config);
+
+                let bom = Grype::run(&config, full_path.display().to_string()).await?;
+                let sbom = Parsers::parse(bom.as_bytes())?;
+                log::debug!(
+                    "BillOfMaterials(comps='{}', vulns='{}')",
+                    sbom.components.len(),
+                    sbom.vulnerabilities.len()
+                );
+
+                for vuln in sbom.vulnerabilities.iter() {
+                    log::trace!("Vulnerability: {:?}", vuln);
+                    let alts = Alerts::from_bom_vulnerability(connection, &snapshot, vuln).await?;
+                    results.extend(alts);
+                }
+            } else {
+                // TODO: Should we write the SBOM to disk?
+                log::warn!(
+                    "No SBOM path found for `{}`, skipping scanning of `{}`",
+                    snapshot.id,
+                    project.name,
+                );
+                // results = GrypeDatabase::matcher(connection, grypedb, &mut snapshot).await?;
+                for alert in alerts.iter_mut() {
+                    alert.close(connection).await?;
+                }
+            }
 
             // Find all the alerts that are not in results
             for alert in alerts.iter_mut() {
