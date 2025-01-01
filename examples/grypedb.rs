@@ -12,10 +12,10 @@ async fn main() -> Result<()> {
     println!("Grype DB...");
 
     let grypedb_dir = PathBuf::from("./data/grypedb");
-    let grype_conn = GrypeDatabase::connect(&grypedb_dir).await?;
+    let grypedb = GrypeDatabase::connect(&grypedb_dir).await?;
 
-    let grype = GrypeDatabase::fetch_grype(&grype_conn).await?;
-    let vulnerabilities_count = GrypeVulnerability::total(&grype_conn).await?;
+    let grype = grypedb.fetch_grype().await?;
+    let vulnerabilities_count = GrypeVulnerability::total(&grypedb.connection).await?;
     println!(
         "GrypeDB({}) = {}\n",
         grype.build_timestamp, vulnerabilities_count
@@ -35,9 +35,7 @@ async fn main() -> Result<()> {
 
     for (comp_openssl, comp_openssl_ver) in openssl_versions {
         // Find vulnerabilities for the OpenSSL component
-        let results =
-            GrypeVulnerability::find_vulnerabilities(&grype_conn, &comp_openssl, &comp_openssl_ver)
-                .await?;
+        let results = grypedb.find_vulnerability(&comp_openssl, &comp_openssl_ver)?;
 
         println!(
             "> {}@{} :: {:>4} alerts",
