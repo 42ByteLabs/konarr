@@ -113,6 +113,10 @@ pub enum Setting {
     #[geekorm(key = "security.tools.alerts")]
     SecurityToolsAlerts,
 
+    // Security Rescan Setting
+    #[geekorm(key = "security.rescan")]
+    SecurityRescan,
+
     // Security Advisories
     #[geekorm(key = "security.advisories")]
     SecurityAdvisories,
@@ -151,7 +155,7 @@ pub const SERVER_SETTINGS_DEPRICATED: [Setting; 4] = [
 ];
 
 /// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 33] = [
+pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 34] = [
     // Registration Settings
     (Setting::Registration, SettingType::Toggle, "enabled"),
     // If we are already initialized
@@ -190,6 +194,7 @@ pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 33] =
     (Setting::StatsUsersInactive, SettingType::Statistics, "0"),
     // Security Features
     (Setting::Security, SettingType::Toggle, "disabled"),
+    (Setting::SecurityRescan, SettingType::Toggle, "disabled"),
     (Setting::SecurityToolsName, SettingType::SetString, "syft"),
     // Tools Settings
     (Setting::SecurityToolsAlerts, SettingType::Toggle, "enabled"),

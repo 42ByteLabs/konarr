@@ -158,6 +158,11 @@ impl SnapshotMetadata {
         std::str::from_utf8(&self.value).unwrap().to_string()
     }
 
+    /// Get the value as a boolean
+    pub fn as_bool(&self) -> bool {
+        self.as_string().parse().unwrap_or_default()
+    }
+
     /// Convert the bytes value to i32
     pub fn as_i32(&self) -> i32 {
         self.as_string().parse().unwrap_or_default()
