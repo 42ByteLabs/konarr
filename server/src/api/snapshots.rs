@@ -161,7 +161,6 @@ pub(crate) async fn upload_bom(
     info!("Uploading SBOM for snapshot: {}", id);
     let mut snapshot = models::Snapshot::fetch_by_primary_key(&state.connection, id as i32).await?;
 
-    // TODO: Implement file upload
     let data = data
         .open(10.megabytes())
         .into_bytes()
