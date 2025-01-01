@@ -2,7 +2,7 @@
 # but generate a final image to be used.
 
 # Build the Server
-FROM docker.io/library/rust:1.82-alpine as server 
+FROM docker.io/library/rust:1.83-alpine as server 
 
 WORKDIR /app
 
@@ -18,11 +18,11 @@ FROM docker.io/library/rust:1.82-alpine as tools
 RUN apk add --no-cache curl && \
     curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh -o /usr/local/bin/install-grype
 
-# Install Syft by default
+# Install Grype for server to scan SBOMs
 RUN sh /usr/local/bin/install-grype -b /usr/local/toolcache
 
 # Build the Web
-FROM docker.io/library/node:22.12-alpine as web
+FROM docker.io/library/node:23-alpine as web
 
 WORKDIR /app
 
@@ -33,7 +33,7 @@ RUN cd frontend && \
     npm run build || true
 
 # Final Image
-FROM docker.io/library/alpine:3.20
+FROM docker.io/library/alpine:3.21
 
 EXPOSE 9000
 ENV ROCKET_ADDRESS=0.0.0.0
