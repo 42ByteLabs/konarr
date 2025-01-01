@@ -57,7 +57,6 @@ impl GrypeDatabase {
     pub async fn sync(path: &PathBuf) -> Result<bool, KonarrError> {
         debug!("Syncing Grype DB");
         let dbpath = path.join("5").join("vulnerability.db");
-        // let archive_path = path.join("vulnerability.tar.gz");
 
         // Fetch the latest Grype database listing
         let latest = GrypeDatabase::latest().await?;

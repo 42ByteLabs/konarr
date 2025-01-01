@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// Security state
-#[derive(Data, Debug, Clone, Default)]
+#[derive(Data, Debug, Clone, Default, PartialEq)]
 pub enum SecurityState {
     /// Vulnerable state
     #[default]

@@ -9,7 +9,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     bom::BillOfMaterials,
-    models::{security::SecuritySeverity, Alerts, Dependencies, ServerSettings},
+    models::{
+        security::{SecuritySeverity, SecurityState},
+        Alerts, Dependencies, ServerSettings,
+    },
     KonarrError,
 };
 
@@ -351,6 +354,9 @@ impl Snapshot {
         log::debug!("Calculating Alert Summary for {} Alerts", alerts.len());
 
         for alert in alerts.iter_mut() {
+            if alert.state != SecurityState::Vulnerable {
+                continue;
+            }
             let advisory = alert.fetch_advisory_id(connection).await?;
             let severity = advisory.severity.clone();
 
