@@ -376,7 +376,7 @@ impl Projects {
             connection,
             ProjectSnapshots::query_select()
                 .where_eq("project_id", self.id)
-                .order_by("id", QueryOrder::Desc)
+                .order_by("snapshot_id", QueryOrder::Desc)
                 .limit(1)
                 .build()?,
         )
@@ -505,16 +505,3 @@ pub enum ProjectType {
     #[geekorm(aliases = "container,containers,docker")]
     Container,
 }
-
-// impl From<String> for ProjectType {
-//     fn from(s: String) -> Self {
-//         match s.to_lowercase().as_str() {
-//             "group" | "groups" => ProjectType::Group,
-//             "app" | "application" | "applications" => ProjectType::Application,
-//             "server" | "servers" => ProjectType::Server,
-//             "cluster" => ProjectType::Cluster,
-//             "container" | "containers" | "docker" => ProjectType::Container,
-//             _ => ProjectType::Application,
-//         }
-//     }
-// }

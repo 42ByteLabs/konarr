@@ -4,7 +4,7 @@ use konarr::{
     utils::grypedb::GrypeDatabase,
     Config,
 };
-use log::{debug, info};
+use log::info;
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum TaskCommands {
@@ -40,16 +40,20 @@ pub async fn run(
             info!("Running Grype Sync Task");
 
             let grype_path = config.data_path()?.join("grypedb");
-            debug!("Grype DB Path: {:?}", grype_path);
+            info!("Grype data path: {:?}", grype_path);
 
             GrypeDatabase::sync(&grype_path).await?;
 
             if alerts {
                 info!("Running Grype Alerts Task");
-                let grype_conn = GrypeDatabase::connect(&grype_path).await?;
+                let mut grype_conn = GrypeDatabase::connect(&grype_path).await?;
+                grype_conn.fetch_vulnerabilities().await?;
 
-                scan_projects(&connection, &grype_conn).await?;
+                scan_projects(&config, &connection, &grype_conn).await?;
+                info!("Grype Alerts Task Complete");
             }
+
+            konarr::tasks::alert_calculator(&connection).await?;
         }
         None => {
             info!("No subcommand provided, running interactive mode");

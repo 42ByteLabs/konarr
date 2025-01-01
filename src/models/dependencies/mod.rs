@@ -1,19 +1,15 @@
 //! # Dependencies Model / Tables
 
-use std::str::FromStr;
-
 use geekorm::prelude::*;
 use purl::GenericPurl;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
-pub mod components;
-pub mod components_type;
 pub mod snapshots;
 
+use super::{Component, ComponentManager, ComponentType, ComponentVersion};
 use crate::bom::sbom::BomComponent;
 
-pub use components::{Component, ComponentManager, ComponentVersion};
-pub use components_type::ComponentType;
 pub use snapshots::Snapshot;
 
 /// Dependency Model

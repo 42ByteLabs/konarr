@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// Security state
-#[derive(Data, Debug, Clone, Default)]
+#[derive(Data, Debug, Clone, Default, PartialEq)]
 pub enum SecurityState {
     /// Vulnerable state
     #[default]
@@ -66,6 +66,16 @@ pub struct Alerts {
 }
 
 impl Alerts {
+    /// Initialise Alerts
+    pub async fn init<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
+    where
+        T: geekorm::GeekConnection<Connection = T> + 'a,
+    {
+        Self::create_table(connection).await?;
+
+        Ok(())
+    }
+
     /// Find or create an alert
     pub async fn find_or_create<'a, T>(&mut self, connection: &'a T) -> Result<(), geekorm::Error>
     where
@@ -136,6 +146,15 @@ impl Alerts {
         .await? as u32)
     }
 
+    /// Close An Alert
+    pub async fn close<'a, T>(&mut self, connection: &'a T) -> Result<(), geekorm::Error>
+    where
+        T: geekorm::GeekConnection<Connection = T> + 'a,
+    {
+        self.state = SecurityState::Secure;
+        self.update(connection).await
+    }
+
     /// Fetch metadata for the security advisory
     pub async fn fetch_metadata<'a, T>(&mut self, connection: &'a T) -> Result<(), geekorm::Error>
     where
@@ -163,13 +182,15 @@ impl Alerts {
         connection: &'a T,
         snapshot: &Snapshot,
         vulnerability: &BomVulnerability,
-    ) -> Result<(), KonarrError>
+    ) -> Result<Vec<Self>, KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
     {
+        let mut alerts = Vec::new();
+
         for affected in &vulnerability.components {
             let (mut component, _) = Component::from_purl(affected.purl.clone())?;
-            component.fetch_or_create(connection).await?;
+            component.find_or_create(connection).await?;
             debug!("Alert Component: {:?}", component);
 
             let dependency = match Dependencies::fetch_dependency_by_snapshot(
@@ -227,9 +248,10 @@ impl Alerts {
             );
             alert.find_or_create(connection).await?;
             debug!("Alert: {:?}", alert);
+            alerts.push(alert);
         }
 
-        Ok(())
+        Ok(alerts)
     }
 
     /// Get the description of the alert (if available in the metadata)

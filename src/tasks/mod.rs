@@ -17,7 +17,10 @@ pub use alerts::alert_calculator;
 pub use catalogue::catalogue;
 pub use statistics::statistics;
 
-use crate::Config;
+use crate::{
+    models::{ServerSettings, Setting},
+    Config,
+};
 
 /// Initialse background tasks
 ///
@@ -39,6 +42,26 @@ pub async fn init(
             match sync_advisories(&config, &connection).await {
                 Ok(_) => log::debug!("Advisories Synced"),
                 Err(e) => log::error!("Advisories Sync Error: {}", e),
+            }
+
+            let rescan = ServerSettings::fetch_by_name(&connection, Setting::SecurityRescan)
+                .await
+                .map_err(|e| {
+                    log::error!("Task Error :: {}", e);
+                });
+
+            if let Ok(mut rescan) = rescan {
+                if rescan.boolean() {
+                    log::info!("Rescanning Projects");
+                    // Reset the flag to disabled before we perform the scan
+                    if let Err(e) = rescan.set_update(&connection, "disabled").await {
+                        log::error!("Error resetting rescan flag: {}", e);
+                    }
+
+                    if let Err(e) = advisories::scan(&config, &connection).await {
+                        log::error!("Error rescanning projects: {}", e);
+                    }
+                }
             }
 
             alert_calculator(&connection)
