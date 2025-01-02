@@ -23,10 +23,15 @@ mod routes;
 
 /// Application State
 pub struct AppState {
+    /// Database Connection
     connection: Arc<Mutex<libsql::Connection>>,
+    /// Active sessions for the server
     sessions: Arc<RwLock<Vec<guards::Session>>>,
+    /// Token used by the agent to authenticate
     agent_token: Arc<RwLock<String>>,
+    /// Configuration
     config: Config,
+    /// If the server has been initialized
     init: bool,
 }
 
@@ -68,14 +73,12 @@ async fn main() -> Result<()> {
 async fn create(config: &mut Config) -> Result<()> {
     let connection = config.database.connection().await?;
 
-    // TODO: Check if the database exists
     database_create(&connection).await?;
 
     // Store the server setting into the config file
-    if config.agent.token.is_none() {
-        if let Ok(token) =
-            konarr::models::ServerSettings::fetch_by_name(&connection, "agent.key").await
-        {
+    if let Ok(token) = ServerSettings::fetch_by_name(&connection, Setting::AgentKey).await {
+        if config.agent.token != Some(token.value.clone()) {
+            log::info!("Updating Agent Token");
             config.agent.token = Some(token.value);
             config.autosave()?;
         }
