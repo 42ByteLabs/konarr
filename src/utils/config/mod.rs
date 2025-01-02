@@ -186,7 +186,7 @@ impl Default for ServerConfig {
             domain: None,
             port: None,
             scheme: None,
-            cors: false,
+            cors: true,
             frontend,
             api: Some("/api".to_string()),
         }
