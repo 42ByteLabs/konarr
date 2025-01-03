@@ -53,6 +53,7 @@ tools = ["dep:tokio", "client"]
 tools-grypedb = ["tools", "models", "dep:hex", "dep:flate2", "dep:tar"]
 # Client
 client = ["websocket", "dep:reqwest", "dep:openssl", "dep:tokio"]
+agent = []
 websocket = ["dep:tokio-tungstenite"]
 docker = ["dep:bollard"]
 
