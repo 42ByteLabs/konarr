@@ -21,6 +21,10 @@ pub struct KonarrSnapshot {
     pub metadata: HashMap<String, String>,
     /// Created At
     pub created_at: chrono::DateTime<chrono::Utc>,
+
+    /// If the snapshot is new
+    #[serde(skip)]
+    pub new: bool,
 }
 
 impl KonarrSnapshot {
@@ -41,7 +45,10 @@ impl KonarrSnapshot {
             .json::<ApiResponse<Self>>()
             .await?
         {
-            ApiResponse::Ok(snapshot) => Ok(snapshot),
+            ApiResponse::Ok(mut snapshot) => {
+                snapshot.new = true;
+                Ok(snapshot)
+            }
             ApiResponse::Error(err) => Err(err.into()),
         }
     }
