@@ -46,10 +46,7 @@ pub async fn run(
 
             if alerts {
                 info!("Running Grype Alerts Task");
-                let mut grype_conn = GrypeDatabase::connect(&grype_path).await?;
-                grype_conn.fetch_vulnerabilities().await?;
-
-                scan_projects(&config, &connection, &grype_conn).await?;
+                scan_projects(&config, &connection).await?;
                 info!("Grype Alerts Task Complete");
             }
 

@@ -2,7 +2,7 @@ use bollard::{container::ListContainersOptions, API_DEFAULT_VERSION};
 use konarr::{
     bom::{BomParser, Parsers},
     client::{
-        projects::{KonarrProject, KonarrProjects},
+        projects::{agent::KonarrProjectSnapshotData, KonarrProject, KonarrProjects},
         snapshot::KonarrSnapshot,
     },
     Config, KonarrError,
@@ -247,54 +247,19 @@ async fn run_docker(
         project.get(client).await?;
         info!("Project: {} - {}", project.name, project.project_type);
 
-        let container_sha = container.image_id.clone().unwrap_or_default();
         let container_image = container.image.clone().unwrap_or_default();
 
-        // The SHA is used to identify the container snapshot
-        // and check if the snapshot already exists
-        let (state, container_snapshot) = if let Some(snap) = project.snapshot {
-            if let Some(sha) = snap.metadata.get("container.sha") {
-                debug!("Container Snapshot SHA: {} == {}", &container_sha, sha);
-                if sha == &container_sha {
-                    debug!("Container Snapshot already exists for Container: {}", name);
-                    (false, snap)
-                } else {
-                    debug!("Snapshot SHA for Container is different: {}", name);
-                    match KonarrSnapshot::create(client, project.id).await {
-                        Ok(snap) => (true, snap),
-                        Err(e) => {
-                            log::error!("Error creating Snapshot: {:?}", e);
-                            (false, snap)
-                        }
-                    }
-                }
-            } else {
-                debug!("Creating new Snapshot for Container: {}", name);
-                match KonarrSnapshot::create(client, project.id).await {
-                    Ok(snap) => (true, snap),
-                    Err(e) => {
-                        log::error!("Error creating Snapshot: {:?}", e);
-                        (false, snap)
-                    }
-                }
-            }
-        } else {
-            info!("Creating initial Snapshot...");
-            match KonarrSnapshot::create(client, project.id).await {
-                Ok(snap) => (true, snap),
-                Err(e) => {
-                    log::error!("Error creating Snapshot: {:?}", e);
-                    return Err(KonarrError::UnknownError(
-                        "Error creating initial Snapshot".to_string(),
-                    ));
-                }
-            }
+        let snapshot_data = KonarrProjectSnapshotData {
+            container_sha: container.image_id.clone(),
+            ..Default::default()
         };
+
+        let container_snapshot = project.snapshot(client, &snapshot_data).await?;
 
         info!("Container Snapshot: {}", container_snapshot.id);
 
         // TODO: Auto-install tool
-        if state {
+        if container_snapshot.new {
             let results = konarr::tools::run(&config, container_image).await?;
 
             log::info!("Parsing and validating SBOM with Konarr...");
@@ -326,7 +291,10 @@ async fn run_docker(
         let snapshot_metadata = HashMap::from([
             ("container", "true".to_string()),
             ("container.image", container.image.unwrap_or_default()),
-            ("container.sha", container_sha),
+            (
+                "container.sha",
+                container.image_id.clone().unwrap_or_default(),
+            ),
             ("container.description", description.unwrap_or_default()),
             (
                 "container.url",
