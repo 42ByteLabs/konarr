@@ -23,6 +23,13 @@ pub struct ServerInfo {
     pub agent: Option<AgentSettings>,
 }
 
+impl ServerInfo {
+    /// Get the semver version
+    pub fn version(&self) -> Result<semver::Version, crate::KonarrError> {
+        Ok(semver::Version::parse(&self.version)?)
+    }
+}
+
 /// Server Configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

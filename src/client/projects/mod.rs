@@ -8,6 +8,9 @@ use super::{
     security::SecuritySummary, snapshot::KonarrSnapshot, ApiResponse, KonarrClient, Pagination,
 };
 
+#[cfg(feature = "agent")]
+pub mod agent;
+
 /// List of Konarr Projects
 pub struct KonarrProjects;
 
