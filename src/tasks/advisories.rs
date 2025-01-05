@@ -27,6 +27,22 @@ where
     debug!("Grype Path: {:?}", grype_path);
 
     if ServerSettings::get_bool(connection, Setting::SecurityAdvisoriesPolling).await? {
+        let mut updated_last =
+            ServerSettings::fetch_by_name(connection, Setting::SecurityAdvisoriesUpdated).await?;
+
+        let now = chrono::Utc::now();
+        let last_updated_time = chrono::DateTime::parse_from_rfc3339(updated_last.value.as_str())?;
+
+        // Check if its been 1hr since the last update
+        if last_updated_time
+            < now
+                .checked_sub_signed(chrono::Duration::hours(1))
+                .ok_or(KonarrError::UnknownError("Invalid Date".to_string()))?
+        {
+            debug!("Advisory DB Updated within the last hour");
+            return Ok(());
+        }
+
         info!("Starting Advisory DB Polling");
         match GrypeDatabase::sync(&grype_path).await {
             Ok(new) => {
@@ -48,8 +64,8 @@ where
                 reset_polling(connection).await?;
             }
         };
-        ServerSettings::fetch_by_name(connection, Setting::SecurityAdvisoriesUpdated)
-            .await?
+
+        updated_last
             .set_update(connection, chrono::Utc::now().to_rfc3339())
             .await?;
     } else {

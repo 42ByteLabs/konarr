@@ -6,6 +6,7 @@
 //!
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
+#![deny(clippy::unwrap_used)]
 #![doc = include_str!("../README.md")]
 
 pub mod bom;

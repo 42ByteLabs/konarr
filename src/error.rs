@@ -68,6 +68,10 @@ pub enum KonarrError {
     #[error("{0}")]
     FromUtf8Error(#[from] std::string::FromUtf8Error),
 
+    /// Error parsing a datetime
+    #[error("{0}")]
+    ParseDateTimeError(#[from] chrono::ParseError),
+
     /// URL Parse Error
     #[error("{0}")]
     UrlParseError(#[from] url::ParseError),
