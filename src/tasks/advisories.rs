@@ -30,33 +30,40 @@ where
         let mut updated_last =
             ServerSettings::fetch_by_name(connection, Setting::SecurityAdvisoriesUpdated).await?;
 
-        let now = chrono::Utc::now();
-        let last_updated_time = chrono::DateTime::parse_from_rfc3339(updated_last.value.as_str())?;
-
-        // Check if its been 1hr since the last update
-        if last_updated_time
-            < now
-                .checked_sub_signed(chrono::Duration::hours(1))
-                .ok_or(KonarrError::UnknownError("Invalid Date".to_string()))?
+        // The last updated time could be blank and unparsable
+        if let Ok(last_updated_time) =
+            chrono::DateTime::parse_from_rfc3339(updated_last.value.as_str())
         {
-            debug!("Advisory DB Updated within the last hour");
-            return Ok(());
+            debug!("Last Updated: {}", last_updated_time);
+            let now = chrono::Utc::now();
+            let delta = last_updated_time
+                .checked_add_signed(chrono::Duration::hours(1))
+                .ok_or(KonarrError::UnknownError("Invalid Date".to_string()))?;
+            debug!("Next Update: {} < {}", now, delta);
+
+            // Check if its been 1hr since the last update
+            if now < delta {
+                debug!("Advisory DB Updated within the last hour");
+                return Ok(());
+            }
+        } else {
+            debug!("Invalid Advisory Last Updated Time");
         }
 
-        info!("Starting Advisory DB Polling");
+        info!("Starting Advisory Database Sync");
         match GrypeDatabase::sync(&grype_path).await {
             Ok(new) => {
-                info!("Advisory Sync Complete");
-
                 if new {
-                    info!("New Advisory Data");
+                    info!("New Advisory Database Synced");
 
                     let mut grypedb_connection = GrypeDatabase::connect(&grype_path).await?;
                     grypedb_connection.fetch_vulnerabilities().await?;
 
-                    info!("Advisory Sync Complete");
-
+                    info!("Scanning projects for security alerts");
                     scan_projects(config, connection).await?;
+                    info!("Project scanning complete");
+                } else {
+                    info!("Advisory Database Synced but no new advisories, skipping project scanning for security alerts");
                 }
             }
             Err(e) => {
@@ -122,6 +129,14 @@ where
 {
     info!("Scanning projects snapshots for security alerts");
 
+    // Ensure Grype is installed and available
+    let mut tool_grype = Grype::init().await;
+    if !tool_grype.is_available() {
+        warn!("Installing Grype, this may take a few minutes...");
+        tool_grype.install().await?;
+    }
+    log::debug!("Grype Config: {:?}", tool_grype);
+
     let mut projects = Projects::fetch_all(connection).await?;
     info!("Projects Count: {}", projects.len());
 
@@ -163,12 +178,9 @@ where
                     warn!("SBOM does not exist: {}", full_path.display());
                     continue;
                 }
-                log::info!("Using Grype to scan SBOM: {}", full_path.display());
+                log::debug!("Using Grype to scan SBOM: {}", full_path.display());
 
-                let config = Grype::init().await;
-                log::debug!("Grype Config: {:?}", config);
-
-                let bom = Grype::run(&config, full_path.display().to_string()).await?;
+                let bom = tool_grype.run(&full_path.display().to_string()).await?;
                 let sbom = Parsers::parse(bom.as_bytes())?;
                 log::debug!(
                     "BillOfMaterials(comps='{}', vulns='{}')",
