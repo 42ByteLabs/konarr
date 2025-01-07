@@ -197,7 +197,11 @@ pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 34] =
     (Setting::SecurityRescan, SettingType::Toggle, "disabled"),
     (Setting::SecurityToolsName, SettingType::SetString, "syft"),
     // Tools Settings
-    (Setting::SecurityToolsAlerts, SettingType::Toggle, "enabled"),
+    (
+        Setting::SecurityToolsAlerts,
+        SettingType::Toggle,
+        "disabled",
+    ),
     // Advisories Settings
     (Setting::SecurityAdvisories, SettingType::Toggle, "disabled"),
     (
