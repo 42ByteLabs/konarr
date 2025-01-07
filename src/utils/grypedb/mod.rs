@@ -63,15 +63,17 @@ impl GrypeDatabase {
         debug!("Latest Grype DB: {}", latest.built);
         let latest_build = latest.built.with_nanosecond(0).unwrap();
 
-        if !path.exists() || !dbpath.exists() {
+        if !dbpath.exists() {
             if let Some(_) = path.extension() {
                 return Err(KonarrError::UnknownError(
                     "Grype path is a file, not a directory".into(),
                 ));
             }
 
-            debug!("Grype DB does not exist, downloading latest now");
-            std::fs::create_dir_all(path)?;
+            if let Some(parent) = dbpath.parent() {
+                debug!("Creating Grype DB parent directories: {:?}", parent);
+                std::fs::create_dir_all(parent)?;
+            }
 
             debug!("Downloading Grype DB with build: {}", latest.url);
             GrypeDatabase::download(path, &latest).await?;
@@ -122,10 +124,12 @@ impl GrypeDatabase {
     ///
     /// This is the full process of updating the Grype database
     pub async fn download(path: &PathBuf, build: &GrypeDatabaseEntry) -> Result<(), KonarrError> {
+        debug!("Downloading Grype DB from: {}", build.url);
         let path_version = path.join(build.version.to_string());
         if !path_version.exists() {
             std::fs::create_dir_all(&path_version)?;
         }
+        debug!("Grype DB Path: {:?}", path_version);
 
         let archive_path = GrypeDatabase::download_archive(&path_version, &build.url).await?;
 

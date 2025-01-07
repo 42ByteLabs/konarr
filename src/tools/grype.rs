@@ -49,7 +49,7 @@ impl Tool for Grype {
             log::debug!("Output path: {}", config.output.display());
 
             let db_cache = PathBuf::from(
-                std::env::var("KONARR_DATA_DIR").unwrap_or_else(|_| "./data".to_string()),
+                std::env::var("KONARR_DATA_PATH").unwrap_or_else(|_| "./data".to_string()),
             )
             .join("grypedb");
 
