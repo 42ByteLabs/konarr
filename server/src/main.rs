@@ -7,7 +7,6 @@ extern crate geekorm;
 use anyhow::Result;
 use konarr::{
     models::{database_create, settings::keys::Setting, ServerSettings},
-    tools::Tool,
     Config, KonarrError,
 };
 use log::{debug, error, info, warn};
