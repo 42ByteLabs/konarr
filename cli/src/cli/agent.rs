@@ -5,9 +5,10 @@ use konarr::{
         projects::{agent::KonarrProjectSnapshotData, KonarrProject, KonarrProjects},
         snapshot::KonarrSnapshot,
     },
+    tools::ToolConfig,
     Config, KonarrError,
 };
-use log::{debug, info};
+use log::{debug, info, warn};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::{spawn, sync::Mutex};
 use tokio_schedule::{every, Job};
@@ -158,30 +159,54 @@ async fn run_docker(
     };
     info!("Connected to Docker");
 
+    let mut tool = if let Some(tool_name) = &config.agent.tool {
+        ToolConfig::find_tool(&tool_name).await?
+    } else {
+        log::error!("Tool not specified");
+        return Err(KonarrError::UnknownError("Tool not specified".to_string()));
+    };
+
+    info!("Using Tool {}@{}", tool.name, tool.version);
+
+    if !tool.is_available() && config.agent.tool_auto_install {
+        info!("Tool not installed, installing...");
+        tool.install().await?;
+    } else if config.agent.tool_auto_update {
+        info!("Checking for tool updates...");
+        if let Ok(rversion) = tool.remote_version().await {
+            if rversion != tool.version {
+                info!("Tool is out of date, updating to {}...", rversion);
+                if let Err(err) = tool.install().await {
+                    warn!("Failed to update tool: {}", err);
+                }
+            }
+        } else {
+            warn!("Failed to get remote version of tool, skipping update");
+        }
+    }
+
     debug!("Getting Docker Version and updating Snapshot Metadata");
     let version = docker.version().await?;
     let engine = version.platform.unwrap_or_default().name;
 
-    let server_snapshot = server_project.snapshot.clone().expect(
+    let mut server_snapshot = server_project.snapshot.clone().expect(
         "Snapshot is required to update metadata. Please create a snapshot before running this command");
 
-    server_snapshot
-        .update_metadata(
-            client,
-            HashMap::from([
-                ("os", version.os.unwrap_or_default()),
-                ("os.kernel", version.kernel_version.unwrap_or_default()),
-                ("os.arch", version.arch.unwrap_or_default()),
-                ("container", "true".to_string()),
-                ("container.engine", engine),
-                (
-                    "container.engine.version",
-                    version.version.unwrap_or_default(),
-                ),
-            ]),
-        )
-        .await?;
+    server_snapshot.add_metadata("os".to_string(), version.os.unwrap_or_default());
+    server_snapshot.add_metadata(
+        "os.kernel".to_string(),
+        version.kernel_version.unwrap_or_default(),
+    );
+    server_snapshot.add_metadata("os.arch".to_string(), version.arch.unwrap_or_default());
+    server_snapshot.add_metadata("container".to_string(), "true".to_string());
+    server_snapshot.add_metadata("container.engine".to_string(), engine);
+    server_snapshot.add_metadata(
+        "container.engine.version".to_string(),
+        version.version.unwrap_or_default(),
+    );
+
     info!("Updated server snapshot metadata...");
+    server_snapshot.update_metadata(client).await?;
 
     info!("Getting Docker Containers...");
     let containers = docker
@@ -251,16 +276,15 @@ async fn run_docker(
 
         let snapshot_data = KonarrProjectSnapshotData {
             container_sha: container.image_id.clone(),
-            ..Default::default()
+            tool: Some(format!("{}@{}", tool.name, tool.version)),
         };
 
-        let container_snapshot = project.snapshot(client, &snapshot_data).await?;
+        let mut container_snapshot = project.snapshot(client, &snapshot_data).await?;
+        debug!("Container Snapshot: {}", container_snapshot.id);
 
-        info!("Container Snapshot: {}", container_snapshot.id);
-
-        // TODO: Auto-install tool
         if container_snapshot.new {
-            let results = konarr::tools::run(&config, container_image).await?;
+            info!("Running tool on container...");
+            let results = tool.run(container_image).await?;
 
             log::info!("Parsing and validating SBOM with Konarr...");
             match Parsers::parse(&results.as_bytes()) {
@@ -284,50 +308,69 @@ async fn run_docker(
             info!("Container Snapshot already exists for Container: {}", name);
         }
 
-        // TODO: Docker Compose metadata
-        // TODO: Creation time of the container
+        let image_name = container.image.clone().unwrap_or_default();
+
+        container_snapshot.add_metadata("container", "true");
+
+        if let Ok(image) = docker.inspect_image(&image_name).await {
+            // https://docs.rs/bollard/latest/bollard/models/struct.ImageInspect.html
+            debug!("Image: {:#?}", image);
+            container_snapshot.add_metadata("container.image", &image_name);
+            container_snapshot
+                .add_metadata("container.image.created", image.created.unwrap_or_default());
+            container_snapshot.add_metadata("container.image.os", image.os.unwrap_or_default());
+            container_snapshot.add_metadata(
+                "container.image.arch",
+                image.architecture.unwrap_or_default(),
+            );
+            container_snapshot.add_metadata(
+                "container.image.variant",
+                image.os_version.unwrap_or_default(),
+            );
+        }
 
         // We always update the metadata for the container snapshot
-        let snapshot_metadata = HashMap::from([
-            ("container", "true".to_string()),
-            ("container.image", container.image.unwrap_or_default()),
-            (
-                "container.sha",
-                container.image_id.clone().unwrap_or_default(),
-            ),
-            ("container.description", description.unwrap_or_default()),
-            (
-                "container.url",
-                labels
-                    .get("org.opencontainers.image.url")
-                    .cloned()
-                    .unwrap_or_default(),
-            ),
-            (
-                "container.licenses",
-                labels
-                    .get("org.opencontainers.image.licenses")
-                    .cloned()
-                    .unwrap_or_default(),
-            ),
-            (
-                "container.version",
-                labels
-                    .get("org.opencontainers.image.version")
-                    .cloned()
-                    .unwrap_or_default(),
-            ),
-            (
-                "container.authors",
-                labels
-                    .get("org.opencontainers.image.authors")
-                    .cloned()
-                    .unwrap_or_default(),
-            ),
-        ]);
-        container_snapshot
-            .update_metadata(client, snapshot_metadata)
-            .await?;
+        // https://docs.rs/bollard/latest/bollard/models/struct.ContainerSummary.html
+        container_snapshot.add_metadata(
+            "container.sha",
+            container.image_id.clone().unwrap_or_default(),
+        );
+        container_snapshot.add_metadata(
+            // Container Created
+            "container.created",
+            chrono::DateTime::from_timestamp_nanos(container.created.unwrap_or_default())
+                .to_string(),
+        );
+
+        if let Some(url) = labels.get("org.opencontainers.image.url") {
+            container_snapshot.add_metadata("container.image.url", url);
+        }
+        if let Some(licenses) = labels.get("org.opencontainers.image.licenses") {
+            container_snapshot.add_metadata("container.image.licenses", licenses);
+        }
+        if let Some(version) = labels.get("org.opencontainers.image.version") {
+            container_snapshot.add_metadata("container.image.version", version);
+        }
+        if let Some(authors) = labels.get("org.opencontainers.image.authors") {
+            container_snapshot.add_metadata("container.image.authors", authors);
+        }
+
+        // History
+        if let Ok(history) = docker.image_history(&image_name).await {
+            let history_items = history
+                .iter()
+                .rev()
+                .map(|h| h.created_by.clone())
+                .collect::<Vec<_>>();
+
+            debug!("History: {:#?}", history_items);
+            container_snapshot.add_metadata(
+                "container.image.history",
+                serde_json::to_string(&history_items)?,
+            );
+        }
+
+        container_snapshot.update_metadata(client).await?;
 
         info!("Done with Container: {}", name);
     }
