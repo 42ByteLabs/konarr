@@ -192,16 +192,15 @@ async fn run_docker(
     let mut server_snapshot = server_project.snapshot.clone().expect(
         "Snapshot is required to update metadata. Please create a snapshot before running this command");
 
-    server_snapshot.add_metadata("os".to_string(), version.os.unwrap_or_default());
+    // OS Metadata
+    server_snapshot.add_metadata("os", version.os.unwrap_or_default());
+    server_snapshot.add_metadata("os.kernel", version.kernel_version.unwrap_or_default());
+    server_snapshot.add_metadata("os.arch", version.arch.unwrap_or_default());
+    // Container Engine
+    server_snapshot.add_metadata("container", "true");
+    server_snapshot.add_metadata("container.engine", engine);
     server_snapshot.add_metadata(
-        "os.kernel".to_string(),
-        version.kernel_version.unwrap_or_default(),
-    );
-    server_snapshot.add_metadata("os.arch".to_string(), version.arch.unwrap_or_default());
-    server_snapshot.add_metadata("container".to_string(), "true".to_string());
-    server_snapshot.add_metadata("container.engine".to_string(), engine);
-    server_snapshot.add_metadata(
-        "container.engine.version".to_string(),
+        "container.engine.version",
         version.version.unwrap_or_default(),
     );
 
@@ -342,6 +341,7 @@ async fn run_docker(
                 .to_string(),
         );
 
+        // https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
         if let Some(url) = labels.get("org.opencontainers.image.url") {
             container_snapshot.add_metadata("container.image.url", url);
         }
