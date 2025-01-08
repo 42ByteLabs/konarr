@@ -74,8 +74,13 @@ impl KonarrSnapshot {
     #[cfg(feature = "agent")]
     pub fn add_metadata(&mut self, key: impl Into<String>, value: impl Into<String>) {
         let key = key.into();
-        debug!("Adding Metadata for Snapshot({:?}) :: {}", self.id, key);
-        self.metadata.insert(key, value.into());
+        let value = value.into();
+        if !value.is_empty() {
+            debug!("Adding Metadata for Snapshot({:?}) :: {}", self.id, key);
+            self.metadata.insert(key, value.into());
+        } else {
+            debug!("Skipping empty metadata value for key: {}", key);
+        }
     }
 
     /// Update Metadata of the snapshot
