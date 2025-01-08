@@ -167,6 +167,19 @@ impl ToolConfig {
         Ok(tools)
     }
 
+    /// Find a tool by name
+    pub async fn find_tool(tool_name: &String) -> Result<ToolConfig, KonarrError> {
+        Ok(ToolConfig::tools()
+            .await?
+            .iter()
+            .find(|t| t.name == *tool_name)
+            .cloned()
+            .ok_or(KonarrError::ToolError(format!(
+                "Tool not found: {}",
+                tool_name
+            )))?)
+    }
+
     /// Check if the Tool is available
     pub fn is_available(&self) -> bool {
         if self.path.is_some() && !self.version.is_empty() {
@@ -220,6 +233,22 @@ impl ToolConfig {
             }
             "trivy" => {
                 return Trivy::version(&self).await;
+            }
+            _ => panic!("Tool not implemented"),
+        }
+    }
+
+    /// Get the remote version of the Tool
+    pub async fn remote_version(&mut self) -> Result<String, KonarrError> {
+        match self.name.as_str() {
+            "grype" => {
+                return Grype::remote_version(self).await;
+            }
+            "syft" => {
+                return Syft::remote_version(self).await;
+            }
+            "trivy" => {
+                return Trivy::remote_version(self).await;
             }
             _ => panic!("Tool not implemented"),
         }
