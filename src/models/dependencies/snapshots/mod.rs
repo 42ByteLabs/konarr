@@ -11,7 +11,7 @@ use crate::{
     bom::BillOfMaterials,
     models::{
         security::{SecuritySeverity, SecurityState},
-        Alerts, Dependencies, ServerSettings,
+        Alerts, Dependencies, ProjectSnapshots, Projects, ServerSettings,
     },
     KonarrError,
 };
@@ -75,6 +75,25 @@ impl Snapshot {
             connection,
             Snapshot::query_select()
                 .order_by("created_at", QueryOrder::Asc)
+                .build()?,
+        )
+        .await?)
+    }
+
+    /// Fetch Project for the Snapshot
+    pub async fn fetch_project<'a, T>(
+        &self,
+        connection: &'a T,
+    ) -> Result<Projects, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        Ok(Projects::query_first(
+            connection,
+            Projects::query_select()
+                .join(ProjectSnapshots::table())
+                .where_eq("ProjectSnapshots.snapshot_id", self.id)
+                .limit(1)
                 .build()?,
         )
         .await?)
