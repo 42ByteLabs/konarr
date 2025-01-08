@@ -73,7 +73,9 @@ impl KonarrSnapshot {
     /// Add Metadata to the current snapshot
     #[cfg(feature = "agent")]
     pub fn add_metadata(&mut self, key: impl Into<String>, value: impl Into<String>) {
-        self.metadata.insert(key.into(), value.into());
+        let key = key.into();
+        debug!("Adding Metadata for Snapshot({:?}) :: {}", self.id, key);
+        self.metadata.insert(key, value.into());
     }
 
     /// Update Metadata of the snapshot

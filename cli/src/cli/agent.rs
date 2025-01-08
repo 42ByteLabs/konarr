@@ -160,28 +160,38 @@ async fn run_docker(
     info!("Connected to Docker");
 
     let mut tool = if let Some(tool_name) = &config.agent.tool {
+        debug!("Tool Name :: {}", tool_name);
         ToolConfig::find_tool(&tool_name).await?
     } else {
         log::error!("Tool not specified");
-        return Err(KonarrError::UnknownError("Tool not specified".to_string()));
+        return Err(KonarrError::UnknownError(format!(
+            "Tool `{:?}` not specified",
+            config.agent.tool
+        )));
     };
 
-    info!("Using Tool {}@{}", tool.name, tool.version);
+    info!("Using Tool `{}@{}`", tool.name, tool.version);
 
     if !tool.is_available() && config.agent.tool_auto_install {
-        info!("Tool not installed, installing...");
+        info!("Tool `{}` not installed, installing...", tool.name);
         tool.install().await?;
     } else if config.agent.tool_auto_update {
-        info!("Checking for tool updates...");
+        info!("Checking for `{}` updates...", tool.name);
         if let Ok(rversion) = tool.remote_version().await {
             if rversion != tool.version {
-                info!("Tool is out of date, updating to {}...", rversion);
+                info!(
+                    "Tool `{}` is out of date, updating to {}...",
+                    tool.name, rversion
+                );
                 if let Err(err) = tool.install().await {
                     warn!("Failed to update tool: {}", err);
                 }
             }
         } else {
-            warn!("Failed to get remote version of tool, skipping update");
+            warn!(
+                "Failed to get remote version of `{}`, skipping update",
+                tool.name
+            );
         }
     }
 
