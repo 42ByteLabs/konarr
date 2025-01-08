@@ -70,7 +70,35 @@ impl KonarrSnapshot {
         }
     }
 
+    /// Add Metadata to the current snapshot
+    #[cfg(feature = "agent")]
+    pub fn add_metadata(&mut self, key: impl Into<String>, value: impl Into<String>) {
+        self.metadata.insert(key.into(), value.into());
+    }
+
+    /// Update Metadata of the snapshot
+    #[cfg(feature = "agent")]
+    pub async fn update_metadata(
+        &self,
+        client: &KonarrClient,
+    ) -> Result<Vec<KonarrSnapshot>, crate::KonarrError> {
+        debug!("Updating Metadata for Snapshot({:?})", self.id);
+        match client
+            .patch(
+                format!("/snapshots/{}/metadata", self.id).as_str(),
+                self.metadata.clone(),
+            )
+            .await?
+            .json::<ApiResponse<Vec<Self>>>()
+            .await?
+        {
+            ApiResponse::Ok(snapshot) => Ok(snapshot),
+            ApiResponse::Error(err) => Err(err.into()),
+        }
+    }
+
     /// Update Metadata to a snapshot (only update on changes)
+    #[cfg(not(feature = "agent"))]
     pub async fn update_metadata(
         &self,
         client: &KonarrClient,
