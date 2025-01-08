@@ -327,15 +327,10 @@ async fn run_docker(
             container_snapshot.add_metadata("container.image", &image_name);
             container_snapshot
                 .add_metadata("container.image.created", image.created.unwrap_or_default());
-            container_snapshot.add_metadata("container.image.os", image.os.unwrap_or_default());
-            container_snapshot.add_metadata(
-                "container.image.arch",
-                image.architecture.unwrap_or_default(),
-            );
-            container_snapshot.add_metadata(
-                "container.image.variant",
-                image.os_version.unwrap_or_default(),
-            );
+            // OS / Arch
+            container_snapshot.add_metadata("os", image.os.unwrap_or_default());
+            container_snapshot.add_metadata("os.arch", image.architecture.unwrap_or_default());
+            container_snapshot.add_metadata("os.variant", image.os_version.unwrap_or_default());
         }
 
         // We always update the metadata for the container snapshot
@@ -353,16 +348,16 @@ async fn run_docker(
 
         // https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
         if let Some(url) = labels.get("org.opencontainers.image.url") {
-            container_snapshot.add_metadata("container.image.url", url);
+            container_snapshot.add_metadata("container.url", url);
         }
         if let Some(licenses) = labels.get("org.opencontainers.image.licenses") {
-            container_snapshot.add_metadata("container.image.licenses", licenses);
+            container_snapshot.add_metadata("container.licenses", licenses);
         }
         if let Some(version) = labels.get("org.opencontainers.image.version") {
-            container_snapshot.add_metadata("container.image.version", version);
+            container_snapshot.add_metadata("container.version", version);
         }
         if let Some(authors) = labels.get("org.opencontainers.image.authors") {
-            container_snapshot.add_metadata("container.image.authors", authors);
+            container_snapshot.add_metadata("container.authors", authors);
         }
 
         // History
