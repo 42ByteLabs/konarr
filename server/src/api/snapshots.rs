@@ -6,6 +6,7 @@ use konarr::{
         security::{Advisories, Alerts, SecuritySeverity},
         SnapshotMetadataKey,
     },
+    tools::Tool,
 };
 use log::{debug, info};
 use rocket::{data::ToByteUnit, serde::json::Json, State};
@@ -190,14 +191,25 @@ pub(crate) async fn upload_bom(
 
     let connection = std::sync::Arc::clone(&state.connection);
     let config = state.config.clone();
+    let mut project = snapshot.fetch_project(&connection).await?;
 
     tokio::spawn(async move {
-        konarr::tasks::advisories::scan(&config, &connection)
+        // Ensure Grype is installed and available
+        let tool_grype = konarr::tools::Grype::init().await;
+        if tool_grype.is_available() {
+            log::debug!("Grype Config: {:?}", tool_grype);
+            konarr::tasks::advisories::scan_project(
+                &config,
+                &connection,
+                &tool_grype,
+                &mut project,
+            )
             .await
             .map_err(|e| {
                 log::error!("Failed to scan projects: {:?}", e);
             })
             .ok();
+        }
     });
 
     Ok(Json(snapshot.into()))

@@ -177,7 +177,7 @@ impl SnapshotMetadata {
 #[derive(Data, Debug, Default, Clone, Hash, Eq, PartialEq)]
 #[allow(missing_docs)]
 pub enum SnapshotMetadataKey {
-    // Operating System Info
+    // Operating System Info (Host or Container)
     #[geekorm(key = "os")]
     Os,
     #[geekorm(key = "os.version")]
@@ -186,6 +186,9 @@ pub enum SnapshotMetadataKey {
     OsArch,
     #[geekorm(key = "os.kernel")]
     OsKernel,
+    /// Only for ARM
+    #[geekorm(key = "os.variant")]
+    OsVariant,
 
     // OS Container Engine
     #[geekorm(key = "container.engine")]
@@ -203,6 +206,12 @@ pub enum SnapshotMetadataKey {
     ContainerSha,
     #[geekorm(key = "container.version")]
     ContainerVersion,
+    /// Created date of the container (not the image)
+    #[geekorm(key = "container.created")]
+    ContainerCreated,
+    /// Created date of the container image
+    #[geekorm(key = "container.image.created")]
+    ContainerImageCreated,
     /// Container Description provided by the user
     #[geekorm(key = "container.description")]
     ContainerDescription,
