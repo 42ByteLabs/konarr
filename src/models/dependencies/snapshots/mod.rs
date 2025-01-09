@@ -88,15 +88,20 @@ impl Snapshot {
     where
         T: GeekConnection<Connection = T> + 'a,
     {
-        Ok(Projects::query_first(
-            connection,
-            Projects::query_select()
-                .join(ProjectSnapshots::table())
-                .where_eq("ProjectSnapshots.snapshot_id", self.id)
-                .limit(1)
-                .build()?,
-        )
-        .await?)
+        let snaps = ProjectSnapshots::fetch_by_snapshot_id(connection, self.id).await?;
+        let snap = snaps.first().ok_or_else(|| geekorm::Error::NoRowsFound)?;
+        Ok(Projects::fetch_by_primary_key(connection, snap.project_id.clone()).await?)
+        // TODO: Add JOIN
+        // // SELECT * FROM Projects JOIN ProjectSnapshots ON Projects.id = ProjectSnapshots.project_id WHERE ProjectSnapshots.snapshot_id = 35
+        // Ok(Projects::query_first(
+        //     connection,
+        //     Projects::query_select()
+        //         .join(ProjectSnapshots::table())
+        //         .where_eq("ProjectSnapshots.snapshot_id", self.id)
+        //         .limit(1)
+        //         .build()?,
+        // )
+        // .await?)
     }
 
     /// Find or create a new Snapshot from Bill of Materials
