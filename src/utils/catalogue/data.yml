@@ -1,6 +1,7 @@
 
 aliases:
   "pkg:deb/alpine": "pkg:apk/alpine"
+  "pkg:dep/ol": "pkg:rpm/ol"
 
 catalogue:
   # =================
@@ -33,6 +34,22 @@ catalogue:
   "pkg:deb/debian/bsdutils": "oe"
   "pkg:deb/debian/coreutils": "oe"
 
+  # RHEL
+  "pkg:rpm/redhat": "os"
+  "pkg:rpm/redhat/yum": "package-manager"
+  "pkg:rpm/redhat/yum-utils": "package-manager"
+  "pkg:*/rpm": "package-manager"
+  "pkg:*/rpm-libs": "package-manager"
+  # Fedora
+  "pkg:rpm/fedora": "os"
+  "pkg:rpm/fedora/dnf": "package-manager"
+  "pkg:rpm/fedora/dnf-plugins-core": "package-manager"
+  # Oracle Linux (based on RHEL)
+  "pkg:rpm/ol": "os"
+  # CentOS (based on RHEL)
+  "pkg:rpm/centos": "os"
+  "pkg:rpm/centos/centos-release": "oe"
+
   # ============================
   # Operating System Environment
   # ============================
@@ -49,6 +66,7 @@ catalogue:
   "pkg:*/libc-utils": "oe"
   "pkg:*/glibc": "oe"
   "pkg:*/glibc-dev": "oe"
+  "pkg:*/redhat-release": "oe"
 
   # ============
   # Applications
@@ -92,12 +110,18 @@ catalogue:
   "pkg:*/ca-certificates": "cryptography"
   "pkg:*/ca-certificates-bundle": "cryptography"
   "pkg:*/openssl": "cryptography"
+  "pkg:*/openssl-libs": "cryptography"
   "pkg:*/libssl": "cryptography"
   "pkg:*/libssl-dev": "cryptography"
+  "pkg:*/libssl1.1": "cryptography"
   "pkg:*/libssl3": "cryptography"
   "pkg:*/libssl3-dev": "cryptography"
+  "pkg:*/libgcrypt": "cryptography"
+  "pkg:*/libgcrypt-dev": "cryptography"
   "pkg:*/libcrypto": "cryptography"
   "pkg:*/libcrypto-dev": "cryptography"
+  "pkg:*/libcrypto1.1": "cryptography"
+  "pkg:*/libxcrypt": "cryptography"
   "pkg:*/argon2-libs": "cryptography"
   "pkg:*/ssl_client": "cryptography"
   # Debian
@@ -106,6 +130,19 @@ catalogue:
   # GoLang
   "pkg:golang.org/x/crypto": "cryptography"
   "pkg:golang/github.com/ProtonMail/go-crypto": "cryptography"
+  "pkg:golang/github.com/keybase/go-crypto": "cryptography"
+  "pkg:golang/github.com/zeebo/blake3": "cryptography"
+  
+  # Python
+  "pkg:pypi/pyopenssl": "cryptography"
+  "pkg:pypi/cryptography": "cryptography"
+  "pkg:pypi/certifi": "cryptography"
+  "pkg:pypi/bcrypt": "cryptography"
+  # JavaScript/TypeScript
+  "pkg:npm/bcrypt-pbkdf": "cryptography"
+  "pkg:npm/bcrypt": "cryptography"
+  "pkg:npm/cryptile": "cryptography"
+  "pkg:npm/@hapi/cryptiles": "cryptography"
 
   # =====================
   # Middleware / Services
@@ -175,6 +212,8 @@ catalogue:
   "pkg:*/autotools": "application"
   "pkg:*/autoconf": "application"
   "pkg:*/automake": "application"
+  # JavaScript/TypeScript
+  "pkg:npm/angular": "framework"
 
   # =========
   # Databases
@@ -202,13 +241,17 @@ catalogue:
   "pkg:*/couchdb-dev": "database"
   "pkg:*/couchbase": "database"
   "pkg:*/couchbase-dev": "database"
+  # GoLang
+  "pkg:golang/github.com/go-sql-driver/mysql": "database"
+  "pkg:golang/github.com/couchbase/go-couchbase": "database"
 
   # =====================
   # Compression Libraries
   # =====================
   "pkg:*/gzip": "compression"
   "pkg:*/bzip2": "compression"
-  "pgk:*/tar": "compression"
+  "pkg:*/bzip2-libs": "compression"
+  "pkg:*/tar": "compression"
   "pkg:*/unzip": "compression"
   "pkg:*/zip": "compression"
   "pkg:*/zlib": "compression"
@@ -222,6 +265,10 @@ catalogue:
   "pkg:*/libbz2-1.0": "compression"
   "pkg:*/libbz2-dev": "compression"
   "pkg:*/liblz4": "compression"
+  "pkg:*/liblz4-dev": "compression"
+  "pkg:*/libarchive": "compression"
+  "pkg:*/lz4": "compression"
+  "pkg:*/lz4-libs": "compression"
   "pkg:*/zstd": "compression"
   "pkg:*/zstd-libs": "compression"
   "pkg:*/xz": "compression"
@@ -229,5 +276,14 @@ catalogue:
   # GoLang
   "pkg:golang/github.com/therootcompany/xz": "compression"
   "pkg:golang/github.com/klauspost/pgzip": "compression"
+  "pkg:golang/github.com/NYTimes/gziphandler": "compression"
+  # JavaScript/TypeScript
+  "pkg:npm/decompress": "compression"
+  "pkg:npm/decompress-tar": "compression"
+  "pkg:npm/decompress-tarbz2": "compression"
+  "pkg:npm/decompress-targz": "compression"
+  "pkg:npm/decompress-zip": "compression"
+  "pkg:npm/decompress-unzip": "compression"
+  "pkg:npm/extract-zip": "compression"
 
 
