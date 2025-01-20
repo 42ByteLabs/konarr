@@ -21,15 +21,6 @@ pub struct ComponentVersion {
 }
 
 impl ComponentVersion {
-    /// Initialise ComponentVersion
-    pub async fn init<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
-        Self::create_table(connection).await?;
-        Ok(())
-    }
-
     /// Semver Version
     pub fn version(&self) -> Result<semver::Version, crate::KonarrError> {
         Ok(semver::Version::parse(self.version.as_str())?)

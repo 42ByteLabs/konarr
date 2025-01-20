@@ -20,45 +20,39 @@ pub use security::advisories::AdvisoriesMetadata;
 pub use security::{Advisories, Alerts};
 pub use settings::{ServerSettings, Setting};
 
-use crate::KonarrError;
+use crate::{db, Config, KonarrError};
 
 /// Initialize the database with the necessary tables.
-pub async fn database_create<'a, T>(connection: &'a T) -> Result<(), KonarrError>
+///
+/// - Create / Migrate Database
+/// - Initiale data
+/// - Update Statistics
+/// - Update Security Data
+pub async fn database_initialise<T>(config: &mut Config, connection: &T) -> Result<(), KonarrError>
 where
-    T: GeekConnection<Connection = T> + 'a,
+    T: GeekConnection<Connection = T> + Sync + Send,
 {
-    let connection = connection.into();
-    // Session
     debug!("Creating tables");
+    db::init(connection).await?;
 
-    debug!("Creating Server Settings table");
+    // Initialise the models
     ServerSettings::init(connection).await?;
-
-    debug!("Creating Sessions table");
-    Sessions::create_table(connection).await?;
-    // Users
-    debug!("Creating Users table");
-    Users::create_table(connection).await?;
-
-    // Components
-    debug!("Creating Components table...");
-    ComponentVersion::init(connection).await?;
     Component::init(connection).await?;
-
-    debug!("Creating Snapshots table...");
-    Snapshot::create_table(connection).await?;
     SnapshotMetadata::init(connection).await?;
-    debug!("Creating Dependencies table...");
-    Dependencies::create_table(connection).await?;
 
-    debug!("Security tables...");
-    Advisories::create_table(connection).await?;
-    AdvisoriesMetadata::create_table(connection).await?;
-    Alerts::init(connection).await?;
+    // Store the server setting into the config file
+    if let Ok(token) = ServerSettings::fetch_by_name(connection, Setting::AgentKey).await {
+        if config.agent.token != Some(token.value.clone()) {
+            log::info!("Updating Agent Token");
+            config.agent.token = Some(token.value);
+            config.autosave()?;
+        }
+    }
 
-    debug!("Creating Projects tables...");
-    Projects::init(connection).await?;
-    ProjectSnapshots::create_table(connection).await?;
+    // Update Stats
+    crate::tasks::statistics(connection).await?;
+    // Calculate Alerts
+    crate::tasks::alerts::alert_calculator(connection).await?;
 
     Ok(())
 }

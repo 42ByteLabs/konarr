@@ -66,16 +66,6 @@ pub struct Alerts {
 }
 
 impl Alerts {
-    /// Initialise Alerts
-    pub async fn init<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
-    where
-        T: geekorm::GeekConnection<Connection = T> + 'a,
-    {
-        Self::create_table(connection).await?;
-
-        Ok(())
-    }
-
     /// Find or create an alert
     pub async fn find_or_create<'a, T>(&mut self, connection: &'a T) -> Result<(), geekorm::Error>
     where
@@ -111,7 +101,7 @@ impl Alerts {
     pub async fn filter_severity<'a, T>(
         connection: &'a T,
         severity: SecuritySeverity,
-        page: &Pagination,
+        page: &Page,
     ) -> Result<Vec<Self>, geekorm::Error>
     where
         T: geekorm::GeekConnection<Connection = T> + 'a,

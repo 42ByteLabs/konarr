@@ -36,10 +36,9 @@ impl Component {
     where
         T: GeekConnection<Connection = T> + 'a,
     {
-        debug!("Creating and Initialising Component Table");
-        Component::create_table(connection).await?;
+        debug!("Initialising Component Model");
 
-        let purls = vec!["pkg:deb/debian", "pkg:apk/alpine"];
+        let purls = ["pkg:deb/debian", "pkg:apk/alpine"];
         for purl in purls.iter() {
             let (mut comp, _version) = Component::from_purl(purl.to_string()).unwrap();
             comp.find_or_create(connection).await?;
@@ -58,7 +57,7 @@ impl Component {
         if let Some(namespace) = &self.namespace {
             purl += format!("{}/", namespace).as_str();
         }
-        purl += format!("{}", self.name.as_str()).as_str();
+        purl += format!("{}", self.name).as_str();
 
         purl
     }
@@ -117,10 +116,7 @@ impl Component {
     }
 
     /// Get the top components
-    pub async fn top<'a, T>(
-        connection: &'a T,
-        page: &Pagination,
-    ) -> Result<Vec<Self>, crate::KonarrError>
+    pub async fn top<'a, T>(connection: &'a T, page: &Page) -> Result<Vec<Self>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
     {
@@ -143,7 +139,7 @@ impl Component {
     pub async fn find_by_name<'a, T>(
         connection: &'a T,
         name: impl Into<String>,
-        page: &Pagination,
+        page: &Page,
     ) -> Result<Vec<Component>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
@@ -163,7 +159,7 @@ impl Component {
     pub async fn find_by_component_type<'a, T>(
         connection: &'a T,
         ctype: impl Into<ComponentType>,
-        page: &Pagination,
+        page: &Page,
     ) -> Result<Vec<Component>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,

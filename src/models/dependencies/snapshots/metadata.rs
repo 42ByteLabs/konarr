@@ -16,7 +16,7 @@ pub struct SnapshotMetadata {
 
     /// Snapshot ID
     #[geekorm(foreign_key = "Snapshot.id")]
-    pub snapshot_id: ForeignKey<i32, Snapshot>,
+    pub snapshot_id: ForeignKey<u64, Snapshot>,
 
     /// Key
     pub key: SnapshotMetadataKey,
@@ -38,14 +38,13 @@ impl SnapshotMetadata {
     where
         T: GeekConnection<Connection = T> + 'a,
     {
-        Self::create_table(connection).await?;
-
+        log::debug!("Initialising Snapshot Metadata Model");
         let all = match Self::all(connection).await {
             Ok(all) => all,
             Err(e) => {
                 log::error!("Failed to get all metadata: {:?}", e);
                 log::error!("Please report this error to the Konarr team");
-                return Err(e.into());
+                return Err(e);
             }
         };
         log::debug!("Found {} metadata entries", all.len());
