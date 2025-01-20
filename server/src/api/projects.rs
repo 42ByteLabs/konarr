@@ -97,11 +97,9 @@ pub(crate) async fn get_projects(
     r#type: Option<String>,
     parents: Option<bool>,
 ) -> ApiResult<ApiResponse<Vec<ProjectResp>>> {
-    let limit = limit.unwrap_or(10) as usize;
-    let offset = page.unwrap_or(0) as usize * limit as usize;
-
     let total = models::Projects::count_active(&state.connection).await?;
-    let pages = (total as f32 / limit as f32).ceil() as u32;
+    let mut page = Page::from((page, limit));
+    page.set_total(total as u32);
 
     let projects = if let Some(search) = search {
         info!("Searching for projects with name: '{}'", search);
@@ -111,31 +109,23 @@ pub(crate) async fn get_projects(
         models::Projects::find_parents(&state.connection).await?
     } else if top.unwrap_or(false) {
         info!("Fetching the top level projects");
-        models::Projects::fetch_top_level(&state.connection, limit, offset).await?
+        models::Projects::fetch_top_level(&state.connection, &page).await?
     } else if let Some(prjtype) = r#type {
         if prjtype.as_str() == "all" {
             info!("Fetching all projects");
-            models::Projects::all(&state.connection, limit, offset).await?
+            models::Projects::page(&state.connection, &page).await?
         } else {
             info!("Fetching by type: {}", prjtype);
-            models::Projects::fetch_project_type(&state.connection, prjtype, limit, offset).await?
+            models::Projects::fetch_project_type(&state.connection, prjtype, &page).await?
         }
     } else {
-        models::Projects::query(
-            &state.connection,
-            models::Projects::query_select()
-                .order_by("created_at", geekorm::QueryOrder::Desc)
-                .limit(limit)
-                .offset(offset)
-                .build()?,
-        )
-        .await?
+        models::Projects::page(&state.connection, &page).await?
     };
 
     Ok(Json(ApiResponse::new(
         projects.into_iter().map(|p| p.into()).collect(),
         total as u32,
-        pages,
+        page.pages(),
     )))
 }
 
@@ -283,10 +273,10 @@ impl From<models::Projects> for ProjectResp {
     fn from(project: models::Projects) -> Self {
         // Get the latest snapshot (last)
         let snapshot: Option<models::Snapshot> = project.snapshots.last().cloned();
-        let security: SecuritySummary = if let Some(snap) = &snapshot {
-            snap.into()
+        let security: Option<SecuritySummary> = if let Some(snap) = &snapshot {
+            Some(snap.into())
         } else {
-            SecuritySummary::default()
+            None
         };
         let parent: Option<i32> = if project.parent > 0 {
             Some(project.parent)
@@ -311,7 +301,7 @@ impl From<models::Projects> for ProjectResp {
             created_at: project.created_at,
             snapshot: snapshot.map(|snap| snap.into()),
             snapshots: project.snapshots.len() as u32,
-            security: Some(security),
+            security,
             parent,
             children: project
                 .children

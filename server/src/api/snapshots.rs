@@ -81,7 +81,7 @@ pub(crate) async fn create_snapshot(
             .await
         {
             Ok(project) => project,
-            Err(geekorm::Error::NoRowsFound) => {
+            Err(geekorm::Error::NoRowsFound { query: _ }) => {
                 log::error!("Project not found: {}", snapshot.project_id);
                 return Err(
                     KonarrServerError::ProjectNotFoundError(snapshot.project_id as i32).into(),
@@ -94,7 +94,8 @@ pub(crate) async fn create_snapshot(
         };
     debug!("Project: {:?}", project);
 
-    let snapshot = match models::Snapshot::create(&state.connection).await {
+    let mut snapshot = models::Snapshot::new();
+    match snapshot.save(&state.connection).await {
         Ok(snapshot) => snapshot,
         Err(e) => {
             log::error!("Failed to create snapshot: {:?}", e);
@@ -224,8 +225,7 @@ pub(crate) async fn get_snapshot_dependencies(
     page: Option<u32>,
     limit: Option<u32>,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
-    let page = page.unwrap_or(0) as usize;
-    let limit = limit.unwrap_or(10) as usize;
+    let page = Page::from((page, limit));
 
     let mut snapshot = models::Snapshot::fetch_by_primary_key(&state.connection, id as i32).await?;
     snapshot.fetch_metadata(&state.connection).await?;
@@ -236,7 +236,7 @@ pub(crate) async fn get_snapshot_dependencies(
         models::Dependencies::search(&state.connection, snapshot.id, search).await?
     } else {
         snapshot
-            .fetch_dependencies(&state.connection, page, limit)
+            .fetch_dependencies(&state.connection, &page)
             .await?
     };
 
@@ -247,7 +247,7 @@ pub(crate) async fn get_snapshot_dependencies(
     Ok(Json(ApiResponse::new(
         deps.into_iter().map(|d| d.into()).collect(),
         total as u32,
-        (total / limit) as u32,
+        page.pages(),
     )))
 }
 
@@ -264,8 +264,7 @@ pub(crate) async fn get_snapshot_alerts(
     let snapshot = models::Snapshot::fetch_by_primary_key(&state.connection, id as i32).await?;
     let total = snapshot.fetch_alerts_count(&state.connection).await?;
 
-    let page = Pagination::from((page, limit));
-    let pages = (total as f32 / page.limit() as f32).ceil() as u32;
+    let page = Page::from((page, limit));
 
     let alerts: Vec<Alerts> = if let Some(_search) = search {
         vec![] // TODO: Implement search
@@ -300,7 +299,7 @@ pub(crate) async fn get_snapshot_alerts(
     Ok(Json(ApiResponse::new(
         alerts.into_iter().map(|a| a.into()).collect(),
         total as u32,
-        pages,
+        page.pages(),
     )))
 }
 

@@ -99,7 +99,7 @@ pub async fn get_dependencies(
     page: Option<u32>,
     limit: Option<u32>,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
-    let page = Pagination::from((page, limit));
+    let page = Page::from((page, limit));
 
     let deps = if let Some(search) = search {
         models::Component::find_by_name(&state.connection, search, &page).await?

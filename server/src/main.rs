@@ -6,7 +6,7 @@ extern crate geekorm;
 
 use anyhow::Result;
 use konarr::{
-    models::{database_create, settings::keys::Setting, ServerSettings},
+    models::{database_initialise, settings::keys::Setting, ServerSettings},
     Config, KonarrError,
 };
 use log::{debug, error, info, warn};
@@ -35,7 +35,7 @@ pub struct AppState {
     init: bool,
 }
 
-#[rocket::main]
+#[tokio::main]
 async fn main() -> Result<()> {
     let arguments = cli::init();
 
@@ -50,65 +50,19 @@ async fn main() -> Result<()> {
         }
     };
 
-    // Database
-    create(&mut config).await?;
+    // Database Setup
+    let database = config.database().await?;
+    let connection = Arc::new(Mutex::new(database.connect()?));
+
+    // konarr::db::init(&connection).await?;
+    database_initialise(&mut config, &connection).await?;
 
     // Tasks
     let task_config = Arc::new(config.clone());
-    let database = Arc::new(config.database().await?);
-    konarr::tasks::init(task_config, database).await?;
+    konarr::tasks::init(task_config, connection).await?;
 
     // Server
     server(config).await?;
-
-    Ok(())
-}
-
-/// Setup, Create, and Update the Database
-///
-/// - Run Create Database
-/// - Initiale data
-/// - Update Statistics
-/// - Update Security Data
-async fn create(config: &mut Config) -> Result<()> {
-    let connection = config.database.connection().await?;
-
-    database_create(&connection).await?;
-
-    // Store the server setting into the config file
-    if let Ok(token) = ServerSettings::fetch_by_name(&connection, Setting::AgentKey).await {
-        if config.agent.token != Some(token.value.clone()) {
-            log::info!("Updating Agent Token");
-            config.agent.token = Some(token.value);
-            config.autosave()?;
-        }
-    }
-
-    // Update Stats
-    konarr::tasks::statistics(&connection).await?;
-
-    // Initialise Security
-    if ServerSettings::get_bool(&connection, Setting::Security).await? {
-        if ServerSettings::get_bool(&connection, Setting::SecurityAdvisories).await? {
-            debug!("Syncing Security Advisories");
-
-            match konarr::tasks::advisories::sync_advisories(&config, &connection).await {
-                Err(e) => {
-                    error!("{}", e);
-                    ServerSettings::fetch_by_name(&connection, Setting::SecurityAdvisories)
-                        .await?
-                        .set_update(&connection, "disabled")
-                        .await?;
-                }
-                _ => {}
-            }
-        } else {
-            debug!("Security Advisories are disabled");
-        }
-
-        // Calculate Alerts
-        konarr::tasks::alerts::alert_calculator(&connection).await?;
-    }
 
     Ok(())
 }
