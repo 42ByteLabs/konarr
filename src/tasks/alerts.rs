@@ -10,9 +10,9 @@ use geekorm::prelude::*;
 use log::{debug, info};
 
 /// Alert Calculator Task
-pub async fn alert_calculator<T>(connection: &T) -> Result<(), crate::KonarrError>
+pub async fn alert_calculator<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
 where
-    T: GeekConnection<Connection = T> + Send + Sync + 'static,
+    T: GeekConnection<Connection = T> + Send + Sync + 'a,
 {
     if !ServerSettings::feature_security(connection).await? {
         log::error!("Security Feature is not enabled");
@@ -23,8 +23,11 @@ where
     let mut summary = AlertsSummary::new();
     let mut total = 0;
 
+    let page = Page::from((0, 1_000));
     let mut projects =
-        Projects::fetch_project_type(connection, ProjectType::Container, 1_000, 0).await?;
+        Projects::fetch_project_type(connection, ProjectType::Container, &page).await?;
+    log::debug!("Found `{}` Container projects", projects.len());
+
     let mut project_summaries: HashMap<i32, AlertsSummary> = HashMap::new();
 
     for project in projects.iter_mut() {
@@ -78,13 +81,13 @@ where
 }
 
 /// Calculate Group Alerts
-pub async fn calculate_group_alerts<T>(
-    connection: &T,
+pub async fn calculate_group_alerts<'a, T>(
+    connection: &'a T,
     projects: &Vec<Projects>,
     project_summaries: &HashMap<i32, AlertsSummary>,
 ) -> Result<(), crate::KonarrError>
 where
-    T: GeekConnection<Connection = T> + Send + Sync + 'static,
+    T: GeekConnection<Connection = T> + Send + Sync + 'a,
 {
     log::debug!("Calculating Group Alerts");
     // TODO: Only Server's are supported
@@ -126,4 +129,64 @@ where
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
+
+    use super::*;
+    use crate::{
+        bom::{
+            sbom::{BomComponent, BomType},
+            BillOfMaterials,
+        },
+        models::*,
+        utils::config::DatabaseConfig,
+    };
+
+    async fn database() -> Result<Arc<Mutex<libsql::Connection>>, crate::KonarrError> {
+        let config = DatabaseConfig {
+            path: Some(":memory:".to_string()),
+            ..Default::default()
+        };
+        let conn = DatabaseConfig::connection(&config).await?;
+        let connection = Arc::new(Mutex::new(conn));
+        crate::models::database_create(&connection).await?;
+
+        let mut bill = BillOfMaterials::new(BomType::CycloneDX_1_6, "0.1.0".to_string());
+        bill.components = vec![
+            //
+            BomComponent::from_purl("pkg:deb/debian/curl@7.68.0".to_string()),
+            BomComponent::from_purl("pkg:deb/debian/apt@1".to_string()),
+        ];
+
+        for project_id in 1..99 {
+            let mut project = Projects::new(format!("test-{}", project_id), ProjectType::Container);
+            project.save(&connection).await?;
+            assert_eq!(project.id, project_id.into());
+
+            let mut snapshot = Snapshot::new();
+            snapshot.add_bom(&connection, &bill).await?;
+            snapshot.fetch_or_create(&connection).await?;
+
+            project.add_snapshot(&connection, snapshot).await?;
+            project.update(&connection).await?;
+        }
+
+        let total = Projects::total(&connection).await?;
+        assert_eq!(total, 100);
+
+        Ok(connection)
+    }
+
+    #[tokio::test]
+    async fn test_alert_calculator() -> Result<(), crate::KonarrError> {
+        let connection = database().await?;
+
+        alert_calculator(&connection).await?;
+
+        Ok(())
+    }
 }

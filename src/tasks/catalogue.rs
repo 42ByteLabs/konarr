@@ -15,7 +15,7 @@ where
     let catalogue = Catalogue::new();
 
     let mut counter = 0;
-    let mut comps = Component::fetch_all(connection).await?;
+    let mut comps = Component::all(connection).await?;
     log::debug!("Checking component types for `{}` Components", comps.len());
 
     for mut comp in comps.iter_mut() {
