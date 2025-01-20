@@ -19,6 +19,8 @@ pub mod tools;
 pub mod utils;
 
 #[cfg(feature = "models")]
+pub mod db;
+#[cfg(feature = "models")]
 pub mod models;
 
 pub use error::KonarrError;

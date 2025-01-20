@@ -1,0 +1,3 @@
+mode: module
+name: db
+database: sqlite

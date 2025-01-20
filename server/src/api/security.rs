@@ -1,6 +1,6 @@
 //! # Security API
 
-use geekorm::{prelude::Pagination, GeekConnector, QueryBuilderTrait, QueryOrder};
+use geekorm::{prelude::Page, GeekConnector, QueryBuilderTrait, QueryOrder};
 use konarr::models::{
     security::{Alerts, SecuritySeverity, SecurityState},
     Snapshot,
@@ -55,10 +55,9 @@ pub(crate) async fn get_alerts(
     search: Option<String>,
     severity: Option<String>,
 ) -> ApiResult<ApiResponse<Vec<AlertResp>>> {
-    let page = Pagination::from((page, limit));
-
     let total = Alerts::count_vulnerable(&app_state.connection).await?;
-    let pages = (total as f32 / page.limit() as f32).ceil() as u32;
+    let mut page = Page::from((page, limit));
+    page.set_total(total as u32);
 
     let state = SecurityState::from(state);
 
@@ -68,6 +67,7 @@ pub(crate) async fn get_alerts(
     } else if let Some(severity) = severity {
         let severity = SecuritySeverity::from(severity);
         info!("Filtering alerts by severity: {:?}", severity);
+        // Alerts::filter_page(connection, vec![("severity", severity)], &page).await?
         Alerts::filter_severity(&app_state.connection, severity, &page).await?
     } else {
         info!("Getting alerts");
@@ -85,7 +85,7 @@ pub(crate) async fn get_alerts(
     Ok(Json(ApiResponse::new(
         alerts.into_iter().map(|a| a.into()).collect(),
         total,
-        pages,
+        page.pages(),
     )))
 }
 

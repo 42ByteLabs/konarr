@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use geekorm::GeekConnection;
 use log::info;
 use std::sync::Arc;
-use tokio::spawn;
+use tokio::{spawn, sync::Mutex};
 use tokio_schedule::Job;
 
 pub mod advisories;
@@ -28,13 +28,14 @@ use crate::{
 /// - Calculate statistics
 pub async fn init(
     config: Arc<Config>,
-    database: Arc<libsql::Database>,
+    connection: Arc<Mutex<libsql::Connection>>,
 ) -> Result<(), crate::KonarrError> {
     info!("Initializing Background Tasks...");
 
     let tasks = tokio_schedule::every(60).seconds().perform(move || {
-        let database = Arc::clone(&database);
-        let connection = database.connect().unwrap();
+        // let database = Arc::clone(&database);
+        // let connection = database.connect().unwrap();
+        let connection = Arc::clone(&connection);
         let config = Arc::clone(&config);
         log::info!("Running Background Tasks");
 

@@ -10,9 +10,9 @@ use geekorm::prelude::*;
 use log::{debug, info};
 
 /// Alert Calculator Task
-pub async fn alert_calculator<T>(connection: &T) -> Result<(), crate::KonarrError>
+pub async fn alert_calculator<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
 where
-    T: GeekConnection<Connection = T> + Send + Sync + 'static,
+    T: GeekConnection<Connection = T> + Send + Sync + 'a,
 {
     if !ServerSettings::feature_security(connection).await? {
         log::error!("Security Feature is not enabled");
@@ -23,8 +23,11 @@ where
     let mut summary = AlertsSummary::new();
     let mut total = 0;
 
+    let page = Page::from((0, 1_000));
     let mut projects =
-        Projects::fetch_project_type(connection, ProjectType::Container, 1_000, 0).await?;
+        Projects::fetch_project_type(connection, ProjectType::Container, &page).await?;
+    log::debug!("Found `{}` Container projects", projects.len());
+
     let mut project_summaries: HashMap<i32, AlertsSummary> = HashMap::new();
 
     for project in projects.iter_mut() {
@@ -78,13 +81,13 @@ where
 }
 
 /// Calculate Group Alerts
-pub async fn calculate_group_alerts<T>(
-    connection: &T,
+pub async fn calculate_group_alerts<'a, T>(
+    connection: &'a T,
     projects: &Vec<Projects>,
     project_summaries: &HashMap<i32, AlertsSummary>,
 ) -> Result<(), crate::KonarrError>
 where
-    T: GeekConnection<Connection = T> + Send + Sync + 'static,
+    T: GeekConnection<Connection = T> + Send + Sync + 'a,
 {
     log::debug!("Calculating Group Alerts");
     // TODO: Only Server's are supported

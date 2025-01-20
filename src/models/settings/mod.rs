@@ -81,8 +81,6 @@ impl ServerSettings {
     where
         T: GeekConnection<Connection = T> + 'a,
     {
-        ServerSettings::create_table(connection).await?;
-
         for (name, typ, value) in Self::defaults() {
             match ServerSettings::fetch_by_name(connection, name.to_string()).await {
                 Ok(mut setting) => {

@@ -15,8 +15,6 @@ impl DatabaseConfig {
     ///
     pub async fn database(&self) -> Result<libsql::Database, Error> {
         if let Some(path) = &self.path {
-            log::info!("Connecting to Database: {:?}", path);
-
             match path.as_str() {
                 ":memory:" => {
                     log::info!("Connecting to In-Memory Database");
@@ -37,6 +35,7 @@ impl DatabaseConfig {
                     || path.starts_with("./")
                     || path.starts_with("\\") =>
                 {
+                    log::info!("Connecting to Database: {:?}", path);
                     // Create all directories in the path
                     let dirpath = std::path::Path::new(&path);
                     if let Some(parent) = dirpath.parent() {

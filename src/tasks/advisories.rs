@@ -137,7 +137,7 @@ where
     }
     log::debug!("Grype Config: {:?}", tool_grype);
 
-    let mut projects = Projects::fetch_all(connection).await?;
+    let mut projects = Projects::all(connection).await?;
     info!("Projects Count: {}", projects.len());
 
     for project in projects.iter_mut() {

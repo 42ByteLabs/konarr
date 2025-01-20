@@ -55,17 +55,6 @@ pub struct Snapshot {
 }
 
 impl Snapshot {
-    /// Create a new Snapshot
-    pub async fn create<'a, T>(connection: &'a T) -> Result<Self, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
-        let mut snapshot = Snapshot::new();
-        snapshot.save(connection).await?;
-        debug!("Creating Snapshot: {:?}", snapshot);
-        Ok(snapshot)
-    }
-
     /// Get all Snapshots
     pub async fn all<'a, T>(connection: &'a T) -> Result<Vec<Self>, crate::KonarrError>
     where
@@ -89,7 +78,9 @@ impl Snapshot {
         T: GeekConnection<Connection = T> + 'a,
     {
         let snaps = ProjectSnapshots::fetch_by_snapshot_id(connection, self.id).await?;
-        let snap = snaps.first().ok_or_else(|| geekorm::Error::NoRowsFound)?;
+        let snap = snaps.first().ok_or_else(|| geekorm::Error::NoRowsFound {
+            query: format!("Cannot find first project snapshot: {}", self.id),
+        })?;
         Ok(Projects::fetch_by_primary_key(connection, snap.project_id.clone()).await?)
         // TODO: Add JOIN
         // // SELECT * FROM Projects JOIN ProjectSnapshots ON Projects.id = ProjectSnapshots.project_id WHERE ProjectSnapshots.snapshot_id = 35
@@ -127,7 +118,11 @@ impl Snapshot {
 
                     snap
                 }
-                _ => Self::create(connection).await?,
+                _ => {
+                    let mut snap = Self::new();
+                    snap.save(connection).await?;
+                    snap
+                }
             };
 
         snapshot.add_bom(connection, bom).await?;
@@ -241,8 +236,7 @@ impl Snapshot {
     pub async fn fetch_dependencies<'a, T>(
         &self,
         connection: &'a T,
-        page: usize,
-        limit: usize,
+        page: &Page,
     ) -> Result<Vec<Dependencies>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
@@ -251,8 +245,7 @@ impl Snapshot {
             connection,
             Dependencies::query_select()
                 .where_eq("snapshot_id", self.id)
-                .limit(limit)
-                .offset(page * limit)
+                .page(page)
                 .build()?,
         )
         .await
@@ -344,7 +337,7 @@ impl Snapshot {
     pub async fn fetch_alerts_page<'a, T>(
         &self,
         connection: &'a T,
-        page: &Pagination,
+        page: &Page,
     ) -> Result<Vec<Alerts>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,

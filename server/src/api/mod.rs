@@ -76,19 +76,19 @@ impl<'r> Responder<'r, 'r> for KonarrServerError {
     fn respond_to(self, request: &'r Request<'_>) -> response::Result<'r> {
         match self {
             // Not Found
-            KonarrServerError::GeekOrmError(geekorm::Error::NoRowsFound)
-            | KonarrServerError::KonarrError(KonarrError::GeekOrm(geekorm::Error::NoRowsFound)) => {
-                ApiErrorResponse::NotFound {
-                    inner: (
-                        Status::NotFound,
-                        Json(ApiError {
-                            message: "Not Found".to_string(),
-                            details: Some(self.to_string()),
-                            status: 404,
-                        }),
-                    ),
-                }
-            }
+            KonarrServerError::GeekOrmError(geekorm::Error::NoRowsFound { query: _ })
+            | KonarrServerError::KonarrError(KonarrError::GeekOrm(geekorm::Error::NoRowsFound {
+                query: _,
+            })) => ApiErrorResponse::NotFound {
+                inner: (
+                    Status::NotFound,
+                    Json(ApiError {
+                        message: "Not Found".to_string(),
+                        details: Some(self.to_string()),
+                        status: 404,
+                    }),
+                ),
+            },
             // Unauthorized
             KonarrServerError::Unauthorized
             | KonarrServerError::KonarrError(KonarrError::AuthenticationError(_))
@@ -145,7 +145,7 @@ impl From<konarr::KonarrError> for ApiError {
         };
 
         match value {
-            konarr::KonarrError::GeekOrm(geekorm::Error::NoRowsFound) => ApiError {
+            konarr::KonarrError::GeekOrm(geekorm::Error::NoRowsFound { query: _ }) => ApiError {
                 message: "Not Found".to_string(),
                 details,
                 status: 404,

@@ -61,45 +61,10 @@ pub struct Projects {
 }
 
 impl Projects {
-    /// Initialize the Projects Table
-    pub async fn init<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
-        debug!("Creating Projects Table and Default Project");
-        Projects::create_table(connection).await?;
-
-        // Create a Default Project
-        let mut main_server = Projects::new("Main Server", ProjectType::Server);
-        main_server.description =
-            Some("This is a sample server to show how Konarr works".to_string());
-        main_server.fetch_or_create(connection).await?;
-
-        debug!("Server Project Created: {:?}", main_server);
-
-        match Projects::fetch_by_name(connection, "Main Container").await {
-            Ok(_) => {
-                debug!("Server `Main Container` already exists");
-            }
-            Err(_) => {
-                let mut container_project = Projects::new("Main Container", ProjectType::Container);
-                container_project.description =
-                    Some("This is a sample container to show how Konarr works".to_string());
-                container_project.parent = main_server.id.into();
-
-                container_project.save(connection).await?;
-                debug!("Container Project Created: {:?}", container_project);
-            }
-        };
-
-        Ok(())
-    }
-
     /// Get all Projects
-    pub async fn all<'a, T>(
+    pub async fn all_active<'a, T>(
         connection: &'a T,
-        limit: usize,
-        offset: usize,
+        page: &Page,
     ) -> Result<Vec<Self>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
@@ -109,8 +74,7 @@ impl Projects {
             Projects::query_select()
                 .where_eq("status", ProjectStatus::Active)
                 .order_by("name", QueryOrder::Desc)
-                .limit(limit)
-                .offset(offset)
+                .page(page)
                 .build()?,
         )
         .await?;
@@ -226,8 +190,7 @@ impl Projects {
     /// Get Top-Level Projects and their children
     pub async fn fetch_top_level<'a, T>(
         connection: &'a T,
-        limit: usize,
-        offset: usize,
+        page: &Page,
     ) -> Result<Vec<Self>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
@@ -241,8 +204,7 @@ impl Projects {
                 .and()
                 .where_eq("parent", 0)
                 .order_by("created_at", QueryOrder::Desc)
-                .limit(limit)
-                .offset(offset)
+                .page(page)
                 .build()?,
         )
         .await?;
@@ -259,8 +221,7 @@ impl Projects {
     pub async fn fetch_project_type<'a, T>(
         connection: &'a T,
         project_type: impl Into<ProjectType>,
-        limit: usize,
-        offset: usize,
+        page: &Page,
     ) -> Result<Vec<Self>, crate::KonarrError>
     where
         T: GeekConnection<Connection = T> + 'a,
@@ -272,8 +233,7 @@ impl Projects {
                 .and()
                 .where_eq("project_type", project_type.into())
                 .order_by("created_at", QueryOrder::Desc)
-                .limit(limit)
-                .offset(offset)
+                .page(page)
                 .build()?,
         )
         .await?;

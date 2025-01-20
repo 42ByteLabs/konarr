@@ -172,7 +172,7 @@ impl Dependencies {
         let search = search.into();
         let snapshot_id = snapshot_id.into();
 
-        let query = Component::query_select()
+        let mut query = Component::query_select()
             .where_like("name", format!("%{}%", search))
             .or()
             .where_like("namespace", format!("%{}%", search))
@@ -213,7 +213,7 @@ impl Dependencies {
     {
         let name = name.into();
 
-        let query = Component::query_select()
+        let mut query = Component::query_select()
             .where_like("name", format!("%{}%", name))
             .or()
             .where_like("namespace", format!("%{}%", name))
