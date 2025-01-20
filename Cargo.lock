@@ -1039,9 +1039,9 @@ dependencies = [
 
 [[package]]
 name = "geekorm"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "550ae1ae83b2dc61e263c767a231fed62561017b767217444afd7c2019375d8f"
+checksum = "511f1e1d42888242c6f60046676e602ab672aab7964b6473185aeb52adedd315"
 dependencies = [
  "geekorm-core",
  "geekorm-derive",
@@ -1050,9 +1050,9 @@ dependencies = [
 
 [[package]]
 name = "geekorm-core"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e15197e30f5f11c6d5def3b2cb77be90c7b4b8bd22eb66926df9dbabf7507f87"
+checksum = "344d813b9fd2f93fe6dfa702051d9ecee0d206df7bac8719969fb3101e2eaa46"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1075,9 +1075,9 @@ dependencies = [
 
 [[package]]
 name = "geekorm-derive"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d06412b62e72d80fb09340ed0368de96c0d01362eb9045cc39b1eb98677af098"
+checksum = "f6a65b304ae5a18ea89bbbd2fd8bb14991ee905431a3213b314fd9fed8461482"
 dependencies = [
  "chrono",
  "geekorm-core",
