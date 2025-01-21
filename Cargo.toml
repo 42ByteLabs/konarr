@@ -99,6 +99,12 @@ geekorm = { version = "0.9", features = ["all", "semver", "libsql"] }
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
 
+criterion = { version = "0.5", features = ["async_futures", "async_tokio", "html_reports"] }
+
+[[bench]]
+name = "alert_calculator"
+harness = false
+required-features = ["models", "tasks"]
 
 [[example]]
 name = "grypedb"
