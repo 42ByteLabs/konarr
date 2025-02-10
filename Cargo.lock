@@ -563,9 +563,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.27"
+version = "4.5.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "769b0145982b4b48713e01ec42d61614425f27b7058bda7180a3a41f30104796"
+checksum = "3e77c3243bd94243c03672cb5154667347c457ca271254724f9f393aee1c05ff"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -585,9 +585,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.5.24"
+version = "4.5.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54b755194d6389280185988721fffba69495eed5ee9feeee9a599b53db80318c"
+checksum = "bf4ced95c6f4a675af3da73304b9ac4ed991640c36374e4b46795c49e17cf1ed"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -707,7 +707,7 @@ dependencies = [
  "anes",
  "cast",
  "ciborium",
- "clap 4.5.27",
+ "clap 4.5.28",
  "criterion-plot",
  "futures",
  "is-terminal",
@@ -1970,7 +1970,7 @@ dependencies = [
  "anyhow",
  "bollard",
  "chrono",
- "clap 4.5.27",
+ "clap 4.5.28",
  "console",
  "dialoguer",
  "dotenvy",
@@ -1994,7 +1994,7 @@ version = "0.3.3"
 dependencies = [
  "anyhow",
  "chrono",
- "clap 4.5.27",
+ "clap 4.5.28",
  "console",
  "dotenvy",
  "env_logger",
@@ -4262,11 +4262,11 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.12.1"
+version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3758f5e68192bb96cc8f9b7e2c2cfdabb435499a28499a42f8f984092adad4b"
+checksum = "ced87ca4be083373936a67f8de945faa23b6b42384bd5b64434850802c6dccd0"
 dependencies = [
- "getrandom 0.2.15",
+ "getrandom 0.3.1",
  "serde",
 ]
 
