@@ -1,7 +1,6 @@
 //! # Konarr Models
 
 use geekorm::prelude::*;
-use log::{debug, info};
 
 pub mod auth;
 pub mod cache;
