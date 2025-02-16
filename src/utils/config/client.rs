@@ -1,10 +1,10 @@
 use super::{Config, ServerConfig};
-use crate::{KonarrClient, KonarrError as Error};
+use crate::KonarrClient;
 
 impl Config {
     #[cfg(feature = "models")]
     /// Get Database Connection
-    pub async fn database(&self) -> Result<libsql::Database, Error> {
+    pub async fn database(&self) -> Result<libsql::Database, crate::KonarrError> {
         self.database.database().await
     }
 }

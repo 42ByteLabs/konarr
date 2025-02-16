@@ -1,0 +1,1089 @@
+{
+    "tables": [
+        {
+            "name": "Sessions",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "session_type",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "state",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "token",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": true,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "created_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "last_accessed",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        },
+        {
+            "name": "Users",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "state",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "username",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": true,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "password",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "role",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "sessions",
+                        "column_type": {
+                            "ForeignKey": {
+                                "primary_key": false,
+                                "foreign_key": "Sessions.id",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "created_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "last_login",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        },
+        {
+            "name": "Component",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "component_type",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "manager",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "namespace",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "name",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        },
+        {
+            "name": "ComponentVersion",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "component_id",
+                        "column_type": {
+                            "ForeignKey": {
+                                "primary_key": false,
+                                "foreign_key": "Component.id",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "version",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        },
+        {
+            "name": "SnapshotMetadata",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "snapshot_id",
+                        "column_type": {
+                            "ForeignKey": {
+                                "primary_key": false,
+                                "foreign_key": "Snapshot.id",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "key",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "value",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "created_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        },
+        {
+            "name": "Snapshot",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "state",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "created_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        },
+        {
+            "name": "Dependencies",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "snapshot_id",
+                        "column_type": {
+                            "ForeignKey": {
+                                "primary_key": false,
+                                "foreign_key": "Snapshot.id",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "component_id",
+                        "column_type": {
+                            "ForeignKey": {
+                                "primary_key": false,
+                                "foreign_key": "Component.id",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "component_version_id",
+                        "column_type": {
+                            "ForeignKey": {
+                                "primary_key": false,
+                                "foreign_key": "ComponentVersion.id",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        },
+        {
+            "name": "Projects",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "name",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": true,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "title",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "description",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "project_type",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "status",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "parent",
+                        "column_type": {
+                            "Integer": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "created_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        },
+        {
+            "name": "ProjectSnapshots",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "project_id",
+                        "column_type": {
+                            "ForeignKey": {
+                                "primary_key": false,
+                                "foreign_key": "Projects.id",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "snapshot_id",
+                        "column_type": {
+                            "ForeignKey": {
+                                "primary_key": false,
+                                "foreign_key": "Snapshot.id",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "created_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        },
+        {
+            "name": "Advisories",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "name",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": true,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "source",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "severity",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "created_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        },
+        {
+            "name": "AdvisoriesMetadata",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "key",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "value",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "advisory_id",
+                        "column_type": {
+                            "ForeignKey": {
+                                "primary_key": false,
+                                "foreign_key": "Advisories.id",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        },
+        {
+            "name": "Alerts",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "name",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "state",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "snapshot_id",
+                        "column_type": {
+                            "ForeignKey": {
+                                "primary_key": false,
+                                "foreign_key": "Snapshot.id",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "dependency_id",
+                        "column_type": {
+                            "ForeignKey": {
+                                "primary_key": false,
+                                "foreign_key": "Dependencies.id",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "advisory_id",
+                        "column_type": {
+                            "ForeignKey": {
+                                "primary_key": false,
+                                "foreign_key": "Advisories.id",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "created_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        },
+        {
+            "name": "ServerSettings",
+            "columns": {
+                "columns": [
+                    {
+                        "name": "id",
+                        "column_type": {
+                            "Identifier": {
+                                "primary_key": true,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": false,
+                                "auto_increment": true
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "name",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": true,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "setting_type",
+                        "column_type": {
+                            "Blob": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "value",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "column_type": {
+                            "Text": {
+                                "primary_key": false,
+                                "foreign_key": "",
+                                "unique": false,
+                                "not_null": true,
+                                "auto_increment": false
+                            }
+                        },
+                        "alias": "",
+                        "skip": false
+                    }
+                ]
+            }
+        }
+    ]
+}

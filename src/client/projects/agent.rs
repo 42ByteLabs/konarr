@@ -1,6 +1,9 @@
 //! # Konarr Project - Agent
 use super::KonarrProject;
-use crate::{client::snapshot::KonarrSnapshot, KonarrClient, KonarrError};
+use crate::{
+    client::{snapshot::KonarrSnapshot, ServerInfo},
+    KonarrClient, KonarrError,
+};
 use log::{debug, info};
 
 /// Konarr Project Snapshot Data struct
@@ -9,6 +12,8 @@ use log::{debug, info};
 /// a snapshot needs to be created
 #[derive(Debug, Default)]
 pub struct KonarrProjectSnapshotData {
+    /// Server Information
+    pub info: Option<ServerInfo>,
     /// Container SHA 256
     pub container_sha: Option<String>,
     /// Tool name + version
@@ -28,8 +33,7 @@ impl KonarrProject {
         client: &KonarrClient,
         data: &KonarrProjectSnapshotData,
     ) -> Result<KonarrSnapshot, KonarrError> {
-        let info = client.server().await?;
-        let version = info.version()?;
+        let version = data.info.clone().unwrap_or_default().version()?;
 
         if let Some(snap) = &self.snapshot {
             // If the tool+version has changes (updated) we need to create a new snapshot

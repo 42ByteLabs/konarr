@@ -21,3 +21,12 @@ jobs:
     with:
       examples: "false"
     #   features: "all"
+  
+  migrations:
+    uses: 42ByteLabs/.github/.github/workflows/geekorm-migrations.yml@main
+    secrets: inherit
+    permissions:
+      contents: read
+    with:
+      features: "models,tasks,tools-grypedb"
+

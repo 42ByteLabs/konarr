@@ -1,14 +1,5 @@
 -- GeekORM Database Migrations
 
--- id Table
-CREATE TABLE IF NOT EXISTS id (build_timestamp INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, schema_version INTEGER NOT NULL);
-
--- vulnerability Table
-CREATE TABLE IF NOT EXISTS vulnerability (pk INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, package_name TEXT NOT NULL, namespace TEXT NOT NULL, package_qualifiers TEXT, version_constraint TEXT NOT NULL, version_format TEXT NOT NULL, cpes TEXT, related_vulnerabilities TEXT, fixed_in_versions TEXT, fix_state TEXT NOT NULL, advisories TEXT);
-
--- vulnerability_metadata Table
-CREATE TABLE IF NOT EXISTS vulnerability_metadata (id INTEGER PRIMARY KEY, namespace TEXT NOT NULL, data_source TEXT NOT NULL, record_source TEXT NOT NULL, severity TEXT NOT NULL, urls TEXT, description TEXT NOT NULL, cvss TEXT);
-
 -- Sessions Table
 CREATE TABLE IF NOT EXISTS Sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, session_type BLOB NOT NULL, state BLOB NOT NULL, token TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, last_accessed TEXT NOT NULL);
 

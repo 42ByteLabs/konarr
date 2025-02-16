@@ -71,7 +71,7 @@ flate2 = { version = "1.0", optional = true }
 tar = { version = "0.4", optional = true }
 
 # Database / Models
-geekorm = { version = "0.9", features = ["all", "semver", "libsql", "backends-tokio", "migrations", "backends"], optional = true }
+geekorm = { version = "0.10", features = ["all", "semver", "libsql", "backends-tokio", "migrations", "backends"], optional = true }
 libsql = { version = "0.6", optional = true }
 
 # SBOM
@@ -95,7 +95,7 @@ tokio-tungstenite = { version = "0.26", features = ["url", "native-tls"], option
 
 [dev-dependencies]
 konarr = { path = ".", features = ["client"] }
-geekorm = { version = "0.9", features = ["all", "semver", "libsql"] }
+geekorm = { version = "0.10", features = ["all", "semver", "libsql"] }
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
 
