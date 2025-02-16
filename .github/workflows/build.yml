@@ -44,6 +44,6 @@ jobs:
       - name: "Run - GeekORM CLI"
         run: |
           set -e
-          geekorm-cli display
           geekorm-cli test
+          geekorm-cli display
 
