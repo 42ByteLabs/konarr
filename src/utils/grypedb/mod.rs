@@ -330,16 +330,17 @@ pub struct GrypeDatabaseEntry {
 /// Grype Database ID table
 #[cfg(feature = "models")]
 #[derive(Table, Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-#[geekorm(rename = "id")]
+#[geekorm(db = "GrypeDatabase", rename = "id")]
 pub struct GrypeId {
     #[geekorm(primary_key)]
     pub build_timestamp: chrono::DateTime<chrono::Utc>,
     pub schema_version: i32,
 }
 
+/// Grype Vulnerability table
 #[derive(Table, Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 #[cfg(feature = "models")]
-#[geekorm(rename = "vulnerability")]
+#[geekorm(db = "GrypeDatabase", rename = "vulnerability")]
 pub struct GrypeVulnerability {
     #[geekorm(primary_key)]
     pub pk: PrimaryKey<i32>,
@@ -432,8 +433,9 @@ impl GrypeVulnerability {
 
 #[cfg(feature = "models")]
 #[derive(Table, Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-#[geekorm(rename = "vulnerability_metadata")]
+#[geekorm(db = "GrypeDatabase", rename = "vulnerability_metadata")]
 pub struct GrypeVulnerabilityMetadata {
+    #[geekorm(primary_key)]
     pub id: PrimaryKey<String>,
 
     pub namespace: String,
