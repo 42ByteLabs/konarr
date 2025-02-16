@@ -187,6 +187,27 @@ impl Projects {
         Ok(projects)
     }
 
+    /// Fetch all Projects
+    pub async fn fetch_tree<'a, T>(connection: &'a T) -> Result<Vec<Self>, crate::KonarrError>
+    where
+        T: GeekConnection<Connection = T> + 'a,
+    {
+        let mut projects = Projects::query(
+            connection,
+            Projects::query_select()
+                .where_eq("status", ProjectStatus::Active)
+                .order_by("created_at", QueryOrder::Desc)
+                .build()?,
+        )
+        .await?;
+
+        for proj in projects.iter_mut() {
+            proj.fetch_children(connection).await?;
+        }
+
+        Ok(projects)
+    }
+
     /// Get Top-Level Projects and their children
     pub async fn fetch_top_level<'a, T>(
         connection: &'a T,

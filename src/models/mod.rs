@@ -1,9 +1,10 @@
 //! # Konarr Models
 
 use geekorm::prelude::*;
-use log::debug;
+use log::{debug, info};
 
 pub mod auth;
+pub mod cache;
 pub mod components;
 pub mod dependencies;
 pub mod projects;
@@ -12,6 +13,7 @@ pub mod settings;
 
 pub use auth::sessions::{SessionState, SessionType, Sessions};
 pub use auth::users::{UserRole, Users};
+pub use cache::DbCache;
 pub use components::{Component, ComponentManager, ComponentType, ComponentVersion};
 pub use dependencies::snapshots::{Snapshot, SnapshotMetadata, SnapshotMetadataKey};
 pub use dependencies::Dependencies;
@@ -32,7 +34,6 @@ pub async fn database_initialise<T>(config: &mut Config, connection: &T) -> Resu
 where
     T: GeekConnection<Connection = T> + Sync + Send,
 {
-    debug!("Creating tables");
     db::init(connection).await?;
 
     // Initialise the models
