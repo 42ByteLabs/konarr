@@ -159,6 +159,9 @@ async fn run_docker(
     };
     info!("Connected to Docker");
 
+    // Get Server Info
+    let info = client.server().await?;
+
     let mut tool = if let Some(tool_name) = &config.agent.tool {
         debug!("Tool Name :: {}", tool_name);
         ToolConfig::find_tool(&tool_name).await?
@@ -284,6 +287,7 @@ async fn run_docker(
         let container_image = container.image.clone().unwrap_or_default();
 
         let snapshot_data = KonarrProjectSnapshotData {
+            info: Some(info.clone()),
             container_sha: container.image_id.clone(),
             tool: Some(format!("{}@{}", tool.name, tool.version)),
         };

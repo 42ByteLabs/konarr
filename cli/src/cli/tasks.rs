@@ -1,6 +1,9 @@
 use clap::Subcommand;
+use geekorm::prelude::*;
 use konarr::{
-    tasks::{advisories::scan_projects, alert_calculator, catalogue},
+    models::Projects,
+    tasks::{alert_calculator, catalogue},
+    tools::Tool,
     utils::grypedb::GrypeDatabase,
     Config,
 };
@@ -46,7 +49,31 @@ pub async fn run(
 
             if alerts {
                 info!("Running Grype Alerts Task");
-                scan_projects(&config, &connection).await?;
+
+                let projects = Projects::all(&connection).await?;
+                let mut snaps = vec![];
+                for proj in projects.iter() {
+                    if let Some(snap) = proj.fetch_latest_snapshot(&connection).await? {
+                        snaps.push(snap);
+                    }
+                }
+
+                let tool_config = konarr::tools::grype::Grype::init().await;
+
+                for snap in snaps {
+                    let mut proj = snap.fetch_project(&connection).await?;
+                    info!("Scanning: {}", proj.name);
+
+                    konarr::tasks::advisories::scan_project(
+                        &config,
+                        &connection,
+                        &tool_config,
+                        &mut proj,
+                    )
+                    .await?;
+                }
+
+                // scan_projects(&config, &connection).await?;
                 info!("Grype Alerts Task Complete");
             }
 

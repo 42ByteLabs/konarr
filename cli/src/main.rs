@@ -187,7 +187,7 @@ async fn main() -> Result<()> {
             if let Some(url) = arguments.database_url {
                 config.database.path = Some(url.into());
             }
-            cli::database::run(&config, subcommands).await
+            cli::database::run(&mut config, subcommands).await
         }
         #[cfg(feature = "database")]
         Some(cli::ArgumentCommands::Display { subcommands }) => {

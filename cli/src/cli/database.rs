@@ -13,7 +13,7 @@ pub enum DatabaseCommands {
     User {},
 }
 
-pub async fn run(config: &Config, subcommands: Option<DatabaseCommands>) -> Result<()> {
+pub async fn run(config: &mut Config, subcommands: Option<DatabaseCommands>) -> Result<()> {
     println!("Config :: {:#?}", config.database);
     let db = config.database().await?;
     let connection = db.connect()?;
@@ -22,7 +22,7 @@ pub async fn run(config: &Config, subcommands: Option<DatabaseCommands>) -> Resu
 
     match subcommands {
         Some(DatabaseCommands::Create {}) => {
-            konarr::models::database_create(&connection).await?;
+            konarr::models::database_initialise(config, &connection).await?;
         }
         Some(DatabaseCommands::User {}) => {
             let username = crate::utils::interactive::prompt_input("Username")?;
@@ -57,7 +57,7 @@ pub async fn run(config: &Config, subcommands: Option<DatabaseCommands>) -> Resu
 
             match id {
                 0 => {
-                    konarr::models::database_create(&connection).await?;
+                    konarr::models::database_initialise(config, &connection).await?;
                 }
                 _ => {
                     info!("No action selected");
