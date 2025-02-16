@@ -23,30 +23,10 @@ jobs:
     #   features: "all"
   
   migrations:
-    runs-on: ubuntu-latest
-    needs: [ build ]
-
+    uses: 42ByteLabs/.github/.github/workflows/geekorm-migrations.yml@main
+    secrets: inherit
     permissions:
       contents: read
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: "Setup - Rust Toolchain"
-        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203
-        with:
-          toolchain: "stable"
-
-      - name: "Install - GeekORM CLI"
-        run: cargo install geekorm-cli
-
-      - name: "Run - GeekORM CLI"
-        run: |
-          set -e
-    
-          cargo build
-
-          geekorm-cli test
-          geekorm-cli display
+    with:
+      features: "models,tasks,tools-grypedb"
 
