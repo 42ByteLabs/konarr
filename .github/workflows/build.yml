@@ -36,8 +36,7 @@ jobs:
       - name: "Setup - Rust Toolchain"
         uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203
         with:
-          components: rustfmt
-          toolchain: ${{ matrix.rust-version }}
+          toolchain: "stable"
 
       - name: "Install - GeekORM CLI"
         run: cargo install geekorm-cli
