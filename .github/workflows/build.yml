@@ -44,6 +44,9 @@ jobs:
       - name: "Run - GeekORM CLI"
         run: |
           set -e
+    
+          cargo build
+
           geekorm-cli test
           geekorm-cli display
 
