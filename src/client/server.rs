@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Server Information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerInfo {
     /// Server Version
