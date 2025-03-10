@@ -1147,9 +1147,9 @@ dependencies = [
 
 [[package]]
 name = "geekorm"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e837006467eb52f18e559f3f1521f7024f5590b8daf35408bfa3e4141825594"
+checksum = "8c9d6767872c229eaa0491455c091a89af9a59a45073e3b38decf03b6dd8aa24"
 dependencies = [
  "geekorm-core",
  "geekorm-derive",
@@ -1158,9 +1158,9 @@ dependencies = [
 
 [[package]]
 name = "geekorm-core"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4ec03f223d7b68f1b1dc0e0c224b1d87027aa6f36261be92e44e3411f6a4713"
+checksum = "c239bdbbeb89b088320caa3df075edf6012aaaf410c38284a861d8538657dec3"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1183,9 +1183,9 @@ dependencies = [
 
 [[package]]
 name = "geekorm-derive"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09566981adcbe4bb4c601e0e8d41b4de059f2a4c6c99b817b2b3864be967ca4a"
+checksum = "edfe3d51c17a23b43ab1ff456fda273558ec7df3b94d51bf9416cbebbd0eccae"
 dependencies = [
  "chrono",
  "geekorm-core",
@@ -3300,27 +3300,27 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.25"
+version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f79dfe2d285b0488816f30e700a7438c5a73d816b5b7d3ac72fbc48b0d185e03"
+checksum = "56e6fa9c48d24d85fb3de5ad847117517440f6beceb7798af16b4a87d616b8d0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "serde"
-version = "1.0.218"
+version = "1.0.219"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8dfc9d19bdbf6d17e22319da49161d5d0108e4188e8b680aef6299eed22df60"
+checksum = "5f0e2c6ed6606019b4e29e69dbaba95b11854410e5347d525002456dbbb786b6"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.218"
+version = "1.0.219"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f09503e191f4e797cb8aac08e9a4a4695c5edf6a2e70e376d961ddd5c969f82b"
+checksum = "5b0276cf7f2c73365f7157c8123c21cd9a50fbbd844757af28ca1f5925fc2a00"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3759,9 +3759,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.43.0"
+version = "1.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d61fa4ffa3de412bfea335c6ecff681de2b609ba3c77ef3e00e521813a9ed9e"
+checksum = "9975ea0f48b5aa3972bf2d888c238182458437cc2a19374b81b25cdf1023fb3a"
 dependencies = [
  "backtrace",
  "bytes",

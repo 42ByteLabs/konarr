@@ -39,7 +39,7 @@ dialoguer = { version = "0.11", features = ["fuzzy-select", "password"] }
 indicatif = "0.17"
 dotenvy = { version = "0.15", features = ["cli"] }
 # Database
-geekorm = { version = "^0.10", features = ["all", "libsql"], optional = true }
+geekorm = { version = "^0.11", features = ["all", "libsql"], optional = true }
 libsql = { version = "^0.6", optional = true }
 # Docker API
 bollard = { version = "0.18", optional = true }
