@@ -1,10 +1,10 @@
 use geekorm::prelude::*;
 
 use konarr::models;
-use rocket::{serde::json::Json, State};
+use rocket::{State, serde::json::Json};
 
-use super::{projects::ProjectResp, ApiResponse, ApiResult};
-use crate::{guards::Session, AppState};
+use super::{ApiResponse, ApiResult, projects::ProjectResp};
+use crate::{AppState, guards::Session};
 
 pub fn routes() -> Vec<rocket::Route> {
     routes![get_dependency, get_dependencies]

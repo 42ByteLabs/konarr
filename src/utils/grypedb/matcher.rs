@@ -6,9 +6,9 @@ use log::debug;
 use super::GrypeDatabase;
 use crate::{
     models::{
+        Dependencies, Snapshot,
         dependencies::snapshots::AlertsSummary,
         security::{Advisories, AdvisorySource, Alerts, SecuritySeverity},
-        Dependencies, Snapshot,
     },
     utils::grypedb::GrypeVulnerabilityMetadata,
 };

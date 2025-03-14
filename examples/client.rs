@@ -1,5 +1,5 @@
 use konarr::{
-    client::projects::KonarrProjects, KonarrClient, KonarrError, KONARR_BANNER, KONARR_VERSION,
+    KONARR_BANNER, KONARR_VERSION, KonarrClient, KonarrError, client::projects::KonarrProjects,
 };
 
 #[tokio::main]

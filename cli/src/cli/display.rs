@@ -1,8 +1,8 @@
 use clap::Subcommand;
 use console::style;
 use konarr::{
-    models::{Dependencies, Snapshot},
     Config,
+    models::{Dependencies, Snapshot},
 };
 use log::{debug, info};
 

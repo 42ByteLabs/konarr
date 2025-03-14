@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::KonarrError;
 
 use super::{
-    security::SecuritySummary, snapshot::KonarrSnapshot, ApiResponse, KonarrClient, Pagination,
+    ApiResponse, KonarrClient, Pagination, security::SecuritySummary, snapshot::KonarrSnapshot,
 };
 
 #[cfg(feature = "agent")]

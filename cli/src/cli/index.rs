@@ -1,9 +1,9 @@
 use clap::Subcommand;
 use geekorm::prelude::*;
 use konarr::{
+    Config,
     bom::BomParser,
     models::{ProjectType, Projects, Snapshot},
-    Config,
 };
 use log::{debug, info};
 use std::path::PathBuf;

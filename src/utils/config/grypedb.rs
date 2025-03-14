@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use super::Config;
-use crate::{utils::grypedb::GrypeDatabase, KonarrError as Error};
+use crate::{KonarrError as Error, utils::grypedb::GrypeDatabase};
 
 impl Config {
     /// GrypeDB Path in data directory

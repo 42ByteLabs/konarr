@@ -1,13 +1,13 @@
 use geekorm::prelude::*;
 use konarr::models::{
     auth::users::UserState,
-    settings::{keys::Setting, ServerSettings, SettingType},
+    settings::{ServerSettings, SettingType, keys::Setting},
 };
 use log::{info, warn};
-use rocket::{serde::json::Json, State};
+use rocket::{State, serde::json::Json};
 use std::collections::HashMap;
 
-use crate::{error::KonarrServerError, guards::AdminSession, AppState};
+use crate::{AppState, error::KonarrServerError, guards::AdminSession};
 
 use super::ApiResult;
 

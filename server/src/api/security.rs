@@ -1,15 +1,15 @@
 //! # Security API
 
-use geekorm::{prelude::Page, GeekConnector, QueryBuilderTrait, QueryOrder};
+use geekorm::{GeekConnector, QueryBuilderTrait, QueryOrder, prelude::Page};
 use konarr::models::{
-    security::{Alerts, SecuritySeverity, SecurityState},
     Snapshot,
+    security::{Alerts, SecuritySeverity, SecurityState},
 };
 use log::info;
-use rocket::{serde::json::Json, State};
+use rocket::{State, serde::json::Json};
 
-use super::{dependencies::DependencyResp, ApiResponse, ApiResult};
-use crate::{guards::Session, AppState};
+use super::{ApiResponse, ApiResult, dependencies::DependencyResp};
+use crate::{AppState, guards::Session};
 
 /// Security Summary
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]

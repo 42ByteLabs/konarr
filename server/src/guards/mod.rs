@@ -1,18 +1,18 @@
 //! # Guards
 use geekorm::Connection;
 use konarr::models::{
-    settings::{keys::Setting, ServerSettings},
     Sessions, UserRole, Users,
+    settings::{ServerSettings, keys::Setting},
 };
 use rocket::{
+    State,
     outcome::try_outcome,
     request::{FromRequest, Outcome, Request},
-    State,
 };
 
 pub mod limit;
 
-use crate::{error::KonarrServerError, AppState};
+use crate::{AppState, error::KonarrServerError};
 
 #[derive(Debug, Clone)]
 pub struct Session {

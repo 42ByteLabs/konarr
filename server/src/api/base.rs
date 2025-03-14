@@ -1,10 +1,10 @@
 use konarr::{
-    models::settings::{find_statistic, keys::Setting, ServerSettings},
     KONARR_VERSION,
+    models::settings::{ServerSettings, find_statistic, keys::Setting},
 };
-use rocket::{serde::json::Json, State};
+use rocket::{State, serde::json::Json};
 
-use crate::{guards::Session, AppState};
+use crate::{AppState, guards::Session};
 
 use super::ApiResult;
 
