@@ -143,21 +143,21 @@ impl Default for BaseResponse {
 
 #[get("/")]
 pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResult<BaseResponse> {
-    let init: bool = ServerSettings::fetch_by_name(&state.connection, Setting::Initialized)
+    let connection = state.connection().await;
+    let init: bool = ServerSettings::fetch_by_name(&connection, Setting::Initialized)
         .await?
         .boolean();
-    let registration: bool =
-        ServerSettings::fetch_by_name(&state.connection, Setting::Registration)
-            .await?
-            .boolean();
+    let registration: bool = ServerSettings::fetch_by_name(&connection, Setting::Registration)
+        .await?
+        .boolean();
 
     if let Some(session) = &session {
-        let stats = ServerSettings::fetch_statistics(&state.connection).await?;
+        let stats = ServerSettings::fetch_statistics(&connection).await?;
 
         let security: Option<SecuritySummary> =
-            if ServerSettings::get_bool(&state.connection, Setting::Security).await? {
+            if ServerSettings::get_bool(&connection, Setting::Security).await? {
                 let security_counts =
-                    ServerSettings::get_namespace(&state.connection, "security.alerts").await?;
+                    ServerSettings::get_namespace(&connection, "security.alerts").await?;
 
                 Some(SecuritySummary::from(security_counts))
             } else {
@@ -167,18 +167,18 @@ pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResul
         let agent: Option<AgentResponse> = if session.user.username == "konarr-agent" {
             Some(AgentResponse {
                 tool: AgentTool::from(
-                    ServerSettings::fetch_by_name(&state.connection, Setting::SecurityToolsName)
+                    ServerSettings::fetch_by_name(&connection, Setting::SecurityToolsName)
                         .await?
                         .value,
                 ),
                 auto_install: ServerSettings::fetch_by_name(
-                    &state.connection,
+                    &connection,
                     Setting::AgentToolAutoInstall,
                 )
                 .await?
                 .boolean(),
                 auto_update: ServerSettings::fetch_by_name(
-                    &state.connection,
+                    &connection,
                     Setting::AgentToolAutoUpdate,
                 )
                 .await?

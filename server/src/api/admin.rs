@@ -60,15 +60,16 @@ pub struct AdminResponse {
 
 #[get("/")]
 pub async fn settings(state: &State<AppState>, _session: AdminSession) -> ApiResult<AdminResponse> {
+    let connection = state.connection().await;
     log::info!("Fetching server settings");
-    let settings = ServerSettings::fetch_settings(&state.connection).await?;
+    let settings = ServerSettings::fetch_settings(&connection).await?;
     log::debug!("Fetched {} settings", settings.len());
-    let stats = ServerSettings::fetch_statistics(&state.connection).await?;
+    let stats = ServerSettings::fetch_statistics(&connection).await?;
     log::debug!("Fetched {} stats", stats.len());
 
     // TODO: This will get all the users, we should limit this?
     let users =
-        konarr::models::Users::query(&state.connection, konarr::models::Users::query_all()).await?;
+        konarr::models::Users::query(&connection, konarr::models::Users::query_all()).await?;
 
     let user_stats = AdminUserStats::from(&stats);
     let project_stats = AdminProjectStats::from(&stats);
@@ -99,15 +100,17 @@ pub async fn update_settings(
     _session: AdminSession,
     settings: Json<HashMap<String, String>>,
 ) -> ApiResult<AdminResponse> {
+    let connection = state.connection().await;
+    let settings = settings.into_inner();
     info!("Updating settings: {:?}", settings);
 
     for (name, value) in settings.iter() {
-        let mut setting = ServerSettings::fetch_by_name(&state.connection, name).await?;
+        let mut setting = ServerSettings::fetch_by_name(&connection, name).await?;
 
         match setting.setting_type {
             SettingType::Toggle | SettingType::Regenerate | SettingType::SetString => {
                 setting.set(value);
-                setting.update(&state.connection).await?;
+                setting.update(&connection).await?;
             }
             _ => {
                 warn!("Read-only Server Setting is being updated: {}", name);
@@ -117,11 +120,11 @@ pub async fn update_settings(
     }
 
     // TODO: Return updated settings
-    let stats = konarr::models::ServerSettings::fetch_statistics(&state.connection).await?;
-    let settings = ServerSettings::fetch_settings(&state.connection).await?;
+    let stats = konarr::models::ServerSettings::fetch_statistics(&connection).await?;
+    let settings = ServerSettings::fetch_settings(&connection).await?;
 
     let users =
-        konarr::models::Users::query(&state.connection, konarr::models::Users::query_all()).await?;
+        konarr::models::Users::query(&connection, konarr::models::Users::query_all()).await?;
 
     let user_stats = AdminUserStats::from(&stats);
     let project_stats = AdminProjectStats::from(&stats);
@@ -151,8 +154,11 @@ pub(crate) async fn get_users(
     state: &State<AppState>,
     _session: AdminSession,
 ) -> ApiResult<Vec<AdminUserSummary>> {
-    let users =
-        konarr::models::Users::query(&state.connection, konarr::models::Users::query_all()).await?;
+    let users = konarr::models::Users::query(
+        &state.connection().await,
+        konarr::models::Users::query_all(),
+    )
+    .await?;
 
     Ok(Json(
         users
@@ -185,7 +191,7 @@ pub(crate) async fn update_users(
     data: Json<UserPatchReq>,
 ) -> ApiResult<AdminUserSummary> {
     let mut user =
-        konarr::models::Users::fetch_by_primary_key(&state.connection, id as i32).await?;
+        konarr::models::Users::fetch_by_primary_key(&state.connection().await, id as i32).await?;
     log::info!("Updating user :: {}", user.username);
 
     // The default user cannot be changed
@@ -206,7 +212,7 @@ pub(crate) async fn update_users(
 
         if user.state == konarr::models::auth::users::UserState::Disabled {
             // Logout the user
-            user.logout(&state.connection).await?;
+            user.logout(&state.connection().await).await?;
         }
     }
     if let Some(role) = &data.role {
@@ -214,7 +220,7 @@ pub(crate) async fn update_users(
         log::info!("Updating user role to :: {:?}", user.role);
     }
 
-    user.update(&state.connection).await?;
+    user.update(&state.connection().await).await?;
 
     Ok(Json(AdminUserSummary {
         id: user.id.into(),

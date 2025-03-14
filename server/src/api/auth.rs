@@ -1,10 +1,13 @@
+use std::sync::Arc;
+
 use geekorm::prelude::*;
-use konarr::models::{self, settings::ServerSettings, SessionState, SessionType, UserRole, Users};
+use konarr::models::{self, SessionState, SessionType, UserRole, Users, settings::ServerSettings};
+use konarr::tasks::TaskTrait;
 use log::info;
-use rocket::{http::CookieJar, serde::json::Json, State};
+use rocket::{State, http::CookieJar, serde::json::Json};
 use rocket_governor::RocketGovernor;
 
-use crate::{guards::Session, AppState};
+use crate::{AppState, guards::Session};
 
 use super::ApiResult;
 
@@ -44,7 +47,7 @@ pub async fn login(
     payload: Json<LoginRequest>,
     _limiter: RocketGovernor<'_, crate::guards::limit::RateLimit>,
 ) -> ApiResult<LoginResponse> {
-    let connection = std::sync::Arc::clone(&state.connection);
+    let connection = state.connection().await;
 
     let (user, session) = Users::login(
         &connection,
@@ -56,10 +59,9 @@ pub async fn login(
     cookies.add_private(("x-konarr-token", session.token.clone()));
 
     log::info!("Successfull logged in: {:?}", user.id);
-    if let Ok(mut sessions) = state.sessions.write() {
-        log::debug!("Adding user session to in-memory cache - User({})", user.id);
-        sessions.push(Session { user, session });
-    }
+    let mut sessions = state.sessions.write().await;
+    log::debug!("Adding user session to in-memory cache - User({})", user.id);
+    sessions.push(Session { user, session });
 
     Ok(Json(LoginResponse::success()))
 }
@@ -70,20 +72,19 @@ pub async fn logout(
     session: Session,
     cookies: &CookieJar<'_>,
 ) -> ApiResult<LogoutResponse> {
-    let connection = std::sync::Arc::clone(&state.connection);
+    let connection = state.connection().await;
 
     let mut user = session.user.clone();
     user.logout(&connection).await?;
 
     cookies.remove_private("x-konarr-token");
 
-    if let Ok(mut sessions) = state.sessions.write() {
-        log::debug!(
-            "Removing user session from in-memory cache - User({})",
-            user.id
-        );
-        sessions.retain(|s| s.user.id != user.id);
-    }
+    let mut sessions = state.sessions.write().await;
+    log::debug!(
+        "Removing user session from in-memory cache - User({})",
+        user.id
+    );
+    sessions.retain(|s| s.user.id != user.id);
 
     Ok(Json(LogoutResponse {
         status: String::from("success"),
@@ -100,7 +101,8 @@ pub async fn register(
     if session.is_some() {
         return Ok(Json(LoginResponse::failed("Already logged in")));
     }
-    let registration: String = ServerSettings::fetch_by_name(&state.connection, "registration")
+    let connection = state.connection().await;
+    let registration: String = ServerSettings::fetch_by_name(&connection, "registration")
         .await?
         .value;
 
@@ -116,7 +118,7 @@ pub async fn register(
         };
 
         let mut session = models::Sessions::new(SessionType::User, SessionState::Active);
-        session.save(&state.connection).await?;
+        session.save(&connection).await?;
 
         let mut user = Users::new(
             payload.username.clone(),
@@ -124,19 +126,18 @@ pub async fn register(
             role,
             session.id,
         );
-        user.save(&state.connection).await?;
+        user.save(&connection).await?;
 
         if !state.init {
-            let mut deinit =
-                ServerSettings::fetch_by_name(&state.connection, "initialized").await?;
+            let mut deinit = ServerSettings::fetch_by_name(&connection, "initialized").await?;
             deinit.set_boolean("true");
-            deinit.update(&state.connection).await?;
+            deinit.update(&connection).await?;
             info!("Server is now initialized");
         }
 
-        let connection = std::sync::Arc::clone(&state.connection);
+        let database = Arc::new(state.database.clone());
         tokio::spawn(async move {
-            konarr::tasks::statistics(&connection)
+            konarr::tasks::StatisticsTask::task(&database.acquire().await)
                 .await
                 .map_err(|e| {
                     log::error!("Failed to run alert calculator: {:?}", e);
