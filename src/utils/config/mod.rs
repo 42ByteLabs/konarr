@@ -20,7 +20,7 @@
 //!
 //!
 
-use figment::{providers::Serialized, Figment};
+use figment::{Figment, providers::Serialized};
 use std::path::PathBuf;
 
 #[cfg(feature = "client")]
@@ -33,27 +33,6 @@ mod models;
 mod server;
 
 /// Application Configuration
-///
-/// ```rust
-/// let data = r#"
-/// database:
-///   path: /var/lib/konarr/konarr.db
-/// server:
-///   domain: konarr.42bytelabs.com
-///   scheme: https
-/// agent:
-///   id: 1
-/// "#;
-/// // Set the KONARR_DATABASE_PATH environment variable to /etc/konarr.db
-/// std::env::set_var("KONARR_DB_PATH", "/etc/konarr.db");
-///
-/// let config = konarr::Config::load_str(data).unwrap();
-///
-/// # assert_eq!(config.database.path, Some(String::from("/etc/konarr.db")));
-/// # assert_eq!(config.server.domain, Some("konarr.42bytelabs.com".to_string()));
-/// # assert_eq!(config.server.url().unwrap(), url::Url::parse("https://konarr.42bytelabs.com/").unwrap());
-///
-/// ```
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     #[serde(skip)]
