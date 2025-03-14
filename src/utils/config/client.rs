@@ -4,7 +4,7 @@ use crate::KonarrClient;
 impl Config {
     #[cfg(feature = "models")]
     /// Get Database Connection
-    pub async fn database(&self) -> Result<libsql::Database, crate::KonarrError> {
+    pub async fn database(&self) -> Result<geekorm::ConnectionManager, crate::KonarrError> {
         self.database.database().await
     }
 }

@@ -1,20 +1,19 @@
 //! # Grype Database
 #![allow(missing_docs)]
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf};
 
 use chrono::Timelike;
 use geekorm::prelude::*;
 use log::{debug, error, trace, warn};
 use semver::Version;
 use sha2::Digest;
-use tokio::sync::Mutex;
 use url::Url;
 
 use crate::{
+    KonarrError,
     bom::{BillOfMaterials, BomParser, Parsers},
     models::security::AdvisorySource,
     tools::{Grype, Tool, ToolConfig},
-    KonarrError,
 };
 
 mod matcher;
@@ -22,7 +21,7 @@ mod matcher;
 /// Grype Database
 pub struct GrypeDatabase {
     /// Connection to the Grype database
-    pub connection: Arc<Mutex<libsql::Connection>>,
+    pub connection: libsql::Connection,
     /// All of the Grype vulnerabilities
     ///
     /// Acts like a cache
@@ -45,7 +44,7 @@ impl GrypeDatabase {
             libsql::Builder::new_local(path).build().await?
         };
         Ok(Self {
-            connection: Arc::new(Mutex::new(db.connect()?)),
+            connection: db.connect()?,
             vulnerabilities: Vec::new(),
             tool: Grype::init().await,
         })
