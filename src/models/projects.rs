@@ -1,8 +1,7 @@
 //! # Project Models
 
-use geekorm::prelude::*;
-
 use chrono::{DateTime, Utc};
+use geekorm::{Connection, prelude::*};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 
@@ -62,13 +61,10 @@ pub struct Projects {
 
 impl Projects {
     /// Get all Projects
-    pub async fn all_active<'a, T>(
-        connection: &'a T,
+    pub async fn all_active(
+        connection: &Connection<'_>,
         page: &Page,
-    ) -> Result<Vec<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<Vec<Self>, crate::KonarrError> {
         let mut projects = Projects::query(
             connection,
             Projects::query_select()
@@ -88,10 +84,7 @@ impl Projects {
     }
 
     /// Count the active Projects
-    pub async fn count_active<'a, T>(connection: &'a T) -> Result<i64, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn count_active(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
         Ok(Projects::row_count(
             connection,
             Projects::query_count()
@@ -102,10 +95,7 @@ impl Projects {
     }
 
     /// Count the Archived Projects
-    pub async fn count_archived<'a, T>(connection: &'a T) -> Result<i64, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn count_archived(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
         Ok(Projects::row_count(
             connection,
             Projects::query_count()
@@ -116,10 +106,7 @@ impl Projects {
     }
 
     /// Count the Inactive Projects
-    pub async fn count_inactive<'a, T>(connection: &'a T) -> Result<i64, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn count_inactive(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
         Ok(Projects::row_count(
             connection,
             Projects::query_count()
@@ -130,10 +117,7 @@ impl Projects {
     }
 
     /// Count the number of Servers
-    pub async fn count_servers<'a, T>(connection: &'a T) -> Result<i64, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn count_servers(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
         Ok(Projects::row_count(
             connection,
             Projects::query_count()
@@ -146,10 +130,7 @@ impl Projects {
     }
 
     /// Count of number of Projects
-    pub async fn count_containers<'a, T>(connection: &'a T) -> Result<i64, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn count_containers(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
         Ok(Projects::row_count(
             connection,
             Projects::query_count()
@@ -162,13 +143,10 @@ impl Projects {
     }
 
     /// Search for Projects
-    pub async fn search_title<'a, T>(
-        connection: &'a T,
+    pub async fn search_title(
+        connection: &Connection<'_>,
         search: impl Into<String>,
-    ) -> Result<Vec<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<Vec<Self>, crate::KonarrError> {
         let search = search.into();
 
         let mut projects = Projects::query(
@@ -187,35 +165,11 @@ impl Projects {
         Ok(projects)
     }
 
-    /// Fetch all Projects
-    pub async fn fetch_tree<'a, T>(connection: &'a T) -> Result<Vec<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
-        let mut projects = Projects::query(
-            connection,
-            Projects::query_select()
-                .where_eq("status", ProjectStatus::Active)
-                .order_by("created_at", QueryOrder::Desc)
-                .build()?,
-        )
-        .await?;
-
-        for proj in projects.iter_mut() {
-            proj.fetch_children(connection).await?;
-        }
-
-        Ok(projects)
-    }
-
     /// Get Top-Level Projects and their children
-    pub async fn fetch_top_level<'a, T>(
-        connection: &'a T,
+    pub async fn fetch_top_level(
+        connection: &Connection<'_>,
         page: &Page,
-    ) -> Result<Vec<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<Vec<Self>, crate::KonarrError> {
         debug!("Fetching top level projects");
 
         let mut projects = Projects::query(
@@ -232,27 +186,27 @@ impl Projects {
 
         for proj in projects.iter_mut() {
             proj.fetch_children(connection).await?;
-            proj.fetch_snapshots(connection).await?;
+            proj.fetch_latest_snapshot(connection).await?;
         }
 
         Ok(projects)
     }
 
     /// Fetch active projects by type
-    pub async fn fetch_project_type<'a, T>(
-        connection: &'a T,
+    pub async fn fetch_project_type(
+        connection: &Connection<'_>,
         project_type: impl Into<ProjectType>,
         page: &Page,
-    ) -> Result<Vec<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<Vec<Self>, crate::KonarrError> {
+        let project_type = project_type.into();
+        log::debug!("Fetching Projects by Type: {:?}", project_type);
+
         let mut projects = Projects::query(
             connection,
             Projects::query_select()
                 .where_eq("status", ProjectStatus::Active)
                 .and()
-                .where_eq("project_type", project_type.into())
+                .where_eq("project_type", project_type)
                 .order_by("created_at", QueryOrder::Desc)
                 .page(page)
                 .build()?,
@@ -260,20 +214,21 @@ impl Projects {
         .await?;
         for proj in projects.iter_mut() {
             proj.fetch_children(connection).await?;
-            proj.fetch_snapshots(connection).await?;
+            if let Ok(Some(latest)) = proj.fetch_latest_snapshot(connection).await {
+                proj.snapshots.push(latest);
+            }
         }
 
         Ok(projects)
     }
 
     /// Find a list of projects by component in latest snapshot
-    pub async fn find_project_by_component<'a, T>(
-        connection: &'a T,
+    pub async fn find_project_by_component(
+        connection: &Connection<'_>,
         component_id: i32,
-    ) -> Result<Vec<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<Vec<Self>, crate::KonarrError> {
+        log::debug!("Finding Projects by Component: {:?}", component_id);
+
         let mut results = vec![];
         // TODO: This is a terrible way to do this
         let mut projects = Projects::query(connection, Projects::query_all()).await?;
@@ -301,10 +256,9 @@ impl Projects {
     }
 
     /// Find all the possible parents
-    pub async fn find_parents<'a, T>(connection: &'a T) -> Result<Vec<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn find_parents(
+        connection: &Connection<'_>,
+    ) -> Result<Vec<Self>, crate::KonarrError> {
         debug!("Finding all parent projects");
         Ok(Projects::query(
             connection,
@@ -319,13 +273,10 @@ impl Projects {
     }
 
     /// Get the projects children
-    pub async fn fetch_children<'a, T>(
+    pub async fn fetch_children(
         &mut self,
-        connection: &'a T,
-    ) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+        connection: &Connection<'_>,
+    ) -> Result<(), crate::KonarrError> {
         debug!("Fetching Children for Project: {:?}", self.id);
 
         self.children = Projects::query(
@@ -338,21 +289,20 @@ impl Projects {
                 .build()?,
         )
         .await?;
+
         for child in self.children.iter_mut() {
-            child.fetch_snapshots(connection).await?;
+            child.fetch_latest_snapshot(connection).await?;
         }
 
         Ok(())
     }
 
     /// Fetch latest Snapshot
-    pub async fn fetch_latest_snapshot<'a, T>(
-        &self,
-        connection: &'a T,
-    ) -> Result<Option<Snapshot>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn fetch_latest_snapshot(
+        &mut self,
+        connection: &Connection<'_>,
+    ) -> Result<Option<Snapshot>, crate::KonarrError> {
+        log::debug!("Fetching Latest Snapshot for Project: {:?}", self.id);
         match ProjectSnapshots::query_first(
             connection,
             ProjectSnapshots::query_select()
@@ -363,22 +313,29 @@ impl Projects {
         )
         .await
         {
-            Ok(snap) => Ok(Some(
-                Snapshot::fetch_by_primary_key(connection, snap.snapshot_id).await?,
-            )),
-            Err(_) => Ok(None),
+            Ok(snap) => {
+                log::debug!("Snapshot ID: {:?}", snap.snapshot_id);
+                if let Ok(mut snapshot) =
+                    Snapshot::fetch_by_primary_key(connection, snap.snapshot_id).await
+                {
+                    snapshot.fetch_metadata(connection).await?;
+                    self.snapshots.push(snapshot.clone());
+                    return Ok(Some(snapshot));
+                }
+            }
+            Err(_) => {
+                log::warn!("No Snapshots (latest) found for Project: {:?}", self.id);
+            }
         }
+        Ok(None)
     }
 
     /// Add snapshot to project
-    pub async fn add_snapshot<'a, T>(
+    pub async fn add_snapshot(
         &mut self,
-        connection: &'a T,
+        connection: &Connection<'_>,
         snapshot: Snapshot,
-    ) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<(), crate::KonarrError> {
         debug!("Adding Snapshot to Project: {:?}", self.id);
         let mut snap = ProjectSnapshots {
             project_id: self.id.into(),
@@ -393,13 +350,11 @@ impl Projects {
         Ok(())
     }
     /// Fetch Snapshots for the Project
-    pub async fn fetch_snapshots<'a, T>(
+    pub async fn fetch_snapshots(
         &mut self,
-        connection: &'a T,
-    ) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+        connection: &Connection<'_>,
+    ) -> Result<(), crate::KonarrError> {
+        log::debug!("Fetching Snapshots for Project: {:?}", self.id);
         let snaps = ProjectSnapshots::fetch_by_project_id(connection, self.id).await?;
 
         for snap in snaps {
@@ -412,13 +367,10 @@ impl Projects {
     }
 
     /// Calculate Alerts for all projects with snapshots
-    pub async fn calculate_alerts<'a, T>(
-        connection: &'a T,
+    pub async fn calculate_alerts(
+        connection: &Connection<'_>,
         projects: &mut Vec<Self>,
-    ) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<(), crate::KonarrError> {
         for project in projects.iter_mut() {
             if let Some(mut snapshot) = project.fetch_latest_snapshot(connection).await? {
                 match project.project_type {
@@ -439,10 +391,7 @@ impl Projects {
     }
 
     /// Archive the Project
-    pub async fn archive<'a, T>(&mut self, connection: &'a T) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn archive(&mut self, connection: &Connection<'_>) -> Result<(), crate::KonarrError> {
         self.status = ProjectStatus::Archived;
         self.update(connection).await.map_err(|e| e.into())
     }
