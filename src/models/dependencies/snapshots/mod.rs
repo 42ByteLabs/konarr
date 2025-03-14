@@ -8,12 +8,12 @@ use log::{debug, info};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    KonarrError,
     bom::BillOfMaterials,
     models::{
-        security::{SecuritySeverity, SecurityState},
         Alerts, Dependencies, ProjectSnapshots, Projects, ServerSettings,
+        security::{SecuritySeverity, SecurityState},
     },
-    KonarrError,
 };
 
 pub mod metadata;

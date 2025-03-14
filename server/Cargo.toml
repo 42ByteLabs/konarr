@@ -15,7 +15,7 @@ authors.workspace = true
 build = "build.rs"
 
 [dependencies]
-konarr = { path = "../", version = "^0.3", features = ["models", "tasks", "tools-grypedb"] }
+konarr = { path = "../", version = "0.4.0-dev", features = ["models", "tasks", "tools-grypedb"] }
 
 # Rocket web framework
 rocket = { version = "^0.5", features = ["serde_json", "json", "secrets"] }
@@ -24,7 +24,7 @@ rocket-governor = "0.2.0-rc.4"
 ws = { package = "rocket_ws", version = "0.1" }
 
 # Database
-geekorm = { version = "0.11", features = ["all", "libsql", "backends-tokio"] }
+geekorm = { version = "0.11", features = ["all", "libsql"] }
 libsql = "^0.6"
 
 tokio = { version = "1", features = ["full"] }

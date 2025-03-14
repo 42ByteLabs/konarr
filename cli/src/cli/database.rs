@@ -3,7 +3,7 @@ use clap::Subcommand;
 use geekorm::prelude::*;
 use log::{debug, info};
 
-use konarr::{models::UserRole, Config};
+use konarr::{Config, models::UserRole};
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum DatabaseCommands {

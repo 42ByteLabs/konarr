@@ -1,6 +1,6 @@
 use super::{AgentConfig, Config, DatabaseConfig, ServerConfig, SessionsConfig};
 use crate::error::KonarrError as Error;
-use figment::{providers::Format, Figment};
+use figment::{Figment, providers::Format};
 use log::debug;
 use std::path::PathBuf;
 use url::Url;

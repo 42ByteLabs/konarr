@@ -1,17 +1,17 @@
-use bollard::{container::ListContainersOptions, API_DEFAULT_VERSION};
+use bollard::{API_DEFAULT_VERSION, container::ListContainersOptions};
 use konarr::{
+    Config, KonarrError,
     bom::{BomParser, Parsers},
     client::{
-        projects::{agent::KonarrProjectSnapshotData, KonarrProject, KonarrProjects},
+        projects::{KonarrProject, KonarrProjects, agent::KonarrProjectSnapshotData},
         snapshot::KonarrSnapshot,
     },
     tools::ToolConfig,
-    Config, KonarrError,
 };
 use log::{debug, info, warn};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::{spawn, sync::Mutex};
-use tokio_schedule::{every, Job};
+use tokio_schedule::{Job, every};
 
 pub async fn setup(
     config: &Config,

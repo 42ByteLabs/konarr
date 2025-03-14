@@ -1,11 +1,11 @@
 use clap::Subcommand;
 use geekorm::prelude::*;
 use konarr::{
+    Config,
     models::Projects,
     tasks::{alert_calculator, catalogue},
     tools::Tool,
     utils::grypedb::GrypeDatabase,
-    Config,
 };
 use log::info;
 

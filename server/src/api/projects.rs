@@ -1,13 +1,18 @@
-use geekorm::prelude::*;
-use konarr::models::{self, ProjectType};
-use log::info;
-use rocket::{serde::json::Json, State};
+use std::sync::Arc;
 
-use super::{security::SecuritySummary, ApiResponse, ApiResult};
+use geekorm::prelude::*;
+use konarr::{
+    models::{self, ProjectType},
+    tasks::TaskTrait,
+};
+use log::info;
+use rocket::{State, serde::json::Json};
+
+use super::{ApiResponse, ApiResult, security::SecuritySummary};
 use crate::{
+    AppState,
     error::KonarrServerError,
     guards::{AdminSession, Session},
-    AppState,
 };
 
 pub fn routes() -> Vec<rocket::Route> {
@@ -70,15 +75,16 @@ pub(crate) async fn get_project(
     _session: Session,
     id: i32,
 ) -> ApiResult<ProjectResp> {
-    let mut project = models::Projects::fetch_by_primary_key(&state.connection, id).await?;
+    let connection = state.connection().await;
+    let mut project = models::Projects::fetch_by_primary_key(&connection, id).await?;
 
     if project.status == models::ProjectStatus::Archived {
         info!("Tried accessing an archived project: {}", project.id);
         Err(KonarrServerError::ProjectNotFoundError(id))
     } else {
         // Fetch Children and Latest Snapshot
-        project.fetch_children(&state.connection).await?;
-        project.fetch_snapshots(&state.connection).await?;
+        project.fetch_children(&connection).await?;
+        project.fetch_latest_snapshot(&connection).await?;
 
         info!("{:?} (snapshots: {})", project.id, project.snapshots.len());
 
@@ -97,30 +103,35 @@ pub(crate) async fn get_projects(
     r#type: Option<String>,
     parents: Option<bool>,
 ) -> ApiResult<ApiResponse<Vec<ProjectResp>>> {
-    let total = models::Projects::count_active(&state.connection).await?;
+    let connection = state.connection().await;
+    let total = models::Projects::count_active(&connection).await?;
     let mut page = Page::from((page, limit));
     page.set_total(total as u32);
 
     let projects = if let Some(search) = search {
         info!("Searching for projects with name: '{}'", search);
-        models::Projects::search_title(&state.connection, search).await?
+        models::Projects::search_title(&connection, search).await?
     } else if parents.unwrap_or(false) {
         info!("Get the parent projects");
-        models::Projects::find_parents(&state.connection).await?
+        models::Projects::find_parents(&connection).await?
     } else if top.unwrap_or(false) {
         info!("Fetching the top level projects");
-        models::Projects::fetch_top_level(&state.connection, &page).await?
+        models::Projects::fetch_top_level(&connection, &page).await?
+        // state.projects.read_page(&page)?
     } else if let Some(prjtype) = r#type {
         if prjtype.as_str() == "all" {
             info!("Fetching all projects");
-            models::Projects::page(&state.connection, &page).await?
+            models::Projects::page(&connection, &page).await?
         } else {
             info!("Fetching by type: {}", prjtype);
-            models::Projects::fetch_project_type(&state.connection, prjtype, &page).await?
+            models::Projects::fetch_project_type(&connection, prjtype, &page).await?
         }
     } else {
-        models::Projects::page(&state.connection, &page).await?
+        models::Projects::page(&connection, &page).await?
     };
+
+    log::debug!("Database - Get Projects :: {}", connection.count());
+    konarr::tasks::StatisticsTask::spawn(&state.database).await?;
 
     Ok(Json(ApiResponse::new(
         projects.into_iter().map(|p| p.into()).collect(),
@@ -136,20 +147,12 @@ pub async fn create_project(
     project_req: Json<ProjectReq>,
 ) -> ApiResult<ProjectResp> {
     log::info!("Creating Project: `{}`", project_req.name);
+    let connection = state.connection().await;
+
     let mut project: models::Projects = project_req.into_inner().into();
-    project.fetch_or_create(&state.connection).await?;
+    project.fetch_or_create(&connection).await?;
 
-    // Run the statistics task in the background
-    let connection = std::sync::Arc::clone(&state.connection);
-    tokio::spawn(async move {
-        konarr::tasks::statistics(&connection)
-            .await
-            .map_err(|e| {
-                log::error!("Failed to run alert calculator: {:?}", e);
-            })
-            .ok();
-    });
-
+    // konarr::tasks::StatisticsTask::spawn(&state.database).await?;
     Ok(Json(project.into()))
 }
 
@@ -171,7 +174,7 @@ pub async fn patch_project(
     project_req: Json<ProjectUpdateRequest>,
     id: Option<u32>,
 ) -> ApiResult<ProjectResp> {
-    let connection = std::sync::Arc::clone(&state.connection);
+    let connection = state.connection().await;
 
     let project_id = if let Some(id) = id {
         id
@@ -207,15 +210,7 @@ pub async fn patch_project(
 
     project.update(&connection).await?;
 
-    // Run the statistics task in the background
-    tokio::spawn(async move {
-        konarr::tasks::statistics(&connection)
-            .await
-            .map_err(|e| {
-                log::error!("Failed to run alert calculator: {:?}", e);
-            })
-            .ok();
-    });
+    // konarr::tasks::StatisticsTask::spawn(&state.database).await?;
 
     Ok(Json(project.into()))
 }
@@ -227,7 +222,7 @@ pub(crate) async fn update_project_metadata(
     _session: Session,
     id: i32,
 ) -> ApiResult<ProjectResp> {
-    let connection = std::sync::Arc::clone(&state.connection);
+    let connection = state.connection().await;
 
     let mut project = models::Projects::fetch_by_primary_key(&connection, id).await?;
     // Fetch Children and Latest Snapshot
@@ -244,7 +239,7 @@ pub async fn delete_project(
     session: AdminSession,
     id: i32,
 ) -> ApiResult<ProjectResp> {
-    let connection = std::sync::Arc::clone(&state.connection);
+    let connection = state.connection().await;
 
     let mut project = match models::Projects::fetch_by_primary_key(&connection, id).await {
         Ok(project) => project,
@@ -255,9 +250,10 @@ pub async fn delete_project(
         project.name, session.user.username
     );
     project.archive(&connection).await?;
-    // Run the statistics task in the background
+
+    let database = Arc::new(state.database.clone());
     tokio::spawn(async move {
-        konarr::tasks::statistics(&connection)
+        konarr::tasks::StatisticsTask::task(&database.acquire().await)
             .await
             .map_err(|e| {
                 log::error!("Failed to run alert calculator: {:?}", e);

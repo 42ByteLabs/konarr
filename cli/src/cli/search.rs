@@ -1,5 +1,5 @@
 use clap::Subcommand;
-use konarr::{models::Dependencies, Config};
+use konarr::{Config, models::Dependencies};
 use log::{debug, info};
 
 use crate::utils::interactive::prompt_input;

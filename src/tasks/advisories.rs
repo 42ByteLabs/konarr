@@ -1,23 +1,49 @@
 //! # Task - Advisories
 
 use crate::{
+    Config, KonarrError,
     bom::{BomParser, Parsers},
-    models::{security::SecurityState, Alerts, Projects, ServerSettings, Setting},
+    models::{Alerts, Projects, ServerSettings, Setting, security::SecurityState},
     tools::{Grype, Tool, ToolConfig},
     utils::grypedb::GrypeDatabase,
-    Config, KonarrError,
 };
+use async_trait::async_trait;
 use geekorm::prelude::*;
 use log::{debug, info, warn};
 
-/// Poll for Advisories and update the database
-pub async fn sync_advisories<'a, T>(
+use super::TaskTrait;
+
+/// Advisories Task
+pub struct AdvisoriesTask<'a> {
     config: &'a Config,
-    connection: &'a T,
-) -> Result<(), KonarrError>
-where
-    T: GeekConnection<Connection = T> + Send + Sync + 'a,
-{
+}
+
+#[async_trait]
+impl TaskTrait for AdvisoriesTask<'_> {
+    async fn run(&self, connection: &geekorm::Connection<'_>) -> Result<(), crate::KonarrError> {
+        sync_advisories(self.config, connection).await?;
+        Ok(())
+    }
+}
+
+impl<'a> AdvisoriesTask<'a> {
+    /// Create a new Advisories Task
+    pub fn new(config: &'a Config) -> Self {
+        Self { config }
+    }
+}
+
+impl Default for AdvisoriesTask<'_> {
+    fn default() -> Self {
+        panic!("AdvisoriesTask::default() is not implemented");
+    }
+}
+
+/// Poll for Advisories and update the database
+pub async fn sync_advisories<'a>(
+    config: &'a Config,
+    connection: &geekorm::Connection<'_>,
+) -> Result<(), KonarrError> {
     if !ServerSettings::get_bool(connection, Setting::SecurityAdvisories).await? {
         info!("Advisories Disabled");
         return Ok(());
@@ -63,7 +89,9 @@ where
                     scan_projects(config, connection).await?;
                     info!("Project scanning complete");
                 } else {
-                    info!("Advisory Database Synced but no new advisories, skipping project scanning for security alerts");
+                    info!(
+                        "Advisory Database Synced but no new advisories, skipping project scanning for security alerts"
+                    );
                 }
             }
             Err(e) => {
@@ -106,10 +134,10 @@ where
 }
 
 /// Scan for security alerts
-pub async fn scan<'a, T>(config: &'a Config, connection: &'a T) -> Result<(), KonarrError>
-where
-    T: GeekConnection<Connection = T> + 'a,
-{
+pub async fn scan<'a>(
+    config: &'a Config,
+    connection: &geekorm::Connection<'_>,
+) -> Result<(), KonarrError> {
     if ServerSettings::get_bool(connection, Setting::Security).await? {
         log::info!("Scanning projects for security alerts");
 
@@ -123,10 +151,10 @@ where
 }
 
 /// Scan every project for security alerts
-pub async fn scan_projects<'a, T>(config: &'a Config, connection: &'a T) -> Result<(), KonarrError>
-where
-    T: GeekConnection<Connection = T> + 'a,
-{
+pub async fn scan_projects<'a>(
+    config: &'a Config,
+    connection: &geekorm::Connection<'_>,
+) -> Result<(), KonarrError> {
     info!("Scanning projects snapshots for security alerts");
 
     // Ensure Grype is installed and available
@@ -148,15 +176,12 @@ where
 }
 
 /// Scan a project for security alerts
-pub async fn scan_project<'a, T>(
+pub async fn scan_project<'a>(
     config: &'a Config,
-    connection: &'a T,
+    connection: &geekorm::Connection<'_>,
     tool_config: &ToolConfig,
     project: &mut Projects,
-) -> Result<(), KonarrError>
-where
-    T: GeekConnection<Connection = T> + 'a,
-{
+) -> Result<(), KonarrError> {
     debug!("Project: {}", project.name);
     if let Some(mut snapshot) = project.fetch_latest_snapshot(connection).await? {
         debug!("Snapshot: {} :: {}", snapshot.id, snapshot.components.len());
@@ -180,8 +205,8 @@ where
                     return Ok(());
                 } else {
                     info!(
-                            "Security Tools Alerts setting is disabled, scanning project for security alerts"
-                        );
+                        "Security Tools Alerts setting is disabled, scanning project for security alerts"
+                    );
                 }
             }
         }

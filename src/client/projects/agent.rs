@@ -1,8 +1,8 @@
 //! # Konarr Project - Agent
 use super::KonarrProject;
 use crate::{
-    client::{snapshot::KonarrSnapshot, ServerInfo},
     KonarrClient, KonarrError,
+    client::{ServerInfo, snapshot::KonarrSnapshot},
 };
 use log::{debug, info};
 

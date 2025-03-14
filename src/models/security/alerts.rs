@@ -3,14 +3,14 @@
 use geekorm::prelude::*;
 use log::debug;
 
-use super::{advisories::AdvisoriesMetadata, SecuritySeverity};
+use super::{SecuritySeverity, advisories::AdvisoriesMetadata};
 use crate::{
+    KonarrError,
     bom::sbom::BomVulnerability,
     models::{
-        security::{Advisories, AdvisorySource},
         Component, Dependencies, Snapshot,
+        security::{Advisories, AdvisorySource},
     },
-    KonarrError,
 };
 
 /// Security state

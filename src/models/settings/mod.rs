@@ -5,7 +5,7 @@ use log::{debug, error, warn};
 use serde::{Deserialize, Serialize};
 
 pub mod keys;
-pub use keys::{Setting, SERVER_SETTINGS_DEFAULTS};
+pub use keys::{SERVER_SETTINGS_DEFAULTS, Setting};
 
 /// Setting Type
 #[derive(Data, Debug, Default, Clone, PartialEq)]

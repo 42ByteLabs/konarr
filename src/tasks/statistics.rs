@@ -1,26 +1,37 @@
 //! # Tasks - Statistics
-use geekorm::{GeekConnection, GeekConnector, QueryBuilderTrait};
+use async_trait::async_trait;
+use geekorm::{GeekConnector, QueryBuilderTrait};
 
 use crate::models::{Component, ComponentType, Projects, ServerSettings, Setting, Users};
 
-/// Calculate Statistics Task
-pub async fn statistics<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
-where
-    T: GeekConnection<Connection = T> + Send + Sync + 'a,
-{
-    log::info!("Task - Calculating Statistics");
-    user_statistics(connection).await?;
-    project_statistics(connection).await?;
-    dependencies_statistics(connection).await?;
+use super::TaskTrait;
 
-    Ok(())
+/// Statistics Task
+#[derive(Default)]
+pub struct StatisticsTask;
+
+#[async_trait]
+impl TaskTrait for StatisticsTask {
+    /// Calculate Statistics Task
+    async fn run(&self, connection: &geekorm::Connection<'_>) -> Result<(), crate::KonarrError> {
+        log::info!("Task - Calculating Statistics");
+        user_statistics(connection).await?;
+        project_statistics(connection).await?;
+        dependencies_statistics(connection).await?;
+
+        log::debug!(
+            "Task - Calculating Statistics - Actions :: {}",
+            connection.count()
+        );
+        log::debug!("Task - Calculating Statistics - Complete");
+        Ok(())
+    }
 }
 
 /// User Statistics Task
-pub async fn user_statistics<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
-where
-    T: GeekConnection<Connection = T> + Send + Sync + 'a,
-{
+pub async fn user_statistics(
+    connection: &geekorm::Connection<'_>,
+) -> Result<(), crate::KonarrError> {
     ServerSettings::update_statistic(
         connection,
         Setting::StatsUsersTotal,
@@ -44,10 +55,9 @@ where
 }
 
 /// Project Statistics Task
-pub async fn project_statistics<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
-where
-    T: GeekConnection<Connection = T> + Send + Sync + 'a,
-{
+pub async fn project_statistics(
+    connection: &geekorm::Connection<'_>,
+) -> Result<(), crate::KonarrError> {
     ServerSettings::update_statistic(
         connection,
         Setting::StatsProjectsTotal,
@@ -83,10 +93,9 @@ where
 }
 
 /// Dependency Statistics Task
-pub async fn dependencies_statistics<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
-where
-    T: GeekConnection<Connection = T> + Send + Sync + 'a,
-{
+pub async fn dependencies_statistics(
+    connection: &geekorm::Connection<'_>,
+) -> Result<(), crate::KonarrError> {
     ServerSettings::update_statistic(
         connection,
         Setting::StatsDependenciesTotal,

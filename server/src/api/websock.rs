@@ -1,15 +1,13 @@
 //! # Konarr Agent Websocket
 
-use std::sync::Arc;
-
 use konarr::models::Projects;
 use rocket::{
-    futures::{SinkExt, StreamExt},
     State,
+    futures::{SinkExt, StreamExt},
 };
 use ws::Message;
 
-use crate::{guards::Session, AppState};
+use crate::{AppState, guards::Session};
 
 pub fn routes() -> Vec<rocket::Route> {
     routes![agent]
@@ -28,7 +26,7 @@ pub async fn agent<'a>(
 ) -> ws::Channel<'a> {
     ws.channel(move |mut stream| {
         Box::pin(async move {
-            let connection = Arc::clone(&state.connection);
+            let connection = state.connection().await;
             let mut projects = vec![];
 
             while let Some(Ok(message)) = stream.next().await {
@@ -58,7 +56,7 @@ pub async fn agent<'a>(
                     }
                 };
 
-                if let Ok(project) =
+                if let Ok(mut project) =
                     Projects::fetch_by_primary_key(&connection, agent_req.project as i32).await
                 {
                     if !projects.contains(&project.id) {
@@ -86,7 +84,9 @@ pub async fn agent<'a>(
             log::info!("Agent disconnected, setting projects offline");
 
             for project_id in projects.iter() {
-                if let Ok(project) = Projects::fetch_by_primary_key(&connection, project_id).await {
+                if let Ok(mut project) =
+                    Projects::fetch_by_primary_key(&connection, project_id).await
+                {
                     if let Ok(Some(mut snap)) = project.fetch_latest_snapshot(&connection).await {
                         snap.fetch_metadata(&connection).await.unwrap();
                         log::info!("Setting project '{}' offline", project.id);

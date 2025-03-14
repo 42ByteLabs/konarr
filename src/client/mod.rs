@@ -27,7 +27,7 @@ pub mod snapshot;
 
 pub use server::ServerInfo;
 
-use crate::{KonarrError, KONARR_VERSION};
+use crate::{KONARR_VERSION, KonarrError};
 
 /// Pagination Response
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

@@ -3,8 +3,8 @@ use geekorm::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    utils::config::{SessionsConfig, SessionsRoleConfig},
     KonarrError,
+    utils::config::{SessionsConfig, SessionsRoleConfig},
 };
 
 use super::sessions::{SessionState, SessionType, Sessions};

@@ -1,13 +1,13 @@
 use criterion::async_executor::FuturesExecutor;
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
 use geekorm::prelude::*;
 use konarr::tasks::alert_calculator;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use konarr::bom::sbom::{BomComponent, BomType};
 use konarr::bom::BillOfMaterials;
+use konarr::bom::sbom::{BomComponent, BomType};
 use konarr::models::{ProjectType, Projects, Snapshot};
 use konarr::{Config, KonarrError};
 

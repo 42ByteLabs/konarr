@@ -1,6 +1,6 @@
 #![deny(unsafe_code)]
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use log::{debug, error, info, warn};
 
 mod cli;
@@ -9,9 +9,9 @@ mod utils;
 
 use cli::{init, update_config};
 use konarr::{
+    Config,
     bom::{BomParser, Parsers},
     client::snapshot::KonarrSnapshot,
-    Config,
 };
 use utils::interactive::{prompt_input, prompt_password};
 

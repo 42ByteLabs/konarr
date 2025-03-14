@@ -5,15 +5,16 @@ extern crate rocket;
 extern crate geekorm;
 
 use anyhow::Result;
+use geekorm::{Connection, ConnectionManager};
 use konarr::{
-    models::{database_initialise, settings::keys::Setting, ServerSettings},
     Config, KonarrError,
+    models::{ServerSettings, database_initialise, settings::keys::Setting},
 };
 use log::{debug, error, info, warn};
-use rocket::{fs::FileServer, Rocket};
+use rocket::{Rocket, fs::FileServer};
 use rocket_cors::{Cors, CorsOptions};
-use std::sync::{Arc, RwLock};
-use tokio::sync::Mutex;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 mod api;
 mod cli;
@@ -24,7 +25,7 @@ mod routes;
 /// Application State
 pub struct AppState {
     /// Database Connection
-    connection: Arc<Mutex<libsql::Connection>>,
+    database: ConnectionManager,
     /// Active sessions for the server
     sessions: Arc<RwLock<Vec<guards::Session>>>,
     /// Token used by the agent to authenticate
@@ -33,6 +34,12 @@ pub struct AppState {
     config: Config,
     /// If the server has been initialized
     init: bool,
+}
+
+impl AppState {
+    pub async fn connection(&self) -> Connection {
+        self.database.acquire().await
+    }
 }
 
 #[tokio::main]
@@ -51,18 +58,14 @@ async fn main() -> Result<()> {
     };
 
     // Database Setup
-    let database = config.database().await?;
-    let connection = Arc::new(Mutex::new(database.connect()?));
-
-    // konarr::db::init(&connection).await?;
-    database_initialise(&mut config, &connection).await?;
+    let database = database_initialise(&mut config).await?;
 
     // Tasks
     let task_config = Arc::new(config.clone());
-    konarr::tasks::init(task_config, connection).await?;
+    konarr::tasks::init(task_config, &database).await?;
 
     // Server
-    server(config).await?;
+    server(config, database).await?;
 
     Ok(())
 }
@@ -109,20 +112,18 @@ fn rocket(config: &Config) -> Rocket<rocket::Build> {
     rocket::custom(rocket_config)
 }
 
-async fn server(config: Config) -> Result<()> {
+async fn server(config: Config, database: ConnectionManager) -> Result<()> {
     let frontend = config.frontend_path()?;
     debug!("Frontend Path: {:?}", frontend);
     let cors = cors(&config)?;
 
-    let database = config.database().await?;
-    let connection = database.connect()?;
-    debug!("Database Initialized");
-
     // Check if we have init Konarr
-    let init: bool = ServerSettings::get_bool(&connection, Setting::Initialized).await?;
-    let agent_token: String = ServerSettings::fetch_by_name(&connection, Setting::AgentKey)
-        .await?
-        .value;
+    let init: bool =
+        ServerSettings::get_bool(&database.acquire().await, Setting::Initialized).await?;
+    let agent_token: String =
+        ServerSettings::fetch_by_name(&database.acquire().await, Setting::AgentKey)
+            .await?
+            .value;
 
     if !frontend.exists() {
         info!("No Frontend found, creating directory and running in API-only mode");
@@ -130,7 +131,8 @@ async fn server(config: Config) -> Result<()> {
     }
 
     let state = AppState {
-        connection: Arc::new(Mutex::new(connection)),
+        database,
+        // connection: Arc::new(RwLock::new(connection)),
         sessions: Arc::new(RwLock::new(Vec::new())),
         agent_token: Arc::new(RwLock::new(agent_token)),
         config: config.clone(),
