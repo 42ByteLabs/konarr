@@ -1,45 +1,47 @@
 //! This module contains the tasks that are run by the CLI.
 
-use async_trait::async_trait;
-use geekorm::GeekConnection;
-use log::info;
 use std::sync::Arc;
-use tokio::{spawn, sync::Mutex};
+use tokio::spawn;
 use tokio_schedule::Job;
+
+use geekorm::{Connection, ConnectionManager};
 
 pub mod advisories;
 pub mod alerts;
 pub mod catalogue;
 pub mod statistics;
 
-pub use advisories::sync_advisories;
-pub use alerts::alert_calculator;
+pub use advisories::{AdvisoriesTask, sync_advisories};
+pub use alerts::AlertCalculatorTask;
 pub use catalogue::catalogue;
-pub use statistics::statistics;
+pub use statistics::StatisticsTask;
 
-use crate::{
-    models::{ServerSettings, Setting},
-    Config,
-};
+use crate::Config;
+use crate::models::{ServerSettings, Setting};
 
 /// Initialse background tasks
 ///
-/// Setup a timer to run every 1 minute to do the following:
+/// Setup a timer to run every hour to do the following:
+/// - Sync advisories
 /// - Calculate statistics
-pub async fn init(
+/// - Calculate alerts
+pub async fn init<'a>(
     config: Arc<Config>,
-    connection: Arc<Mutex<libsql::Connection>>,
+    database: &'a ConnectionManager,
 ) -> Result<(), crate::KonarrError> {
-    info!("Initializing Background Tasks...");
+    log::info!("Initializing Background Tasks...");
 
-    let tasks = tokio_schedule::every(60).seconds().perform(move || {
-        // let database = Arc::clone(&database);
-        // let connection = database.connect().unwrap();
-        let connection = Arc::clone(&connection);
+    let database = database.clone();
+
+    let tasks = tokio_schedule::every(60).minutes().perform(move || {
+        let database = database.clone();
         let config = Arc::clone(&config);
+
         log::info!("Running Background Tasks");
 
         async move {
+            let connection = database.acquire().await;
+
             match sync_advisories(&config, &connection).await {
                 Ok(_) => log::debug!("Advisories Synced"),
                 Err(e) => log::error!("Advisories Sync Error: {}", e),
@@ -65,12 +67,12 @@ pub async fn init(
                 }
             }
 
-            alert_calculator(&connection)
+            AlertCalculatorTask::task(&connection)
                 .await
                 .map_err(|e| log::error!("Task Error :: {}", e))
                 .unwrap();
 
-            statistics(&connection)
+            StatisticsTask::task(&connection)
                 .await
                 .map_err(|e| log::error!("Task Error :: {}", e))
                 .unwrap();
@@ -82,25 +84,52 @@ pub async fn init(
 }
 
 /// Task Trait
-#[async_trait]
-pub trait TaskTrait<'a, C>
+#[async_trait::async_trait]
+pub trait TaskTrait
 where
-    C: GeekConnection<Connection = C> + 'a,
-    Self: Sized,
+    Self: Sized + Default + Send + Sync,
 {
     /// Initialize the Task
     #[allow(unused_variables)]
-    async fn init(connection: &'a C) -> Result<bool, crate::KonarrError> {
-        Ok(true)
+    async fn init(connection: &Connection<'_>) -> Result<Self, crate::KonarrError> {
+        Ok(Self::default())
     }
 
     /// Run the task
     #[allow(unused_variables)]
-    async fn run(connection: &'a C) -> Result<(), crate::KonarrError>;
+    async fn run(&self, connection: &Connection<'_>) -> Result<(), crate::KonarrError>;
 
     /// Finish / Done / Completed the tasks
     #[allow(unused_variables)]
-    async fn done(connection: &'a C) -> Result<(), crate::KonarrError> {
+    async fn done(&self, connection: &Connection<'_>) -> Result<(), crate::KonarrError> {
+        Ok(())
+    }
+
+    /// Run the task with a connection
+    async fn task(connection: &Connection<'_>) -> Result<(), crate::KonarrError> {
+        let task = Self::init(connection).await?;
+        task.run(connection).await?;
+        task.done(connection).await?;
+        Ok(())
+    }
+
+    /// Spawn and run the task as a background task
+    async fn spawn(database: &ConnectionManager) -> Result<(), crate::KonarrError> {
+        let database = database.clone();
+        tokio::spawn(async move {
+            let name = std::any::type_name::<Self>();
+            let connection = database.acquire().await;
+            log::info!("Spawed Task :: {}", name);
+
+            Self::task(&connection)
+                .await
+                .map_err(|e| {
+                    log::error!("Failed to run alert calculator: {:?}", e);
+                })
+                .ok();
+            log::debug!("Task - {} - {} transactions", name, connection.count());
+            log::info!("Spawed Task Completed :: {}", name);
+        });
         Ok(())
     }
 }

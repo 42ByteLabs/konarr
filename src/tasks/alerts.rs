@@ -3,17 +3,31 @@
 use std::collections::HashMap;
 
 use crate::models::{
-    dependencies::snapshots::AlertsSummary, security::SecuritySeverity, settings::Setting,
-    ProjectType, Projects, ServerSettings,
+    ProjectType, Projects, ServerSettings, dependencies::snapshots::AlertsSummary,
+    security::SecuritySeverity, settings::Setting,
 };
+use async_trait::async_trait;
 use geekorm::prelude::*;
 use log::{debug, info};
 
+use super::TaskTrait;
+
 /// Alert Calculator Task
-pub async fn alert_calculator<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
-where
-    T: GeekConnection<Connection = T> + Send + Sync + 'a,
-{
+#[derive(Default)]
+pub struct AlertCalculatorTask;
+
+#[async_trait]
+impl TaskTrait for AlertCalculatorTask {
+    async fn run(&self, connection: &geekorm::Connection<'_>) -> Result<(), crate::KonarrError> {
+        alert_calculator(connection).await?;
+        Ok(())
+    }
+}
+
+/// Alert Calculator Task
+pub async fn alert_calculator(
+    connection: &geekorm::Connection<'_>,
+) -> Result<(), crate::KonarrError> {
     if !ServerSettings::feature_security(connection).await? {
         log::error!("Security Feature is not enabled");
         return Ok(());
@@ -81,14 +95,11 @@ where
 }
 
 /// Calculate Group Alerts
-pub async fn calculate_group_alerts<'a, T>(
-    connection: &'a T,
+pub async fn calculate_group_alerts(
+    connection: &geekorm::Connection<'_>,
     projects: &Vec<Projects>,
     project_summaries: &HashMap<i32, AlertsSummary>,
-) -> Result<(), crate::KonarrError>
-where
-    T: GeekConnection<Connection = T> + Send + Sync + 'a,
-{
+) -> Result<(), crate::KonarrError> {
     log::debug!("Calculating Group Alerts");
     // TODO: Only Server's are supported
     let mut groups = Projects::query(
