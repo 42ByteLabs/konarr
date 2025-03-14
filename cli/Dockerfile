@@ -1,5 +1,5 @@
 # Build the Agent 
-FROM docker.io/library/rust:1.83-alpine as agent
+FROM docker.io/library/rust:1.85-alpine as agent
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN apk add --no-cache pkgconf alpine-sdk openssl-dev perl musl-dev && \
     rustup target add x86_64-unknown-linux-musl && \
     cargo build -p konarr-cli -F agent --release --target x86_64-unknown-linux-musl
 
-FROM docker.io/library/rust:1.83-alpine as tools
+FROM docker.io/library/rust:1.85-alpine as tools
 
 # Download all the tools install scripts
 # TODO: Add SHA256 checks

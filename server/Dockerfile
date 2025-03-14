@@ -2,7 +2,7 @@
 # but generate a final image to be used.
 
 # Build the Server
-FROM docker.io/library/rust:1.83-alpine as server 
+FROM docker.io/library/rust:1.85-alpine as server 
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ RUN apk add --no-cache pkgconf alpine-sdk openssl-dev perl musl-dev curl git && 
     rustup target add x86_64-unknown-linux-musl && \
     cargo build -p konarr-server --release --target x86_64-unknown-linux-musl
 
-FROM docker.io/library/rust:1.82-alpine as tools
+FROM docker.io/library/rust:1.85-alpine as tools
 
 # Download all the tools install scripts
 RUN apk add --no-cache curl && \
