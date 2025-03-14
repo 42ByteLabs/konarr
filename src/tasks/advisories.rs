@@ -35,7 +35,7 @@ impl<'a> AdvisoriesTask<'a> {
 
 impl Default for AdvisoriesTask<'_> {
     fn default() -> Self {
-        todo!()
+        panic!("AdvisoriesTask::default() is not implemented");
     }
 }
 

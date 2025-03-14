@@ -119,7 +119,7 @@ where
         tokio::spawn(async move {
             let name = std::any::type_name::<Self>();
             let connection = database.acquire().await;
-            log::info!("Spawed Task :: {}", name);
+            log::info!("Spawned Task :: {}", name);
 
             Self::task(&connection)
                 .await
@@ -128,7 +128,7 @@ where
                 })
                 .ok();
             log::debug!("Task - {} - {} transactions", name, connection.count());
-            log::info!("Spawed Task Completed :: {}", name);
+            log::info!("Spawned Task Completed :: {}", name);
         });
         Ok(())
     }
