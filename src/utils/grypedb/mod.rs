@@ -1,12 +1,12 @@
 //! # Grype Database
 #![allow(missing_docs)]
-use std::{collections::HashMap, path::PathBuf};
 
 use chrono::Timelike;
 use geekorm::prelude::*;
 use log::{debug, error, trace, warn};
 use semver::Version;
 use sha2::Digest;
+use std::{collections::HashMap, path::PathBuf};
 use url::Url;
 
 use crate::{
@@ -63,7 +63,7 @@ impl GrypeDatabase {
         let latest_build = latest.built.with_nanosecond(0).unwrap();
 
         if !dbpath.exists() {
-            if let Some(_) = path.extension() {
+            if path.extension().is_some() {
                 return Err(KonarrError::UnknownError(
                     "Grype path is a file, not a directory".into(),
                 ));
@@ -339,7 +339,7 @@ pub struct GrypeId {
 /// Grype Vulnerability table
 #[derive(Table, Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 #[cfg(feature = "models")]
-#[geekorm(db = "GrypeDatabase", rename = "vulnerability")]
+#[geekorm(db = "GrypeDatabase")]
 pub struct GrypeVulnerability {
     #[geekorm(primary_key)]
     pub pk: PrimaryKey<i32>,
@@ -432,7 +432,7 @@ impl GrypeVulnerability {
 
 #[cfg(feature = "models")]
 #[derive(Table, Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-#[geekorm(db = "GrypeDatabase", rename = "vulnerability_metadata")]
+#[geekorm(db = "GrypeDatabase")]
 pub struct GrypeVulnerabilityMetadata {
     #[geekorm(primary_key)]
     pub id: PrimaryKey<String>,

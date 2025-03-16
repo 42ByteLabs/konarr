@@ -180,9 +180,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.87"
+version = "0.1.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d556ec1359574147ec0c4fc5eb525f3f23263a592b1a9c07e0a75b427de55c97"
+checksum = "e539d3fca749fcee5236ab05e93a52867dd549cc157c8cb7f99595f3cedffdb5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1147,9 +1147,9 @@ dependencies = [
 
 [[package]]
 name = "geekorm"
-version = "0.11.3"
+version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29b5fa18871757ee055d446290dedbe39e751d1481dab5ef81f02bf6871df355"
+checksum = "c5ee719c80adc5d2f4e47dd52f6a927c0513e3740561be5d07c9f0a7f72d2faf"
 dependencies = [
  "geekorm-core",
  "geekorm-derive",
@@ -1158,9 +1158,9 @@ dependencies = [
 
 [[package]]
 name = "geekorm-core"
-version = "0.11.3"
+version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49073bd763e89bdacc4eaf194f8098c85b923ec2545a98d744885e2710a462f3"
+checksum = "ebbde9f65081d1f7d9f0cfa7928c4865a6f535569855c6e3e3bc047dab7646b7"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1183,9 +1183,9 @@ dependencies = [
 
 [[package]]
 name = "geekorm-derive"
-version = "0.11.3"
+version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14cd9bca89d6e006736f15c2b30a579ef4aa47f4315a408cfaf75ce7099981b1"
+checksum = "bf77e6e170bd53c028b430af0454c8711b10a8a1d23c1102a19ba738a31a5c90"
 dependencies = [
  "chrono",
  "geekorm-core",
@@ -1949,7 +1949,7 @@ dependencies = [
 
 [[package]]
 name = "konarr"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1983,7 +1983,7 @@ dependencies = [
 
 [[package]]
 name = "konarr-cli"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "bollard",
@@ -2008,7 +2008,7 @@ dependencies = [
 
 [[package]]
 name = "konarr-server"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2057,7 +2057,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
