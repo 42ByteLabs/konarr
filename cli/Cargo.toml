@@ -27,7 +27,7 @@ tasks = ["database", "konarr/tasks", "konarr/tools-grypedb"]
 agent = ["dep:bollard", "dep:openssl", "konarr/client", "konarr/docker", "konarr/tools", "konarr/agent"]
 
 [dependencies]
-konarr = { version = "0.4.0-dev", path = "../", default-features = false }
+konarr = { version = "0.4.1-dev", path = "../", default-features = false }
 
 tokio = { version = "1", features = ["full"] }
 tokio_schedule = "^0.3" 
