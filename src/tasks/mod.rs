@@ -9,6 +9,7 @@ use geekorm::{Connection, ConnectionManager};
 pub mod advisories;
 pub mod alerts;
 pub mod catalogue;
+pub mod projects;
 pub mod statistics;
 
 pub use advisories::{AdvisoriesTask, sync_advisories};
@@ -18,6 +19,8 @@ pub use statistics::StatisticsTask;
 
 use crate::Config;
 use crate::models::{ServerSettings, Setting};
+
+use self::projects::ProjectsTask;
 
 /// Initialse background tasks
 ///
@@ -68,6 +71,11 @@ pub async fn init<'a>(
             }
 
             AlertCalculatorTask::task(&connection)
+                .await
+                .map_err(|e| log::error!("Task Error :: {}", e))
+                .unwrap();
+
+            ProjectsTask::task(&connection)
                 .await
                 .map_err(|e| log::error!("Task Error :: {}", e))
                 .unwrap();
