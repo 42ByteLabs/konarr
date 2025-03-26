@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use crate::models::{
-    ProjectType, Projects, ServerSettings, dependencies::snapshots::AlertsSummary,
+    Alerts, ProjectType, Projects, ServerSettings, dependencies::snapshots::AlertsSummary,
     security::SecuritySeverity, settings::Setting,
 };
 use async_trait::async_trait;
@@ -19,7 +19,17 @@ pub struct AlertCalculatorTask;
 #[async_trait]
 impl TaskTrait for AlertCalculatorTask {
     async fn run(&self, connection: &geekorm::Connection<'_>) -> Result<(), crate::KonarrError> {
-        alert_calculator(connection).await?;
+        let page = Page::from((0, 1_000));
+        let mut projects =
+            Projects::fetch_project_type(connection, ProjectType::Container, &page).await?;
+        log::debug!("Found `{}` Container projects", projects.len());
+
+        for project in projects.iter_mut() {
+            project.fetch_latest_snapshot(connection).await?;
+        }
+
+        alert_calculator(connection, &mut projects).await?;
+
         Ok(())
     }
 }
@@ -27,6 +37,7 @@ impl TaskTrait for AlertCalculatorTask {
 /// Alert Calculator Task
 pub async fn alert_calculator(
     connection: &geekorm::Connection<'_>,
+    projects: &mut Vec<Projects>,
 ) -> Result<(), crate::KonarrError> {
     if !ServerSettings::feature_security(connection).await? {
         log::error!("Security Feature is not enabled");
@@ -36,11 +47,6 @@ pub async fn alert_calculator(
 
     let mut summary = AlertsSummary::new();
     let mut total = 0;
-
-    let page = Page::from((0, 1_000));
-    let mut projects =
-        Projects::fetch_project_type(connection, ProjectType::Container, &page).await?;
-    log::debug!("Found `{}` Container projects", projects.len());
 
     let mut project_summaries: HashMap<i32, AlertsSummary> = HashMap::new();
 
@@ -58,7 +64,7 @@ pub async fn alert_calculator(
         }
     }
 
-    calculate_group_alerts(connection, &projects, &project_summaries).await?;
+    calculate_group_alerts(connection, projects, &project_summaries).await?;
 
     debug!("Calculating Global Alerts Summary");
     debug!("Global Summary: {:?}", summary);
@@ -139,5 +145,17 @@ pub async fn calculate_group_alerts(
                 .await?;
         }
     }
+    Ok(())
+}
+
+/// Alerts Cleanup Task
+pub async fn alerts_cleanup(
+    connection: &geekorm::Connection<'_>,
+    projects: &Vec<Projects>,
+) -> Result<(), crate::KonarrError> {
+    log::info!("Task - Running Alerts Cleanup");
+
+    let alerts = Alerts::all(connection).await?;
+
     Ok(())
 }
