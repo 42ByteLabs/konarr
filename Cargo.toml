@@ -72,7 +72,7 @@ tar = { version = "0.4", optional = true }
 
 # Database / Models
 geekorm = { version = "0.11", features = ["all", "semver", "libsql", "migrations"], optional = true }
-libsql = { version = "0.6", optional = true }
+libsql = { version = "0.9", optional = true }
 
 # SBOM
 purl = { version = "^0.1" }
