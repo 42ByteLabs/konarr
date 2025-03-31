@@ -563,9 +563,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.32"
+version = "4.5.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6088f3ae8c3608d19260cd7445411865a485688711b78b5be70d78cd96136f83"
+checksum = "e958897981290da2a852763fe9cdb89cd36977a5d729023127095fa94d95e2ff"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -573,9 +573,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.32"
+version = "4.5.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22a7ef7f676155edfb82daa97f99441f3ebf4a58d5e32f295a56259f1b6facc8"
+checksum = "83b0f35019843db2160b5bb19ae09b4e6411ac33fc6a712003c33e03090e2489"
 dependencies = [
  "anstream",
  "anstyle",
@@ -707,7 +707,7 @@ dependencies = [
  "anes",
  "cast",
  "ciborium",
- "clap 4.5.32",
+ "clap 4.5.34",
  "criterion-plot",
  "futures",
  "is-terminal",
@@ -1164,7 +1164,7 @@ checksum = "ebbde9f65081d1f7d9f0cfa7928c4865a6f535569855c6e3e3bc047dab7646b7"
 dependencies = [
  "async-trait",
  "chrono",
- "libsql",
+ "libsql 0.6.0",
  "password-hash",
  "pbkdf2",
  "proc-macro2",
@@ -1962,7 +1962,7 @@ dependencies = [
  "geekorm",
  "hex",
  "konarr",
- "libsql",
+ "libsql 0.9.1",
  "log",
  "openssl",
  "purl",
@@ -1988,7 +1988,7 @@ dependencies = [
  "anyhow",
  "bollard",
  "chrono",
- "clap 4.5.32",
+ "clap 4.5.34",
  "console",
  "dialoguer",
  "dotenvy",
@@ -1997,7 +1997,7 @@ dependencies = [
  "glob",
  "indicatif",
  "konarr",
- "libsql",
+ "libsql 0.9.1",
  "log",
  "openssl",
  "serde",
@@ -2012,13 +2012,13 @@ version = "0.4.3"
 dependencies = [
  "anyhow",
  "chrono",
- "clap 4.5.32",
+ "clap 4.5.34",
  "console",
  "dotenvy",
  "env_logger",
  "geekorm",
  "konarr",
- "libsql",
+ "libsql 0.9.1",
  "log",
  "rocket",
  "rocket-governor",
@@ -2089,10 +2089,50 @@ dependencies = [
  "http 0.2.12",
  "hyper 0.14.32",
  "hyper-rustls 0.25.0",
- "libsql-hrana",
+ "libsql-hrana 0.2.0",
  "libsql-sqlite3-parser",
- "libsql-sys",
- "libsql_replication",
+ "libsql-sys 0.8.0",
+ "libsql_replication 0.6.0",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tonic",
+ "tonic-web",
+ "tower 0.4.13",
+ "tower-http",
+ "tracing",
+ "uuid",
+ "zerocopy 0.7.35",
+]
+
+[[package]]
+name = "libsql"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f99d7048440c5f443f7e121b27159d4d3c66d0a75e20754fd6cbb00f3cc8c18"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "async-trait",
+ "base64 0.21.7",
+ "bincode",
+ "bitflags 2.9.0",
+ "bytes",
+ "chrono",
+ "crc32fast",
+ "fallible-iterator 0.3.0",
+ "futures",
+ "http 0.2.12",
+ "hyper 0.14.32",
+ "hyper-rustls 0.25.0",
+ "libsql-hrana 0.9.1",
+ "libsql-sqlite3-parser",
+ "libsql-sys 0.9.1",
+ "libsql_replication 0.9.1",
  "parking_lot",
  "serde",
  "serde_json",
@@ -2120,6 +2160,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsql-ffi"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0e12afae859e7dc096ebc7a7cee806efa948e5b78ff9d0b4573ca7815480ab0"
+dependencies = [
+ "bindgen",
+ "cc",
+ "glob",
+]
+
+[[package]]
 name = "libsql-hrana"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2132,6 +2183,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsql-hrana"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71f16d7adbad5bee861c955011c155893937bd4c8711c91d949060363f24e0f6"
+dependencies = [
+ "base64 0.21.7",
+ "bytes",
+ "prost",
+ "serde",
+]
+
+[[package]]
+name = "libsql-rusqlite"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96c4bd62bf66a14e46643bd44adbb843c791e7c3f835a1424ffa629df8a7a9f4"
+dependencies = [
+ "bitflags 2.9.0",
+ "fallible-iterator 0.2.0",
+ "fallible-streaming-iterator",
+ "hashlink",
+ "libsql-ffi 0.9.1",
+ "smallvec",
+]
+
+[[package]]
 name = "libsql-rusqlite"
 version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2141,7 +2218,7 @@ dependencies = [
  "fallible-iterator 0.2.0",
  "fallible-streaming-iterator",
  "hashlink",
- "libsql-ffi",
+ "libsql-ffi 0.5.0",
  "smallvec",
 ]
 
@@ -2170,8 +2247,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c05b61c226781d6f5e26e3e7364617f19c0c1d5332035802e9229d6024cec05"
 dependencies = [
  "bytes",
- "libsql-ffi",
- "libsql-rusqlite",
+ "libsql-ffi 0.5.0",
+ "libsql-rusqlite 0.33.0",
+ "once_cell",
+ "tracing",
+ "zerocopy 0.7.35",
+]
+
+[[package]]
+name = "libsql-sys"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "659587f9ebebdb2ff1112e8af7f30fc212f8d5457a3a9a549eda48544e942a7f"
+dependencies = [
+ "bytes",
+ "libsql-ffi 0.9.1",
+ "libsql-rusqlite 0.9.1",
  "once_cell",
  "tracing",
  "zerocopy 0.7.35",
@@ -2188,8 +2279,34 @@ dependencies = [
  "async-trait",
  "bytes",
  "cbc",
- "libsql-rusqlite",
- "libsql-sys",
+ "libsql-rusqlite 0.33.0",
+ "libsql-sys 0.8.0",
+ "parking_lot",
+ "prost",
+ "serde",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tonic",
+ "tracing",
+ "uuid",
+ "zerocopy 0.7.35",
+]
+
+[[package]]
+name = "libsql_replication"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0666c23acca99c2ebc317071f87814ad006243fa6e15c02a83e40ff8e6948832"
+dependencies = [
+ "aes",
+ "async-stream",
+ "async-trait",
+ "bytes",
+ "cbc",
+ "libsql-rusqlite 0.9.1",
+ "libsql-sys 0.9.1",
  "parking_lot",
  "prost",
  "serde",
@@ -2239,9 +2356,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.26"
+version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30bde2b3dc3671ae49d8e2e9f044c7c005836e7a023ee57cffa25ab82764bb9e"
+checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "loom"
@@ -2996,9 +3113,9 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
 name = "reqwest"
-version = "0.12.14"
+version = "0.12.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "989e327e510263980e231de548a33e63d34962d29ae61b467389a1a09627a254"
+checksum = "d19c46a6fdd48bc4dab94b6103fccc55d34c67cc0ad04653aad4ea2a07cd7bbb"
 dependencies = [
  "base64 0.22.1",
  "bytes",
