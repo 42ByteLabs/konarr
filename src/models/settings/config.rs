@@ -1,4 +1,5 @@
 //! # Server Settings from Config
+use super::SettingType;
 use super::{ServerSettings, keys::Setting};
 use crate::Config;
 use geekorm::{Connection, prelude::*};
@@ -18,15 +19,34 @@ impl ServerSettings {
                 .await?;
         }
 
+        // Frontend setting
+        ServerSettings::update_setting(
+            connection,
+            &Setting::ServerFrontendPath,
+            config.server.frontend.display().to_string(),
+        )
+        .await?;
+
         Ok(())
     }
 
     async fn update_setting(
         connection: &Connection<'_>,
         setting: &Setting,
-        value: String,
+        value: impl Into<String>,
     ) -> Result<(), crate::KonarrError> {
-        let mut dbsetting = ServerSettings::fetch_by_name(connection, setting).await?;
+        let value = value.into();
+
+        let mut dbsetting = match ServerSettings::fetch_by_name(connection, setting).await {
+            Ok(setting) => setting,
+            Err(_) => {
+                log::debug!("Creating new setting: {:?}", setting);
+                let mut sett =
+                    ServerSettings::new(setting.clone(), SettingType::String, value.clone());
+                sett.fetch_or_create(connection).await?;
+                sett
+            }
+        };
 
         if dbsetting.value != value {
             log::debug!("Updating setting: {:?}", setting);
