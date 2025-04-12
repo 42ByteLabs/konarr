@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use geekorm::prelude::*;
 use konarr::{
     models::{self, ProjectType},
@@ -82,8 +80,9 @@ pub(crate) async fn get_project(
         info!("Tried accessing an archived project: {}", project.id);
         Err(KonarrServerError::ProjectNotFoundError(id))
     } else {
-        // Fetch Children and Latest Snapshot
+        // Fetch Children
         project.fetch_children(&connection).await?;
+        // Fetch the latest snapshot for the current project
         project.fetch_latest_snapshot(&connection).await?;
 
         info!("{:?} (snapshots: {})", project.id, project.snapshots.len());
@@ -251,15 +250,7 @@ pub async fn delete_project(
     );
     project.archive(&connection).await?;
 
-    let database = Arc::new(state.database.clone());
-    tokio::spawn(async move {
-        konarr::tasks::StatisticsTask::task(&database.acquire().await)
-            .await
-            .map_err(|e| {
-                log::error!("Failed to run alert calculator: {:?}", e);
-            })
-            .ok();
-    });
+    konarr::tasks::StatisticsTask::spawn(&state.database).await?;
 
     Ok(Json(project.into()))
 }

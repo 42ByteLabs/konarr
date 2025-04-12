@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use geekorm::prelude::*;
 use konarr::models::{self, SessionState, SessionType, UserRole, Users, settings::ServerSettings};
 use konarr::tasks::TaskTrait;
@@ -106,7 +104,7 @@ pub async fn register(
         .await?
         .value;
 
-    if registration == "enabled".to_string() {
+    if registration == *"enabled" {
         if payload.password != payload.password_confirm {
             return Ok(Json(LoginResponse::failed("Passwords do not match")));
         }
@@ -135,15 +133,7 @@ pub async fn register(
             info!("Server is now initialized");
         }
 
-        let database = Arc::new(state.database.clone());
-        tokio::spawn(async move {
-            konarr::tasks::StatisticsTask::task(&database.acquire().await)
-                .await
-                .map_err(|e| {
-                    log::error!("Failed to run alert calculator: {:?}", e);
-                })
-                .ok();
-        });
+        konarr::tasks::StatisticsTask::spawn(&state.database).await?;
 
         Ok(Json(LoginResponse::success()))
     } else {
