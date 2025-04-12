@@ -7,7 +7,7 @@ use crate::models::{
     security::SecuritySeverity, settings::Setting,
 };
 use async_trait::async_trait;
-use geekorm::prelude::*;
+use geekorm::{ConnectionManager, prelude::*};
 use log::{debug, info};
 
 use super::TaskTrait;
@@ -18,17 +18,23 @@ pub struct AlertCalculatorTask;
 
 #[async_trait]
 impl TaskTrait for AlertCalculatorTask {
-    async fn run(&self, connection: &geekorm::Connection<'_>) -> Result<(), crate::KonarrError> {
+    async fn run(&self, database: &ConnectionManager) -> Result<(), crate::KonarrError> {
+        let connection = database.acquire().await;
         let page = Page::from((0, 1_000));
         let mut projects =
-            Projects::fetch_project_type(connection, ProjectType::Container, &page).await?;
+            Projects::fetch_project_type(&connection, ProjectType::Container, &page).await?;
         log::debug!("Found `{}` Container projects", projects.len());
 
         for project in projects.iter_mut() {
-            project.fetch_latest_snapshot(connection).await?;
+            project.fetch_latest_snapshot(&connection).await?;
         }
 
-        alert_calculator(connection, &mut projects).await?;
+        alert_calculator(&connection, &mut projects).await?;
+
+        log::debug!(
+            "Task - Running Alert Calculator - Actions :: {}",
+            connection.count()
+        );
 
         Ok(())
     }
@@ -51,7 +57,8 @@ pub async fn alert_calculator(
     let mut project_summaries: HashMap<i32, AlertsSummary> = HashMap::new();
 
     for project in projects.iter_mut() {
-        if let Some(mut snapshot) = project.fetch_latest_snapshot(connection).await? {
+        project.fetch_latest_snapshot(connection).await?;
+        if let Some(snapshot) = project.snapshots.last_mut() {
             debug!("Project('{}', snapshot='{}')", project.name, snapshot.id);
 
             let snap_summary = snapshot.calculate_alerts_summary(connection).await?;
@@ -120,7 +127,9 @@ pub async fn calculate_group_alerts(
     for group in groups.iter_mut() {
         let group_id: i32 = group.id.into();
 
-        if let Some(mut snapshot) = group.fetch_latest_snapshot(connection).await? {
+        group.fetch_latest_snapshot(connection).await?;
+
+        if let Some(snapshot) = group.snapshots.last_mut() {
             log::debug!("Group('{}', snapshot='{}')", group.name, snapshot.id);
 
             let mut group_summary = AlertsSummary::new();

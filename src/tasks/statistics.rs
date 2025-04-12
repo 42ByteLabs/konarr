@@ -1,6 +1,6 @@
 //! # Tasks - Statistics
 use async_trait::async_trait;
-use geekorm::{GeekConnector, QueryBuilderTrait};
+use geekorm::{ConnectionManager, GeekConnector, QueryBuilderTrait};
 
 use crate::models::{Component, ComponentType, Projects, ServerSettings, Setting, Users};
 
@@ -13,11 +13,13 @@ pub struct StatisticsTask;
 #[async_trait]
 impl TaskTrait for StatisticsTask {
     /// Calculate Statistics Task
-    async fn run(&self, connection: &geekorm::Connection<'_>) -> Result<(), crate::KonarrError> {
+    async fn run(&self, database: &ConnectionManager) -> Result<(), crate::KonarrError> {
+        let connection = database.acquire().await;
+
         log::info!("Task - Calculating Statistics");
-        user_statistics(connection).await?;
-        project_statistics(connection).await?;
-        dependencies_statistics(connection).await?;
+        user_statistics(&connection).await?;
+        project_statistics(&connection).await?;
+        dependencies_statistics(&connection).await?;
 
         log::debug!(
             "Task - Calculating Statistics - Actions :: {}",
