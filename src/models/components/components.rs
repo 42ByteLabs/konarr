@@ -44,11 +44,6 @@ impl Component {
             comp.find_or_create(connection).await?;
         }
 
-        info!(
-            "Checking and updating component types for unknown, library, and application components"
-        );
-        tasks::catalogue(connection, false).await?;
-
         Ok(())
     }
 

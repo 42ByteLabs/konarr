@@ -17,7 +17,7 @@ pub mod statistics;
 pub use advisories::AdvisoriesTask;
 pub use advisories_sync::AdvisoriesSyncTask;
 pub use alerts::AlertCalculatorTask;
-pub use catalogue::catalogue;
+pub use catalogue::CatalogueTask;
 pub use statistics::StatisticsTask;
 
 use crate::Config;
