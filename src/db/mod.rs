@@ -2,7 +2,8 @@
 #![allow(unused_imports, unused_variables)]
 use geekorm::prelude::*;
 mod v0_3_3;
-pub use v0_3_3::{Database, Migration as LatestMigration};
+mod v0_5_0;
+pub use v0_5_0::{Database, Migration as LatestMigration};
 #[doc = "Initializes and automatically migrates database."]
 pub async fn init<'a, T>(connection: &'a T) -> Result<(), geekorm::Error>
 where
