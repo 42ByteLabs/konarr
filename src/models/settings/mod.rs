@@ -4,7 +4,9 @@ use keys::SERVER_SETTINGS_DEPRICATED;
 use log::{debug, error, warn};
 use serde::{Deserialize, Serialize};
 
+pub mod config;
 pub mod keys;
+
 pub use keys::{SERVER_SETTINGS_DEFAULTS, Setting};
 
 /// Setting Type

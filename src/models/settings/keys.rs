@@ -13,6 +13,26 @@ pub enum Setting {
     // Registration
     #[geekorm(key = "registration")]
     Registration,
+
+    // Server Settings
+    /// Server URL (e.g. http://localhost:9000)
+    #[geekorm(key = "server.url")]
+    ServerUrl,
+    /// Frontend Path (e.g. /app)
+    #[geekorm(key = "server.frontend.path")]
+    ServerFrontendPath,
+
+    // Session Settings
+    /// Session Expiration for Admins
+    #[geekorm(key = "sessions.admins.expires")]
+    SessionAdminsExpires,
+    /// Session Expiration for Users
+    #[geekorm(key = "sessions.users.expires")]
+    SessionUsersExpires,
+    /// Session Expiration for Agent Accounts
+    #[geekorm(key = "sessions.agents.expires")]
+    SessionAgentsExpires,
+
     // Agent Settings
     #[geekorm(key = "agent")]
     Agent,
@@ -155,11 +175,21 @@ pub const SERVER_SETTINGS_DEPRICATED: [Setting; 4] = [
 ];
 
 /// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 34] = [
+pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 38] = [
     // Registration Settings
     (Setting::Registration, SettingType::Toggle, "enabled"),
     // If we are already initialized
     (Setting::Initialized, SettingType::Boolean, "false"),
+    // Server Settings
+    (
+        Setting::ServerUrl,
+        SettingType::String,
+        "http://localhost:8000",
+    ),
+    // Session Settings
+    (Setting::SessionAdminsExpires, SettingType::String, "1"),
+    (Setting::SessionUsersExpires, SettingType::String, "24"),
+    (Setting::SessionAgentsExpires, SettingType::String, "360"),
     // Agent Settings
     (Setting::Agent, SettingType::Toggle, "disabled"),
     (
