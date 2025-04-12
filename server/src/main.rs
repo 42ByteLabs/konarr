@@ -59,6 +59,7 @@ async fn main() -> Result<()> {
 
     // Database Setup
     let database = database_initialise(&mut config).await?;
+    ServerSettings::load_config(&database.acquire().await, &config).await?;
 
     // Tasks
     let task_config = Arc::new(config.clone());

@@ -2,8 +2,6 @@
 
 use geekorm::prelude::*;
 
-use super::SettingType;
-
 #[derive(Data, Debug, Default, Clone, PartialEq)]
 #[allow(missing_docs)]
 pub enum Setting {
@@ -13,6 +11,26 @@ pub enum Setting {
     // Registration
     #[geekorm(key = "registration")]
     Registration,
+
+    // Server Settings
+    /// Server URL (e.g. http://localhost:9000)
+    #[geekorm(key = "server.url")]
+    ServerUrl,
+    /// Frontend Path (e.g. /app)
+    #[geekorm(key = "server.frontend.path")]
+    ServerFrontendPath,
+
+    // Session Settings
+    /// Session Expiration for Admins
+    #[geekorm(key = "sessions.admins.expires")]
+    SessionAdminsExpires,
+    /// Session Expiration for Users
+    #[geekorm(key = "sessions.users.expires")]
+    SessionUsersExpires,
+    /// Session Expiration for Agent Accounts
+    #[geekorm(key = "sessions.agents.expires")]
+    SessionAgentsExpires,
+
     // Agent Settings
     #[geekorm(key = "agent")]
     Agent,
@@ -152,99 +170,6 @@ pub const SERVER_SETTINGS_DEPRICATED: [Setting; 4] = [
     Setting::SecurityAlertsOther,
     Setting::SecurityGrype,
     Setting::SecurityAlertsInfomational,
-];
-
-/// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &'static str); 34] = [
-    // Registration Settings
-    (Setting::Registration, SettingType::Toggle, "enabled"),
-    // If we are already initialized
-    (Setting::Initialized, SettingType::Boolean, "false"),
-    // Agent Settings
-    (Setting::Agent, SettingType::Toggle, "disabled"),
-    (
-        Setting::AgentToolAutoInstall,
-        SettingType::Toggle,
-        "disabled",
-    ),
-    (
-        Setting::AgentToolAutoUpdate,
-        SettingType::Toggle,
-        "disabled",
-    ),
-    // Statistics
-    (Setting::StatsProjectsTotal, SettingType::Statistics, "0"),
-    (Setting::StatsProjectsActive, SettingType::Statistics, "0"),
-    (Setting::StatsProjectsInactive, SettingType::Statistics, "0"),
-    (Setting::StatsProjectsArchived, SettingType::Statistics, "0"),
-    (Setting::StatsProjectsGroups, SettingType::Statistics, "0"),
-    (Setting::StatsProjectsServers, SettingType::Statistics, "0"),
-    (
-        Setting::StatsProjectsContainers,
-        SettingType::Statistics,
-        "0",
-    ),
-    (
-        Setting::StatsDependenciesTotal,
-        SettingType::Statistics,
-        "0",
-    ),
-    (Setting::StatsUsersTotal, SettingType::Statistics, "0"),
-    (Setting::StatsUsersActive, SettingType::Statistics, "0"),
-    (Setting::StatsUsersInactive, SettingType::Statistics, "0"),
-    // Security Features
-    (Setting::Security, SettingType::Toggle, "disabled"),
-    (Setting::SecurityRescan, SettingType::Toggle, "disabled"),
-    (Setting::SecurityToolsName, SettingType::SetString, "syft"),
-    // Tools Settings
-    (
-        Setting::SecurityToolsAlerts,
-        SettingType::Toggle,
-        "disabled",
-    ),
-    // Advisories Settings
-    (Setting::SecurityAdvisories, SettingType::Toggle, "disabled"),
-    (
-        Setting::SecurityAdvisoriesPull,
-        SettingType::Toggle,
-        "disabled",
-    ),
-    (
-        Setting::SecurityAdvisoriesVersion,
-        SettingType::String,
-        "Unknown",
-    ),
-    (
-        Setting::SecurityAdvisoriesUpdated,
-        SettingType::Datetime,
-        "Unknown",
-    ),
-    (
-        Setting::SecurityAdvisoriesPolling,
-        SettingType::Toggle,
-        "disabled",
-    ),
-    (Setting::SecurityAlertsTotal, SettingType::Statistics, "0"),
-    (
-        Setting::SecurityAlertsCritical,
-        SettingType::Statistics,
-        "0",
-    ),
-    (Setting::SecurityAlertsHigh, SettingType::Statistics, "0"),
-    (Setting::SecurityAlertsMedium, SettingType::Statistics, "0"),
-    (Setting::SecurityAlertsLow, SettingType::Statistics, "0"),
-    (
-        Setting::SecurityAlertsInformational,
-        SettingType::Statistics,
-        "0",
-    ),
-    (
-        Setting::SecurityAlertsUnmaintained,
-        SettingType::Statistics,
-        "0",
-    ),
-    (Setting::SecurityAlertsMalware, SettingType::Statistics, "0"),
-    (Setting::SecurityAlertsUnknown, SettingType::Statistics, "0"),
 ];
 
 #[cfg(test)]
