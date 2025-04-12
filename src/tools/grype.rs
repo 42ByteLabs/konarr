@@ -1,9 +1,8 @@
 //! # Grype
 
-use std::path::PathBuf;
-
 use async_trait::async_trait;
 use log::info;
+use std::path::PathBuf;
 
 use super::{Tool, ToolConfig};
 use crate::KonarrError;

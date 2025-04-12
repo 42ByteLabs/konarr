@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use geekorm::prelude::*;
+use geekorm::{Connection, prelude::*};
 use log::debug;
 
 use super::GrypeDatabase;
@@ -15,14 +15,11 @@ use crate::{
 
 impl GrypeDatabase {
     /// Fetch Grype Results for the Snapshot
-    pub async fn matcher<'a, T>(
-        connection: &'a T,
+    pub async fn matcher(
+        connection: &Connection<'_>,
         grypedb: &GrypeDatabase,
         snapshot: &mut Snapshot,
-    ) -> Result<Vec<Alerts>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<Vec<Alerts>, crate::KonarrError> {
         let mut results = Vec::new();
         // TODO: Current alerts checking
         // let current_alerts = Alerts::fetch_by_snapshot_id(connection, snapshot.id).await?;
@@ -65,7 +62,7 @@ impl GrypeDatabase {
                     if vuln.id.starts_with("CVE-") {
                         // Look for the metadata in GrypeDB based on ID + namespace
                         GrypeVulnerabilityMetadata::query_first(
-                            &grypedb.connection,
+                            &grypedb.connection.acquire().await,
                             GrypeVulnerabilityMetadata::query_select()
                                 .where_eq("id", &vuln.id)
                                 .and()
@@ -77,7 +74,7 @@ impl GrypeDatabase {
                         .ok()
                     } else if vuln.id.starts_with("GHSA-") {
                         GrypeVulnerabilityMetadata::query_first(
-                            &grypedb.connection,
+                            &grypedb.connection.acquire().await,
                             GrypeVulnerabilityMetadata::query_select()
                                 .where_eq("id", &vuln.id)
                                 .and()

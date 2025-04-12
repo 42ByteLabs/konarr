@@ -2,7 +2,7 @@
 #![allow(missing_docs)]
 
 use chrono::Timelike;
-use geekorm::prelude::*;
+use geekorm::{ConnectionManager, prelude::*};
 use log::{debug, error, trace, warn};
 use semver::Version;
 use sha2::Digest;
@@ -21,7 +21,7 @@ mod matcher;
 /// Grype Database
 pub struct GrypeDatabase {
     /// Connection to the Grype database
-    pub connection: libsql::Connection,
+    pub connection: ConnectionManager,
     /// All of the Grype vulnerabilities
     ///
     /// Acts like a cache
@@ -38,13 +38,13 @@ impl GrypeDatabase {
     pub async fn connect(path: &PathBuf) -> Result<Self, KonarrError> {
         log::debug!("Connecting to Grype DB at: {}", path.display());
         let db = if path.is_dir() {
-            let fpath = path.join("5").join("vulnerability.db");
-            libsql::Builder::new_local(fpath).build().await?
+            path.join("5").join("vulnerability.db")
         } else {
-            libsql::Builder::new_local(path).build().await?
+            path.clone()
         };
+
         Ok(Self {
-            connection: db.connect()?,
+            connection: ConnectionManager::path(db).await?,
             vulnerabilities: Vec::new(),
             tool: Grype::init().await,
         })
@@ -225,17 +225,18 @@ impl GrypeDatabase {
 
     /// Load the Grype database
     pub async fn fetch_grype(&self) -> Result<GrypeId, KonarrError> {
-        Ok(
-            GrypeId::query_first(&self.connection, GrypeId::query_select().limit(1).build()?)
-                .await?,
+        Ok(GrypeId::query_first(
+            &self.connection.acquire().await,
+            GrypeId::query_select().limit(1).build()?,
         )
+        .await?)
     }
 
     pub async fn fetch_vulnerabilities(&mut self) -> Result<&Vec<GrypeVulnerability>, KonarrError> {
         if self.vulnerabilities.is_empty() {
             debug!("Loading Grype vulnerabilities");
             self.vulnerabilities = GrypeVulnerability::query(
-                &self.connection,
+                &self.connection.acquire().await,
                 GrypeVulnerability::query_select().build()?,
             )
             .await?;
