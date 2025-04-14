@@ -110,5 +110,5 @@ required-features = ["models", "tasks"]
 [[example]]
 name = "grypedb"
 path = "examples/grypedb.rs"
-required-features = ["tools-grypedb"]
+required-features = ["tasks", "tools-grypedb"]
 
