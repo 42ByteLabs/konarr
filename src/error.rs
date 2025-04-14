@@ -23,9 +23,22 @@ pub enum KonarrError {
     #[error("Version Error")]
     VersionError(#[from] semver::Error),
 
+    /// Database Error
+    #[cfg(feature = "models")]
+    #[error("Database Error ({backend}) : {error}")]
+    DatabaseError {
+        /// Database backend
+        backend: String,
+        /// Error message
+        error: String,
+    },
+
     /// Parsing Bill of Materials Error
     #[error("Failed to parse SBOM: {0}")]
     ParseSBOM(String),
+    /// Failed to fetch SBOM
+    #[error("Failed to fetch SBOM: {0}")]
+    FetchSBOM(String),
     /// Parsing PURL
     #[error("PURL parsing error")]
     PurlError(#[from] purl::ParseError),

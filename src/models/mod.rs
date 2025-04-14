@@ -21,10 +21,10 @@ pub use security::advisories::AdvisoriesMetadata;
 pub use security::{Advisories, Alerts};
 pub use settings::{ServerSettings, Setting};
 
-use crate::tasks::TaskTrait;
 use crate::tasks::alerts::AlertCalculatorTask;
 use crate::tasks::projects::ProjectsTask;
 use crate::tasks::statistics::StatisticsTask;
+use crate::tasks::{CatalogueTask, TaskTrait};
 use crate::{Config, KonarrError, db};
 
 /// Initialize the database with the necessary tables.
@@ -62,6 +62,7 @@ pub async fn database_initialise(config: &mut Config) -> Result<ConnectionManage
     StatisticsTask::spawn(&database).await?;
     ProjectsTask::spawn(&database).await?;
     AlertCalculatorTask::spawn(&database).await?;
+    CatalogueTask::spawn(&database).await?;
 
     log::info!("Database Initialised!");
     Ok(database)

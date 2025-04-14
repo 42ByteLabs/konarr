@@ -1,7 +1,7 @@
 //! # Model - Snapshot Metadata
 
 use chrono::{DateTime, Utc};
-use geekorm::prelude::*;
+use geekorm::{Connection, prelude::*};
 use log::debug;
 use serde::{Deserialize, Serialize};
 
@@ -61,15 +61,12 @@ impl SnapshotMetadata {
     }
 
     /// Update or Create Metadata
-    pub async fn update_or_create<'a, T>(
-        connection: &'a T,
+    pub async fn update_or_create(
+        connection: &Connection<'_>,
         snapshot: impl Into<PrimaryKey<i32>>,
         key: &SnapshotMetadataKey,
         value: impl Into<Vec<u8>>,
-    ) -> Result<Self, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<Self, crate::KonarrError> {
         let snapshot = snapshot.into();
         let value = value.into();
         debug!("Updating Metadata for Snapshot({:?}) :: {} ", snapshot, key);

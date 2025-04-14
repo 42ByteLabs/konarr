@@ -1,15 +1,14 @@
 use geekorm::prelude::*;
 use konarr::{
-    bom::{BomParser, Parsers},
     models::{
         self, SnapshotMetadataKey,
         security::{Advisories, Alerts, SecuritySeverity},
     },
-    tools::Tool,
+    tasks::{TaskTrait, sbom::SbomTask},
 };
 use log::{debug, info};
 use rocket::{State, data::ToByteUnit, serde::json::Json};
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr};
 
 use super::{
     ApiResponse, ApiResult,
@@ -84,11 +83,13 @@ pub(crate) async fn create_snapshot(
         Ok(project) => project,
         Err(geekorm::Error::NoRowsFound { query: _ }) => {
             log::error!("Project not found: {}", snapshot.project_id);
-            return Err(KonarrServerError::ProjectNotFoundError(snapshot.project_id as i32).into());
+            return Err(KonarrServerError::ProjectNotFoundError(
+                snapshot.project_id as i32,
+            ));
         }
         Err(e) => {
             log::error!("Failed to fetch project: {:?}", e);
-            return Err(KonarrServerError::InternalServerError.into());
+            return Err(KonarrServerError::InternalServerError);
         }
     };
     debug!("Project: {:?}", project);
@@ -98,7 +99,7 @@ pub(crate) async fn create_snapshot(
         Ok(snapshot) => snapshot,
         Err(e) => {
             log::error!("Failed to create snapshot: {:?}", e);
-            return Err(KonarrServerError::InternalServerError.into());
+            return Err(KonarrServerError::InternalServerError);
         }
     };
     project
@@ -121,7 +122,7 @@ pub(crate) async fn patch_snapshot_metadata(
             Ok(snapshot) => snapshot,
             Err(e) => {
                 log::error!("Failed to fetch snapshot: {:?}", e);
-                return Err(KonarrServerError::SnapshotNotFoundError(id as i32).into());
+                return Err(KonarrServerError::SnapshotNotFoundError(id as i32));
             }
         };
     snapshot.fetch_metadata(&state.connection().await).await?;
@@ -169,54 +170,12 @@ pub(crate) async fn upload_bom(
         .await
         .map_err(|_| konarr::KonarrError::ParseSBOM("Failed to read data".to_string()))?;
 
-    info!("Read SBOM data: {} bytes", data.len());
-    let bom = Parsers::parse(&data)
-        .map_err(|e| KonarrServerError::BillOfMaterialsParseError(e.to_string()))?;
-    debug!("Parsed SBOM: {:?}", bom);
-
     info!("Adding SBOM to snapshot: {}", snapshot.id);
-    snapshot.add_bom(&state.connection().await, &bom).await?;
-
-    let id = uuid::Uuid::new_v4();
-    let file_name = format!("{}.{}.json", id, bom.sbom_type.to_file_name());
-    let sbom_path = state.config.sboms_path()?.join(&file_name);
-
-    info!("Writing SBOM to file: {}", sbom_path.display());
-    tokio::fs::write(&sbom_path, &*data)
-        .await
-        .map_err(|e| KonarrServerError::BillOfMaterialsParseError(e.to_string()))?;
-
     snapshot
-        .set_metadata(
-            &state.connection().await,
-            SnapshotMetadataKey::BomPath,
-            &file_name,
-        )
+        .add_bom(&state.connection().await, data.to_vec())
         .await?;
 
-    let database = Arc::new(state.database.clone());
-    let config = state.config.clone();
-    let mut project = snapshot.fetch_project(&state.connection().await).await?;
-
-    tokio::spawn(async move {
-        let connection = database.acquire().await;
-        // Ensure Grype is installed and available
-        let tool_grype = konarr::tools::Grype::init().await;
-        if tool_grype.is_available() {
-            log::debug!("Grype Config: {:?}", tool_grype);
-            konarr::tasks::advisories::scan_project(
-                &config,
-                &connection,
-                &tool_grype,
-                &mut project,
-            )
-            .await
-            .map_err(|e| {
-                log::error!("Failed to scan projects: {:?}", e);
-            })
-            .ok();
-        }
-    });
+    SbomTask::spawn(&state.database.clone()).await?;
 
     Ok(Json(snapshot.into()))
 }

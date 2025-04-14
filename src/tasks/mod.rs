@@ -7,14 +7,19 @@ use tokio_schedule::Job;
 use geekorm::{Connection, ConnectionManager};
 
 pub mod advisories;
+#[cfg(feature = "tools-grypedb")]
+pub mod advisories_sync;
 pub mod alerts;
 pub mod catalogue;
 pub mod projects;
+pub mod sbom;
 pub mod statistics;
 
-pub use advisories::{AdvisoriesTask, sync_advisories};
+pub use advisories::AdvisoriesTask;
+#[cfg(feature = "tools-grypedb")]
+pub use advisories_sync::AdvisoriesSyncTask;
 pub use alerts::AlertCalculatorTask;
-pub use catalogue::catalogue;
+pub use catalogue::CatalogueTask;
 pub use statistics::StatisticsTask;
 
 use crate::Config;
@@ -28,27 +33,23 @@ use self::projects::ProjectsTask;
 /// - Sync advisories
 /// - Calculate statistics
 /// - Calculate alerts
-pub async fn init<'a>(
+pub async fn init(
     config: Arc<Config>,
-    database: &'a ConnectionManager,
+    database: &ConnectionManager,
 ) -> Result<(), crate::KonarrError> {
     log::info!("Initializing Background Tasks...");
 
-    let database = database.clone();
+    let minutedb = database.clone();
+    let minute_config = Arc::clone(&config);
 
-    let tasks = tokio_schedule::every(60).minutes().perform(move || {
-        let database = database.clone();
-        let config = Arc::clone(&config);
+    let minute = tokio_schedule::every(60).seconds().perform(move || {
+        let database = minutedb.clone();
+        let config = Arc::clone(&minute_config);
 
         log::info!("Running Background Tasks");
 
         async move {
             let connection = database.acquire().await;
-
-            match sync_advisories(&config, &connection).await {
-                Ok(_) => log::debug!("Advisories Synced"),
-                Err(e) => log::error!("Advisories Sync Error: {}", e),
-            }
 
             let rescan = ServerSettings::fetch_by_name(&connection, Setting::SecurityRescan)
                 .await
@@ -64,29 +65,55 @@ pub async fn init<'a>(
                         log::error!("Error resetting rescan flag: {}", e);
                     }
 
-                    if let Err(e) = advisories::scan(&config, &connection).await {
-                        log::error!("Error rescanning projects: {}", e);
+                    // Drop the connection before starting the other tasks
+                    drop(connection);
+
+                    if let Ok(task) = AdvisoriesTask::new(&config) {
+                        if let Err(e) = task.run(&database).await {
+                            log::error!("Error rescanning projects: {}", e);
+                        }
+                    } else {
+                        log::error!("Error creating advisories task");
                     }
                 }
             }
-
-            AlertCalculatorTask::task(&connection)
-                .await
-                .map_err(|e| log::error!("Task Error :: {}", e))
-                .unwrap();
-
-            ProjectsTask::task(&connection)
-                .await
-                .map_err(|e| log::error!("Task Error :: {}", e))
-                .unwrap();
-
-            StatisticsTask::task(&connection)
-                .await
-                .map_err(|e| log::error!("Task Error :: {}", e))
-                .unwrap();
         }
     });
-    spawn(tasks);
+    spawn(minute);
+
+    let hourlydb = database.clone();
+    let hourly_config = Arc::clone(&config);
+
+    let hourly = tokio_schedule::every(60).minutes().perform(move || {
+        let database = hourlydb.clone();
+        let config = Arc::clone(&hourly_config);
+        log::info!("Running Hourly Background Tasks");
+
+        async move {
+            if let Ok(task) = AdvisoriesTask::new(&config) {
+                if let Err(e) = task.run(&database).await {
+                    log::error!("Task Error :: {}", e);
+                }
+            }
+
+            if let Err(e) = AdvisoriesSyncTask::spawn(&database).await {
+                log::error!("Task Error :: {}", e);
+            }
+
+            if let Err(e) = AlertCalculatorTask::task(&database).await {
+                log::error!("Task Error :: {}", e);
+            }
+
+            if let Err(e) = ProjectsTask::task(&database).await {
+                log::error!("Task Error :: {}", e);
+            }
+
+            if let Err(e) = StatisticsTask::task(&database).await {
+                log::error!("Task Error :: {}", e);
+            }
+        }
+    });
+    spawn(hourly);
 
     Ok(())
 }
@@ -105,7 +132,7 @@ where
 
     /// Run the task
     #[allow(unused_variables)]
-    async fn run(&self, connection: &Connection<'_>) -> Result<(), crate::KonarrError>;
+    async fn run(&self, database: &ConnectionManager) -> Result<(), crate::KonarrError>;
 
     /// Finish / Done / Completed the tasks
     #[allow(unused_variables)]
@@ -114,10 +141,10 @@ where
     }
 
     /// Run the task with a connection
-    async fn task(connection: &Connection<'_>) -> Result<(), crate::KonarrError> {
-        let task = Self::init(connection).await?;
-        task.run(connection).await?;
-        task.done(connection).await?;
+    async fn task(database: &ConnectionManager) -> Result<(), crate::KonarrError> {
+        let task = Self::init(&database.acquire().await).await?;
+        task.run(database).await?;
+        task.done(&database.acquire().await).await?;
         Ok(())
     }
 
@@ -126,16 +153,14 @@ where
         let database = database.clone();
         tokio::spawn(async move {
             let name = std::any::type_name::<Self>();
-            let connection = database.acquire().await;
             log::info!("Spawned Task :: {}", name);
 
-            Self::task(&connection)
+            Self::task(&database)
                 .await
                 .map_err(|e| {
                     log::error!("Failed to run alert calculator: {:?}", e);
                 })
                 .ok();
-            log::debug!("Task - {} - {} transactions", name, connection.count());
             log::info!("Spawned Task Completed :: {}", name);
         });
         Ok(())

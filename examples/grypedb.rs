@@ -15,7 +15,8 @@ async fn main() -> Result<()> {
     let grypedb = GrypeDatabase::connect(&grypedb_dir).await?;
 
     let grype = grypedb.fetch_grype().await?;
-    let vulnerabilities_count = GrypeVulnerability::total(&grypedb.connection).await?;
+    let vulnerabilities_count =
+        GrypeVulnerability::total(&grypedb.connection.acquire().await).await?;
     println!(
         "GrypeDB({}) = {}\n",
         grype.build_timestamp, vulnerabilities_count

@@ -63,10 +63,9 @@ pub async fn agent<'a>(
                         projects.push(project.id);
                     }
 
-                    if let Ok(Some(mut snapshot)) = project.fetch_latest_snapshot(&connection).await
-                    {
-                        snapshot.fetch_metadata(&connection).await.unwrap();
+                    project.fetch_latest_snapshot(&connection).await.unwrap();
 
+                    if let Some(snapshot) = project.snapshots.last_mut() {
                         log::info!(
                             "Agent connected, setting project '{}' online (snapshot: {})",
                             project.id,
@@ -87,7 +86,9 @@ pub async fn agent<'a>(
                 if let Ok(mut project) =
                     Projects::fetch_by_primary_key(&connection, project_id).await
                 {
-                    if let Ok(Some(mut snap)) = project.fetch_latest_snapshot(&connection).await {
+                    project.fetch_latest_snapshot(&connection).await.unwrap();
+
+                    if let Some(snap) = project.snapshots.last_mut() {
                         snap.fetch_metadata(&connection).await.unwrap();
                         log::info!("Setting project '{}' offline", project.id);
 
