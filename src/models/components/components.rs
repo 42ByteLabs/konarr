@@ -1,13 +1,13 @@
 //! # Dependency Components Models / Tables
 
 use geekorm::prelude::*;
-use log::{debug, info};
+use log::debug;
 use purl::GenericPurl;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 use super::{ComponentManager, ComponentType, ComponentVersion};
-use crate::{tasks, utils::catalogue::Catalogue};
+use crate::utils::catalogue::Catalogue;
 
 /// Component Model
 #[derive(Table, Debug, Default, Clone, Serialize, Deserialize)]
@@ -54,7 +54,7 @@ impl Component {
         if let Some(namespace) = &self.namespace {
             purl += format!("{}/", namespace).as_str();
         }
-        purl += format!("{}", self.name).as_str();
+        purl += self.name.as_str();
 
         purl
     }
