@@ -7,6 +7,7 @@ use tokio_schedule::Job;
 use geekorm::{Connection, ConnectionManager};
 
 pub mod advisories;
+#[cfg(feature = "tools-grypedb")]
 pub mod advisories_sync;
 pub mod alerts;
 pub mod catalogue;
@@ -15,6 +16,7 @@ pub mod sbom;
 pub mod statistics;
 
 pub use advisories::AdvisoriesTask;
+#[cfg(feature = "tools-grypedb")]
 pub use advisories_sync::AdvisoriesSyncTask;
 pub use alerts::AlertCalculatorTask;
 pub use catalogue::CatalogueTask;
