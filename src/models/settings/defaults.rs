@@ -2,7 +2,7 @@
 use super::{Setting, SettingType};
 
 /// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 38] = [
+pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 39] = [
     // Registration Settings
     (Setting::Registration, SettingType::Toggle, "enabled"),
     // If we are already initialized
@@ -12,6 +12,11 @@ pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 38] = [
         Setting::ServerUrl,
         SettingType::String,
         "http://localhost:8000",
+    ),
+    (
+        Setting::ServerFrontendPath,
+        SettingType::String,
+        "/app/dist",
     ),
     // Session Settings
     (Setting::SessionAdminsExpires, SettingType::String, "1"),
