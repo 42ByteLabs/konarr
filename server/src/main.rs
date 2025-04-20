@@ -4,7 +4,7 @@
 extern crate rocket;
 extern crate geekorm;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use geekorm::{Connection, ConnectionManager};
 use konarr::{
     Config, KonarrError,
@@ -58,8 +58,9 @@ async fn main() -> Result<()> {
     };
 
     // Database Setup
-    let database = database_initialise(&mut config).await?;
-    ServerSettings::load_config(&database.acquire().await, &config).await?;
+    let database = database_initialise(&mut config)
+        .await
+        .context("Failed to initialize database")?;
 
     // Tasks
     let task_config = Arc::new(config.clone());

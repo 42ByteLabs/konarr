@@ -1,5 +1,5 @@
 //! # Server Settings Model
-use geekorm::prelude::*;
+use geekorm::{Connection, prelude::*};
 use keys::SERVER_SETTINGS_DEPRICATED;
 use log::{debug, error, warn};
 use serde::{Deserialize, Serialize};
@@ -81,10 +81,7 @@ pub fn find_statistic(settings: &[ServerSettings], name: Setting) -> u64 {
 
 impl ServerSettings {
     /// Initialize the Server Settings Table
-    pub async fn init<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn init(connection: &Connection<'_>) -> Result<(), crate::KonarrError> {
         for (name, typ, value) in Self::defaults() {
             match ServerSettings::fetch_by_name(connection, name.to_string()).await {
                 Ok(mut setting) => {
@@ -97,9 +94,7 @@ impl ServerSettings {
                 }
                 Err(geekorm::Error::SerdeError(e)) => {
                     error!("Error fetching setting: `{}` ({})", name, e);
-                    return Err(crate::KonarrError::UnknownError(
-                        "Error fetching setting".to_string(),
-                    ));
+                    return Err(crate::KonarrError::GeekOrm(geekorm::Error::SerdeError(e)));
                 }
                 Err(e) => {
                     debug!("Creating setting: `{}` ({})", name, e);
@@ -135,12 +130,9 @@ impl ServerSettings {
     }
 
     /// Fetch all the settings that are not statistics
-    pub async fn fetch_settings<'a, T>(
-        connection: &'a T,
-    ) -> Result<Vec<ServerSettings>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn fetch_settings(
+        connection: &Connection<'_>,
+    ) -> Result<Vec<ServerSettings>, crate::KonarrError> {
         Ok(ServerSettings::query(
             connection,
             ServerSettings::query_select()
@@ -151,14 +143,11 @@ impl ServerSettings {
     }
 
     /// Update Statistic Setting
-    pub async fn update_statistic<'a, T>(
-        connection: &'a T,
+    pub async fn update_statistic(
+        connection: &Connection<'_>,
         name: Setting,
         value: i64,
-    ) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<(), crate::KonarrError> {
         match ServerSettings::fetch_by_name(connection, &name).await {
             Ok(mut setting) => {
                 if value != setting.value.parse().unwrap_or(0) {
@@ -199,24 +188,18 @@ impl ServerSettings {
     }
 
     /// Fetch the Setting by Name
-    pub async fn get<'a, T>(
-        connection: &'a T,
+    pub async fn get(
+        connection: &Connection<'_>,
         name: impl Into<String>,
-    ) -> Result<Self, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<Self, crate::KonarrError> {
         Ok(Self::fetch_by_name(connection, name.into()).await?)
     }
 
     /// Fetch the Setting by Namespace
-    pub async fn get_namespace<'a, T>(
-        connection: &'a T,
+    pub async fn get_namespace(
+        connection: &Connection<'_>,
         name: impl Into<String>,
-    ) -> Result<Vec<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<Vec<Self>, crate::KonarrError> {
         let mut namespace = name.into();
         if !namespace.ends_with('.') {
             namespace.push('.');
@@ -233,10 +216,9 @@ impl ServerSettings {
     }
 
     /// Get all Statistics Settings
-    pub async fn fetch_statistics<'a, T>(connection: &'a T) -> Result<Vec<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn fetch_statistics(
+        connection: &Connection<'_>,
+    ) -> Result<Vec<Self>, crate::KonarrError> {
         Ok(Self::query(
             connection,
             Self::query_select()
@@ -247,27 +229,21 @@ impl ServerSettings {
     }
 
     /// Fetch the Setting by Name as a Boolean
-    pub async fn get_bool<'a, T>(
-        connection: &'a T,
+    pub async fn get_bool(
+        connection: &Connection<'_>,
         name: impl Into<Setting>,
-    ) -> Result<bool, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<bool, crate::KonarrError> {
         Ok(Self::fetch_by_name(connection, name.into())
             .await?
             .boolean())
     }
 
     /// Set and update the Setting
-    pub async fn set_update<'a, T>(
+    pub async fn set_update(
         &mut self,
-        connection: &'a T,
+        connection: &Connection<'_>,
         value: impl Into<String>,
-    ) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<(), crate::KonarrError> {
         self.set(value.into());
         self.update(connection).await?;
         Ok(())
@@ -303,18 +279,12 @@ impl ServerSettings {
     }
 
     /// Check if security features are enabled
-    pub async fn feature_security<'a, T>(connection: &'a T) -> Result<bool, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn feature_security(connection: &Connection<'_>) -> Result<bool, crate::KonarrError> {
         Ok(Self::get_bool(connection, "security").await?)
     }
 
     /// Reset the Setting to the default value
-    pub async fn reset<'a, T>(&mut self, connection: &'a T) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn reset(&mut self, connection: &Connection<'_>) -> Result<(), crate::KonarrError> {
         if let Some(default) = Self::defaults()
             .iter()
             .find(|(name, _, _)| name == &self.name)
