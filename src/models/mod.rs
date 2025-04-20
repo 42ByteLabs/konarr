@@ -58,6 +58,10 @@ pub async fn database_initialise(config: &mut Config) -> Result<ConnectionManage
         log::debug!("Initialised Models :: {}", connection.count());
     }
 
+    // Load the server settings from the config
+    ServerSettings::load_config(&database.acquire().await, config).await?;
+    log::debug!("Loaded Server Settings from Config");
+
     // Update Stats
     StatisticsTask::spawn(&database).await?;
     ProjectsTask::spawn(&database).await?;

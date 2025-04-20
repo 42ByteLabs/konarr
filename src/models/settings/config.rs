@@ -1,7 +1,6 @@
 //! # Server Settings from Config
-use super::SettingType;
 use super::{ServerSettings, keys::Setting};
-use crate::{Config, KonarrError};
+use crate::Config;
 use geekorm::{Connection, prelude::*};
 
 impl ServerSettings {
