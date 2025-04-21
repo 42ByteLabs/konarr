@@ -33,9 +33,16 @@ pub fn routes() -> Vec<rocket::Route> {
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub(crate) struct SnapshotResp {
     id: i32,
+
     created_at: chrono::DateTime<chrono::Utc>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    updated_at: Option<chrono::DateTime<chrono::Utc>>,
+
     dependencies: i32,
+
     security: SecuritySummary,
+
     metadata: HashMap<String, String>,
 }
 
@@ -311,6 +318,7 @@ pub async fn get_snapshots(
         resp.push(SnapshotResp {
             id: snapshot.id.into(),
             created_at: snapshot.created_at,
+            updated_at: snapshot.updated_at,
             dependencies: count,
             security: SecuritySummary::default(),
             metadata,
@@ -336,6 +344,7 @@ impl From<models::Snapshot> for SnapshotResp {
         SnapshotResp {
             id: snapshot.id.into(),
             created_at: snapshot.created_at,
+            updated_at: snapshot.updated_at,
             dependencies: count,
             security: SecuritySummary::default(),
             metadata,

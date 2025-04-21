@@ -31,11 +31,12 @@ impl TaskTrait for SbomTask {
                 snapshot
                     .set_error(&database.acquire().await, err.to_string())
                     .await?;
-            };
-
-            log::debug!("Processing SBOM for Snapshot: {:?}", snapshot);
-            snapshot.state = SnapshotState::Completed;
-            snapshot.update(&database.acquire().await).await?;
+            } else {
+                log::debug!("Processing SBOM for Snapshot: {:?}", snapshot);
+                snapshot.state = SnapshotState::Completed;
+                snapshot.updated_at = Some(chrono::Utc::now());
+                snapshot.update(&database.acquire().await).await?;
+            }
         }
 
         Ok(())
