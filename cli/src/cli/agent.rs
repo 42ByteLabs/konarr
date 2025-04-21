@@ -7,6 +7,7 @@ use konarr::{
         snapshot::KonarrSnapshot,
     },
     tools::ToolConfig,
+    utils::containers::filter::filter_container,
 };
 use log::{debug, info, warn};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
@@ -251,6 +252,12 @@ async fn run_docker(
         } else {
             return Err(KonarrError::UnknownError("Container Name".to_string()));
         };
+
+        // Remove buildx containers
+        if filter_container(&name) {
+            info!("Skipping container: {}", name);
+            continue;
+        }
 
         info!("Container: {:?}", name);
 
