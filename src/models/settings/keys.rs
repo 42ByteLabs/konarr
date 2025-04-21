@@ -13,6 +13,9 @@ pub enum Setting {
     Registration,
 
     // Server Settings
+    /// Data Directory (e.g. /var/lib/konarr)
+    #[geekorm(key = "server.data")]
+    ServerData,
     /// Server URL (e.g. http://localhost:9000)
     #[geekorm(key = "server.url")]
     ServerUrl,

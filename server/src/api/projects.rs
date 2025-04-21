@@ -130,7 +130,6 @@ pub(crate) async fn get_projects(
     };
 
     log::debug!("Database - Get Projects :: {}", connection.count());
-    konarr::tasks::StatisticsTask::spawn(&state.database).await?;
 
     Ok(Json(ApiResponse::new(
         projects.into_iter().map(|p| p.into()).collect(),
@@ -151,7 +150,9 @@ pub async fn create_project(
     let mut project: models::Projects = project_req.into_inner().into();
     project.fetch_or_create(&connection).await?;
 
-    // konarr::tasks::StatisticsTask::spawn(&state.database).await?;
+    konarr::tasks::StatisticsTask::spawn(&state.database).await?;
+    konarr::tasks::ProjectsTask::spawn(&state.database).await?;
+
     Ok(Json(project.into()))
 }
 
@@ -209,8 +210,6 @@ pub async fn patch_project(
 
     project.update(&connection).await?;
 
-    // konarr::tasks::StatisticsTask::spawn(&state.database).await?;
-
     Ok(Json(project.into()))
 }
 
@@ -251,6 +250,8 @@ pub async fn delete_project(
     project.archive(&connection).await?;
 
     konarr::tasks::StatisticsTask::spawn(&state.database).await?;
+    konarr::tasks::ProjectsTask::spawn(&state.database).await?;
+    konarr::tasks::AlertCalculatorTask::spawn(&state.database).await?;
 
     Ok(Json(project.into()))
 }

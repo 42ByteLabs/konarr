@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use geekorm::{ConnectionManager, GeekConnector};
 
 use crate::KonarrError;
-use crate::models::{ProjectType, Projects, Snapshot, SnapshotMetadataKey};
+use crate::models::{Projects, Snapshot, SnapshotMetadataKey};
 
 use super::TaskTrait;
 
@@ -17,19 +17,10 @@ impl TaskTrait for ProjectsTask {
         let connection = database.acquire().await;
         log::info!("Task - Running Projects");
 
-        let mut projects = Projects::all(&connection).await?;
+        let mut projects = Projects::fetch_servers(&connection).await?;
 
         for project in projects.iter_mut() {
-            project.fetch_latest_snapshot(&connection).await?;
-
-            match project.project_type {
-                ProjectType::Group | ProjectType::Server | ProjectType::Cluster => {
-                    project.fetch_children(&connection).await?;
-
-                    update_grouped_projects(&connection, project).await?;
-                }
-                _ => {}
-            }
+            update_grouped_projects(&connection, project).await?;
         }
 
         log::debug!(

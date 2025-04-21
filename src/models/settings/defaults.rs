@@ -2,7 +2,7 @@
 use super::{Setting, SettingType};
 
 /// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 39] = [
+pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 40] = [
     // Registration Settings
     (Setting::Registration, SettingType::Toggle, "enabled"),
     // If we are already initialized
@@ -18,6 +18,7 @@ pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 39] = [
         SettingType::String,
         "/app/dist",
     ),
+    (Setting::ServerData, SettingType::String, "/var/lib/konarr"),
     // Session Settings
     (Setting::SessionAdminsExpires, SettingType::String, "1"),
     (Setting::SessionUsersExpires, SettingType::String, "24"),
