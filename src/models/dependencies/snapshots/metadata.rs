@@ -180,11 +180,17 @@ pub enum SnapshotMetadataKey {
     OsVersion,
     #[geekorm(key = "os.arch")]
     OsArch,
-    #[geekorm(key = "os.kernel")]
-    OsKernel,
     /// Only for ARM
     #[geekorm(key = "os.variant")]
     OsVariant,
+    #[geekorm(key = "os.kernel")]
+    OsKernel,
+    /// OS Distro (Linux only)
+    #[geekorm(key = "os.distro")]
+    OsDistro,
+    /// OS Distro Version (Linux only)
+    #[geekorm(key = "os.distro.version")]
+    OsDistroVersion,
 
     // OS Container Engine
     #[geekorm(key = "container.engine")]
@@ -208,6 +214,9 @@ pub enum SnapshotMetadataKey {
     /// Created date of the container image
     #[geekorm(key = "container.image.created")]
     ContainerImageCreated,
+    /// Container Image History
+    #[geekorm(key = "container.image.history")]
+    ContainerImageHistory,
     /// Container Description provided by the user
     #[geekorm(key = "container.description")]
     ContainerDescription,
