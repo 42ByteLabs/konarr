@@ -1,2 +1,2 @@
-/// # Containers module
+//! # Containers module
 pub mod filter;
