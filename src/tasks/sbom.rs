@@ -9,6 +9,7 @@ use super::TaskTrait;
 /// SbomTask is for processing Snapshot SBOMs and creating Dependency Trees
 #[derive(Default)]
 pub struct SbomTask {
+    state: SnapshotState,
     id: Option<i32>,
 }
 
@@ -19,7 +20,7 @@ impl TaskTrait for SbomTask {
             log::info!("Processing Snapshot ID: {}", id);
             Snapshot::fetch_by_id(&database.acquire().await, id).await?
         } else {
-            Snapshot::fetch_by_state(&database.acquire().await, SnapshotState::Created).await?
+            Snapshot::fetch_by_state(&database.acquire().await, &self.state).await?
         };
 
         log::debug!("Processing {} Snapshots", snapshots.len());
@@ -58,6 +59,17 @@ impl TaskTrait for SbomTask {
 impl SbomTask {
     /// Create a new SbomTask for a specific snapshot
     pub fn sbom(id: i32) -> Self {
-        Self { id: Some(id) }
+        Self {
+            id: Some(id),
+            ..Default::default()
+        }
+    }
+
+    /// Scan the failed snapshots
+    pub fn failed() -> Self {
+        Self {
+            state: SnapshotState::Failed,
+            ..Default::default()
+        }
     }
 }
