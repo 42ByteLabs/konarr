@@ -36,6 +36,15 @@ impl KonarrProject {
         let version = data.info.clone().unwrap_or_default().version()?;
 
         if let Some(snap) = &self.snapshot {
+            // Force a re-scan flag
+            if let Some(data) = snap.metadata.get("rescan") {
+                if data == "true" {
+                    info!("Force rescan flag is set, creating new snapshot");
+                    self.create_snapshot(client).await?;
+                    return Ok(self.snapshot.clone().unwrap());
+                }
+            }
+
             // If the tool+version has changes (updated) we need to create a new snapshot
             if let Some(data_tool) = &data.tool {
                 log::debug!("Local tool version: {}", data_tool);
