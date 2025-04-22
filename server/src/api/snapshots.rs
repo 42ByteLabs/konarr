@@ -182,7 +182,9 @@ pub(crate) async fn upload_bom(
         .add_bom(&state.connection().await, data.to_vec())
         .await?;
 
-    SbomTask::spawn(&state.database.clone()).await?;
+    SbomTask::sbom(snapshot.id.into())
+        .spawn_task(&state.database)
+        .await?;
 
     Ok(Json(snapshot.into()))
 }
