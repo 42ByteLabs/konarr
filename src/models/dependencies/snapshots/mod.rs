@@ -9,7 +9,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     KonarrError,
-    bom::{BillOfMaterials, BomParser, Parsers},
+    bom::{
+        BillOfMaterials, BillOfMaterialsBuilder, BomParser, Parsers,
+        cyclonedx::spec_v1_6::Bom as CycloneDx,
+    },
     models::{
         Alerts, Dependencies, ProjectSnapshots, Projects, ServerSettings, Setting,
         security::SecuritySeverity,
@@ -76,6 +79,20 @@ impl Snapshot {
                 .build()?,
         )
         .await?)
+    }
+
+    /// Count snapshots dependencies
+    pub async fn count_dependencies(
+        &self,
+        connection: &Connection<'_>,
+    ) -> Result<usize, crate::KonarrError> {
+        Ok(Dependencies::row_count(
+            connection,
+            Dependencies::query_count()
+                .where_eq("snapshot_id", self.id)
+                .build()?,
+        )
+        .await? as usize)
     }
 
     /// Fetch Project for the Snapshot
@@ -264,13 +281,35 @@ impl Snapshot {
             let data_path = ServerSettings::fetch_by_name(connection, Setting::ServerData).await?;
             let sbom_path = PathBuf::from(data_path.value.clone()).join("sboms");
 
+            // We might have the dependency data in the database but no SBOM
+            let deps_count = self.count_dependencies(connection).await?;
+            if deps_count != 0 {
+                log::debug!("Found {} dependencies", deps_count);
+                let page = Page::from((0, deps_count as u32));
+                self.components = self.fetch_dependencies(connection, &page).await?;
+            }
+
             let bom_file_path = if let Some(path) = self.find_metadata("bom.path") {
                 path.clone()
+            } else if !self.components.is_empty() {
+                log::debug!("SBOM metadata not found, but components found");
+                log::info!(
+                    "Building SBOM from components: {} - {}",
+                    self.id,
+                    self.components.len()
+                );
+                // Build a new SBOM from the components
+                let mut bom = CycloneDx::new();
+                bom.add_project(&self.fetch_project(connection).await?)?;
+                bom.add_dependencies(&self.components)?;
+
+                self.rescan(connection).await?;
+
+                return bom.output();
             } else {
                 // If not found, we don't know how to get the SBOM
                 log::error!("SBOM file path not found in metadata");
-                self.set_metadata(connection, "rescan", "true").await?;
-
+                self.rescan(connection).await?;
                 self.set_error(connection, "Unable to find SBOM file".to_string())
                     .await?;
                 return Err(KonarrError::SBOMNotFound(
@@ -280,21 +319,38 @@ impl Snapshot {
 
             let bom_path = sbom_path.join(bom_file_path.as_string());
 
-            if !bom_path.exists() {
+            let sbom_data = if bom_path.exists() {
+                log::debug!("SBOM file found: {}", bom_path.display());
+                // Read the SBOM from disk
+                tokio::fs::read(&bom_path).await?
+            } else if !self.components.is_empty() {
+                log::debug!("SBOM file not found, but components found");
+                log::debug!("Building SBOM from components");
+                // Build a new SBOM from the components
+                let mut bom = CycloneDx::new();
+                bom.add_project(&self.fetch_project(connection).await?)?;
+                bom.add_dependencies(&self.components)?;
+                self.rescan(connection).await?;
+
+                return bom.output();
+            } else {
                 log::error!("SBOM file not found: {}", bom_path.display());
 
-                self.set_metadata(connection, "rescan", "true").await?;
+                self.rescan(connection).await?;
                 self.set_error(connection, "Unable to find SBOM file".to_string())
                     .await?;
                 return Err(KonarrError::SBOMNotFound(bom_path.display().to_string()));
-            }
+            };
 
-            let sbom_data = tokio::fs::read(&bom_path).await?;
             self.add_bom(connection, sbom_data.clone()).await?;
 
             log::debug!("Deleting old SBOM file and metadata");
+
             bom_file_path.delete(connection).await?;
-            std::fs::remove_file(bom_path)?;
+            if bom_path.exists() {
+                log::debug!("Deleting SBOM file: {}", bom_path.display());
+                std::fs::remove_file(bom_path)?;
+            }
 
             Ok(sbom_data)
         }
@@ -306,7 +362,22 @@ impl Snapshot {
         connection: &Connection<'_>,
     ) -> Result<BillOfMaterials, crate::KonarrError> {
         let sbom = self.sbom(connection).await?;
-        Parsers::parse(&sbom)
+        match Parsers::parse(&sbom) {
+            Ok(bom) => {
+                log::debug!("Parsed SBOM: {:?}", bom);
+                Ok(bom)
+            }
+            Err(err) => {
+                log::error!("Failed to parse SBOM");
+                self.rescan(connection).await?;
+                self.set_error(connection, "Failed to parse SBOM".to_string())
+                    .await?;
+                Err(KonarrError::ParseSBOM(format!(
+                    "Failed to parse SBOM: {}",
+                    err
+                )))
+            }
+        }
     }
 
     /// Set the state of the Snapshot and add an error message
@@ -331,6 +402,13 @@ impl Snapshot {
         self.error = None;
         self.updated_at = Some(Utc::now());
         self.update(connection).await?;
+        Ok(())
+    }
+
+    /// Rescan the Project
+    pub async fn rescan(&mut self, connection: &Connection<'_>) -> Result<(), crate::KonarrError> {
+        self.set_metadata(connection, SnapshotMetadataKey::Rescan, "true")
+            .await?;
         Ok(())
     }
 

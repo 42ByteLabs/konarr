@@ -441,6 +441,14 @@ impl Projects {
         connection: &Connection<'_>,
     ) -> Result<(), crate::KonarrError> {
         if let Some(snap) = self.snapshots.last_mut() {
+            // Check if the snapshot has a sbom
+            if snap.get_bom(connection).await.is_err() {
+                log::warn!("No SBOM found for Snapshot: {:?}", snap.id);
+                snap.rescan(connection).await?;
+                return Ok(());
+            }
+
+            // Re-open all the alerts for the snapshot
             for alert in snap.alerts.iter_mut() {
                 if alert.state != SecurityState::Vulnerable {
                     alert.state = SecurityState::Vulnerable;
