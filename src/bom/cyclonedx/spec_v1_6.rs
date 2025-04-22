@@ -4,7 +4,7 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 
 use crate::bom::{
-    BillOfMaterials, BomParser,
+    BillOfMaterials, BillOfMaterialsBuilder, BomParser,
     sbom::{BomComponent, BomComponentType, BomTool, BomType, BomVulnerability, Container},
 };
 
@@ -141,6 +141,63 @@ impl From<Bom> for BillOfMaterials {
     }
 }
 
+impl BillOfMaterialsBuilder for Bom {
+    fn new() -> Self {
+        Self {
+            schema: Some("https://cyclonedx.org/schema/bom-1.6.json".to_string()),
+            bom_format: Some("CycloneDX".to_string()),
+            spec_version: "1.6".to_string(),
+            metadata: None,
+            components: Some(vec![]),
+            vulnerabilities: None,
+        }
+    }
+
+    fn add_project(&mut self, project: &crate::models::Projects) -> Result<(), crate::KonarrError> {
+        if let Some(metadata) = self.metadata.as_mut() {
+            metadata.timestamp = Some(project.created_at);
+            metadata.component = Some(Component {
+                name: Some(project.name.clone()),
+                ..Default::default()
+            });
+        } else {
+            self.metadata = Some(Metadata {
+                timestamp: Some(chrono::Utc::now()),
+                component: Some(Component {
+                    name: Some(project.name.clone()),
+                    ..Default::default()
+                }),
+                tools: None,
+            });
+        }
+
+        Ok(())
+    }
+
+    fn add_component(
+        &mut self,
+        component: &crate::models::Component,
+        version: &crate::models::ComponentVersion,
+    ) -> Result<(), crate::KonarrError> {
+        if let Some(components) = self.components.as_mut() {
+            let comp = Component {
+                comp_type: Some(component.component_type.to_string()),
+                name: Some(component.name.clone()),
+                version: Some(version.version.clone()),
+                purl: Some(component.purl()),
+                ..Default::default()
+            };
+            components.push(comp);
+        }
+
+        Ok(())
+    }
+
+    fn output(&self) -> Result<Vec<u8>, crate::KonarrError> {
+        Ok(serde_json::to_vec(&self)?)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct Metadata {
     pub(crate) timestamp: Option<chrono::DateTime<chrono::Utc>>,
@@ -156,7 +213,7 @@ pub(crate) struct Tools {
     pub(crate) services: Option<Vec<ToolService>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub(crate) struct Component {
     /// TODO: This can only be a set of known values
     #[serde(rename = "type")]
