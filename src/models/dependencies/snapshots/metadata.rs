@@ -173,6 +173,10 @@ impl SnapshotMetadata {
 #[derive(Data, Debug, Default, Clone, Hash, Eq, PartialEq)]
 #[allow(missing_docs)]
 pub enum SnapshotMetadataKey {
+    /// Rescan Project
+    #[geekorm(key = "rescan")]
+    Rescan,
+
     // Operating System Info (Host or Container)
     #[geekorm(key = "os")]
     Os,

@@ -1,6 +1,6 @@
 //! # Snapshot Model
 
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
 use chrono::{DateTime, Utc};
 use geekorm::{Connection, prelude::*};
@@ -11,8 +11,8 @@ use crate::{
     KonarrError,
     bom::{BillOfMaterials, BomParser, Parsers},
     models::{
-        Alerts, Dependencies, ProjectSnapshots, Projects, ServerSettings,
-        security::{SecuritySeverity, SecurityState},
+        Alerts, Dependencies, ProjectSnapshots, Projects, ServerSettings, Setting,
+        security::SecuritySeverity,
     },
 };
 
@@ -40,6 +40,7 @@ pub struct Snapshot {
 
     /// Last Updated / Checked for Changes
     #[serde(default)]
+    #[geekorm(update = "Some(Utc::now())")]
     pub updated_at: Option<DateTime<Utc>>,
 
     /// SBOM (Bill of Materials) as Binary Data
@@ -244,7 +245,7 @@ impl Snapshot {
         Ok(())
     }
 
-    /// Gets the SBOM from the database (v0.5+) or disk (v0.4)
+    /// Gets the SBOM from the database (v0.5+) or disk (v0.3 -> v0.4)
     ///
     /// If the SBOM is not found in the database, it will try to read it from disk.
     /// If the SBOM is found on disk, it will be added to the database.
@@ -259,19 +260,41 @@ impl Snapshot {
         } else {
             // v0.4 only stores the SBOM on disk
             log::debug!("SBOM not found in database, trying to read from disk");
-            let bom_path = if let Some(path) = self.find_metadata("bom.path") {
-                path.as_string()
+
+            let data_path = ServerSettings::fetch_by_name(connection, Setting::ServerData).await?;
+            let sbom_path = PathBuf::from(data_path.value.clone()).join("sboms");
+
+            let bom_file_path = if let Some(path) = self.find_metadata("bom.path") {
+                path.clone()
             } else {
-                // TODO: What if the path already exists?
-                let bpath = format!("{}.json", uuid::Uuid::new_v4());
-                self.set_metadata(connection, "bom.path", &bpath).await?;
-                bpath
+                // If not found, we don't know how to get the SBOM
+                log::error!("SBOM file path not found in metadata");
+                self.set_metadata(connection, "rescan", "true").await?;
+
+                self.set_error(connection, "Unable to find SBOM file".to_string())
+                    .await?;
+                return Err(KonarrError::SBOMNotFound(
+                    "Unable to find SBOM file".to_string(),
+                ));
             };
 
-            let sbom_data = tokio::fs::read(bom_path).await?;
+            let bom_path = sbom_path.join(bom_file_path.as_string());
+
+            if !bom_path.exists() {
+                log::error!("SBOM file not found: {}", bom_path.display());
+
+                self.set_metadata(connection, "rescan", "true").await?;
+                self.set_error(connection, "Unable to find SBOM file".to_string())
+                    .await?;
+                return Err(KonarrError::SBOMNotFound(bom_path.display().to_string()));
+            }
+
+            let sbom_data = tokio::fs::read(&bom_path).await?;
             self.add_bom(connection, sbom_data.clone()).await?;
 
-            // TODO: Cleanup the old SBOM file?
+            log::debug!("Deleting old SBOM file and metadata");
+            bom_file_path.delete(connection).await?;
+            std::fs::remove_file(bom_path)?;
 
             Ok(sbom_data)
         }
@@ -286,21 +309,6 @@ impl Snapshot {
         Parsers::parse(&sbom)
     }
 
-    /// Get the SBOM path from the database
-    pub async fn sbom_path(
-        &mut self,
-        connection: &Connection<'_>,
-    ) -> Result<String, crate::KonarrError> {
-        if let Some(path) = self.find_metadata("bom.path") {
-            Ok(path.as_string())
-        } else {
-            // Create a new path
-            let bpath = format!("{}.json", uuid::Uuid::new_v4());
-            self.set_metadata(connection, "bom.path", &bpath).await?;
-            Ok(bpath)
-        }
-    }
-
     /// Set the state of the Snapshot and add an error message
     pub async fn set_error(
         &mut self,
@@ -309,6 +317,19 @@ impl Snapshot {
     ) -> Result<(), crate::KonarrError> {
         self.state = SnapshotState::Failed;
         self.error = Some(error);
+        self.updated_at = Some(Utc::now());
+        self.update(connection).await?;
+        Ok(())
+    }
+
+    /// Reset error and state of the Snapshot
+    pub async fn reset_error(
+        &mut self,
+        connection: &Connection<'_>,
+    ) -> Result<(), crate::KonarrError> {
+        self.state = SnapshotState::Created;
+        self.error = None;
+        self.updated_at = Some(Utc::now());
         self.update(connection).await?;
         Ok(())
     }
@@ -380,6 +401,7 @@ impl Snapshot {
             alert.fetch_advisory_id(connection).await?;
         }
 
+        log::debug!("Found {} Alerts for Snapshot({})", alerts.len(), self.id);
         self.alerts = alerts;
 
         Ok(&self.alerts)
@@ -431,9 +453,6 @@ impl Snapshot {
         log::debug!("Calculating Alert Summary for {} Alerts", alerts.len());
 
         for alert in alerts.iter_mut() {
-            if alert.state != SecurityState::Vulnerable {
-                continue;
-            }
             let advisory = alert.fetch_advisory_id(connection).await?;
             let severity = advisory.severity.clone();
 
@@ -462,16 +481,21 @@ impl Snapshot {
             .await?;
             total += count;
         }
-        debug!("Alert Summary for Snapshot({}): {:?}", self.id, total);
-        self.set_metadata(connection, "security.alerts.total", &total.to_string())
-            .await?;
+
+        self.set_metadata(
+            connection,
+            SnapshotMetadataKey::SecurityAlertTotal,
+            total.to_string().as_str(),
+        )
+        .await?;
+        log::debug!("Alert Summary for Snapshot({}): {:?}", self.id, total);
 
         Ok(())
     }
 }
 
 /// Snapshot State
-#[derive(Data, Debug, Clone, Default)]
+#[derive(Data, Debug, Clone, Default, PartialEq, Eq)]
 pub enum SnapshotState {
     /// Snapshot Created (but not processed)
     #[default]

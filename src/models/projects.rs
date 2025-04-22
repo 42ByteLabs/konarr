@@ -5,6 +5,9 @@ use geekorm::{Connection, prelude::*};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 
+use crate::models::dependencies::snapshots::SnapshotState;
+
+use super::security::SecurityState;
 use super::{Dependencies, Snapshot};
 
 /// Status of the Project
@@ -220,6 +223,72 @@ impl Projects {
         Ok(projects)
     }
 
+    /// Fetch servers, clusters, and groups
+    ///
+    /// Get the children and metdata for the servers
+    pub async fn fetch_servers(
+        connection: &Connection<'_>,
+    ) -> Result<Vec<Self>, crate::KonarrError> {
+        log::debug!("Fetching Projects by Type: {:?}", ProjectType::Server);
+
+        let mut projects = Projects::query(
+            connection,
+            Projects::query_select()
+                .where_eq("status", ProjectStatus::Active)
+                .and()
+                .where_eq("project_type", ProjectType::Server)
+                .or()
+                .where_eq("project_type", ProjectType::Cluster)
+                .or()
+                .where_eq("project_type", ProjectType::Group)
+                .order_by("created_at", QueryOrder::Desc)
+                .build()?,
+        )
+        .await?;
+        for proj in projects.iter_mut() {
+            proj.fetch_children(connection).await?;
+            proj.fetch_latest_snapshot(connection).await?;
+
+            // Servers have a snapshot created by default
+            if proj.snapshots.is_empty() {
+                log::info!("Creating Snapshot for Project '{}'", proj.name);
+                let mut snapshot = Snapshot::new();
+                // TODO: Is this the correct way to set the state?
+                snapshot.state = SnapshotState::Completed;
+                snapshot.save(connection).await?;
+
+                proj.add_snapshot(connection, snapshot).await?;
+            }
+        }
+
+        Ok(projects)
+    }
+
+    /// Fetch containers
+    pub async fn fetch_containers(
+        connection: &Connection<'_>,
+    ) -> Result<Vec<Self>, crate::KonarrError> {
+        log::debug!("Fetching Projects by Type: {:?}", ProjectType::Container);
+
+        let mut projects = Projects::query(
+            connection,
+            Projects::query_select()
+                .where_eq("status", ProjectStatus::Active)
+                .and()
+                .where_eq("project_type", ProjectType::Container)
+                .or()
+                .where_eq("project_type", ProjectType::Application)
+                .order_by("created_at", QueryOrder::Desc)
+                .build()?,
+        )
+        .await?;
+        for proj in projects.iter_mut() {
+            proj.fetch_latest_snapshot(connection).await?;
+        }
+
+        Ok(projects)
+    }
+
     /// Find a list of projects by component in latest snapshot
     pub async fn find_project_by_component(
         connection: &Connection<'_>,
@@ -303,6 +372,10 @@ impl Projects {
         connection: &Connection<'_>,
     ) -> Result<Option<&mut Snapshot>, crate::KonarrError> {
         log::debug!("Fetching Latest Snapshot for Project: {:?}", self.id);
+
+        // This asset makes sure that we halt if a snapshot is already present
+        assert_eq!(self.snapshots.len(), 0);
+
         match ProjectSnapshots::query_first(
             connection,
             ProjectSnapshots::query_select()
@@ -341,6 +414,43 @@ impl Projects {
                 Ok(None)
             }
         }
+    }
+
+    /// Fetch latest snapshot alerts
+    pub async fn fetch_latest_snapshot_alerts(
+        &mut self,
+        connection: &Connection<'_>,
+    ) -> Result<(), crate::KonarrError> {
+        if let Some(snapshot) = self.snapshots.last_mut() {
+            snapshot.fetch_alerts(connection).await?;
+        } else if let Some(_) = self.fetch_latest_snapshot(connection).await? {
+            let mut snap = self.snapshots.last_mut().unwrap();
+            snap.fetch_alerts(connection).await?;
+        } else {
+            log::warn!("No Snapshots found for Project: {:?}", self.id);
+        }
+        Ok(())
+    }
+
+    /// Checks the latest snapshot
+    ///
+    /// This includes:
+    /// - Re-opening all the alerts for the snapshot if they are closed
+    pub async fn check_latest_snapshot(
+        &mut self,
+        connection: &Connection<'_>,
+    ) -> Result<(), crate::KonarrError> {
+        if let Some(snap) = self.snapshots.last_mut() {
+            for alert in snap.alerts.iter_mut() {
+                if alert.state != SecurityState::Vulnerable {
+                    alert.state = SecurityState::Vulnerable;
+                    alert.updated_at = Utc::now();
+                    alert.update(connection).await?;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Add snapshot to project
