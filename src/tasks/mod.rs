@@ -74,6 +74,10 @@ pub async fn init(
                     } else {
                         log::error!("Error creating advisories task");
                     }
+
+                    if let Err(e) = AlertCalculatorTask::task(&database).await {
+                        log::error!("Error running alert calculator: {}", e);
+                    }
                 }
             }
         }
@@ -121,7 +125,7 @@ pub async fn init(
 #[async_trait::async_trait]
 pub trait TaskTrait
 where
-    Self: Sized + Default + Send + Sync,
+    Self: Sized + Default + Send + Sync + 'static,
 {
     /// Initialize the Task
     #[allow(unused_variables)]
@@ -155,6 +159,24 @@ where
             log::info!("Spawned Task :: {}", name);
 
             Self::task(&database)
+                .await
+                .map_err(|e| {
+                    log::error!("Failed to run alert calculator: {:?}", e);
+                })
+                .ok();
+            log::info!("Spawned Task Completed :: {}", name);
+        });
+        Ok(())
+    }
+
+    /// Spawn and run the task as a background task
+    async fn spawn_task(self, database: &ConnectionManager) -> Result<(), crate::KonarrError> {
+        let database = database.clone();
+        tokio::spawn(async move {
+            let name = std::any::type_name::<Self>();
+            log::info!("Spawned Task :: {}", name);
+
+            self.run(&database)
                 .await
                 .map_err(|e| {
                     log::error!("Failed to run alert calculator: {:?}", e);
