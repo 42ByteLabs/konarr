@@ -129,7 +129,7 @@ pub(crate) async fn get_projects(
         models::Projects::page(&connection, &page).await?
     };
 
-    log::debug!("Database - Get Projects :: {}", connection.count());
+    log::info!("Database - Get Projects :: {}", connection.count());
 
     Ok(Json(ApiResponse::new(
         projects.into_iter().map(|p| p.into()).collect(),

@@ -15,7 +15,7 @@ authors.workspace = true
 build = "build.rs"
 
 [dependencies]
-konarr = { path = "../", version = "0.4.3", features = ["models", "tasks", "tools-grypedb"] }
+konarr = { path = "../", version = "0.5.0", features = ["models", "tasks", "tools-grypedb"] }
 
 # Rocket web framework
 rocket = { version = "^0.5", features = ["serde_json", "json", "secrets"] }

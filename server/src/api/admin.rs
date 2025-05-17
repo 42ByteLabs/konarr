@@ -1,7 +1,10 @@
 use geekorm::prelude::*;
-use konarr::models::{
-    auth::users::UserState,
-    settings::{ServerSettings, SettingType, keys::Setting},
+use konarr::{
+    models::{
+        auth::users::UserState,
+        settings::{ServerSettings, SettingType, keys::Setting},
+    },
+    tasks::{AdvisoriesSyncTask, AdvisoriesTask, TaskTrait},
 };
 use log::{info, warn};
 use rocket::{State, serde::json::Json};
@@ -116,6 +119,16 @@ pub async fn update_settings(
                 warn!("Read-only Server Setting is being updated: {}", name);
                 return Err(KonarrServerError::UnauthorizedReadonly(name.to_string()));
             }
+        }
+
+        match setting.name {
+            Setting::SecurityRescan => {
+                AdvisoriesTask::spawn(&state.database).await?;
+            }
+            Setting::SecurityAdvisoriesPull => {
+                AdvisoriesSyncTask::spawn(&state.database).await?;
+            }
+            _ => {}
         }
     }
 

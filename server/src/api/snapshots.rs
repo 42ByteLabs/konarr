@@ -339,6 +339,8 @@ impl From<models::Snapshot> for SnapshotResp {
             if *name == SnapshotMetadataKey::DependenciesTotal {
                 count = meta.as_string().parse().unwrap_or(0);
                 continue;
+            } else if name.to_string().starts_with("security.") {
+                continue;
             }
             metadata.insert(name.to_string(), meta.as_string());
         }
