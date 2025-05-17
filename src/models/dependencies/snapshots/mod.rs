@@ -58,6 +58,11 @@ pub struct Snapshot {
     #[serde(skip)]
     pub components: Vec<Dependencies>,
 
+    /// Count of the Components
+    #[geekorm(skip)]
+    #[serde(skip)]
+    pub components_count: usize,
+
     /// Snapshot Metadata
     #[geekorm(skip)]
     #[serde(skip)]

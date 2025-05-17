@@ -70,7 +70,7 @@ pub async fn database_initialise(config: &mut Config) -> Result<ConnectionManage
     CatalogueTask::spawn(&database).await?;
 
     // TODO: remove this in the future
-    SbomTask::failed().spawn_task(&database).await?;
+    // SbomTask::failed().spawn_task(&database).await?;
 
     log::info!("Database Initialised!");
     Ok(database)

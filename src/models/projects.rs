@@ -432,6 +432,23 @@ impl Projects {
         Ok(())
     }
 
+    /// Fetch the latest snapshot dependencies
+    pub async fn fetch_latest_snapshot_dependencies(
+        &mut self,
+        connection: &Connection<'_>,
+        page: &Page,
+    ) -> Result<(), crate::KonarrError> {
+        if let Some(snapshot) = self.snapshots.last_mut() {
+            snapshot.fetch_dependencies(connection, page).await?;
+        } else if let Some(_) = self.fetch_latest_snapshot(connection).await? {
+            let mut snap = self.snapshots.last_mut().unwrap();
+            snap.fetch_dependencies(connection, page).await?;
+        } else {
+            log::warn!("No Snapshots found for Project: {:?}", self.id);
+        }
+        Ok(())
+    }
+
     /// Checks the latest snapshot
     ///
     /// This includes:
