@@ -154,6 +154,7 @@ impl AdvisoriesTask {
                 data
             } else {
                 warn!("No SBOM data for project: {}", project.name);
+                snapshot.rescan(&database.acquire().await).await?;
                 return Ok(());
             };
 
@@ -194,6 +195,11 @@ impl AdvisoriesTask {
                     alert.update(&database.acquire().await).await?;
                 }
             }
+
+            // Remove re-scan alerts metadata
+            snapshot
+                .set_metadata(&database.acquire().await, "rescan", "false")
+                .await?;
 
             snapshot.updated_at = Some(chrono::Utc::now());
             snapshot.state = SnapshotState::Completed;
