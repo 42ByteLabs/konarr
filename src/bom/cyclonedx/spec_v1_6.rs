@@ -228,6 +228,15 @@ impl BillOfMaterialsBuilder for Bom {
         component: &crate::models::Component,
         version: &crate::models::ComponentVersion,
     ) -> Result<(), crate::KonarrError> {
+        if let Some(comps) = self.components.as_mut() {
+            comps.push(Component {
+                comp_type: Some(comptype_to_string(&component.component_type)),
+                name: Some(component.name.to_string()),
+                version: Some(version.version()?.to_string()),
+                purl: Some(component.purl()),
+                ..Default::default()
+            });
+        }
         Ok(())
     }
 

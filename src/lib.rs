@@ -4,7 +4,7 @@
 //!
 //! Secure your Homelabs and Production environments with Konarr.
 //!
-#![deny(missing_docs)]
+#![deny(missing_docs, unused_imports)]
 #![deny(unsafe_code)]
 #![doc = include_str!("../README.md")]
 

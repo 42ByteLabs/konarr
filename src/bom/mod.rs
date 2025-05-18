@@ -47,6 +47,7 @@ pub trait BillOfMaterialsBuilder {
     }
 
     /// Add a component to the BillOfMaterials
+    #[allow(unused_variables)]
     fn add_component(
         &mut self,
         component: &Component,
