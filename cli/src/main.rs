@@ -1,4 +1,4 @@
-#![deny(unsafe_code)]
+#![deny(unsafe_code, unused_imports)]
 
 use anyhow::{Result, anyhow};
 use log::{debug, error, info, warn};

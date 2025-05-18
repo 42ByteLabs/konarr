@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use anyhow::Result;
 use konarr::Config;
 use log::{debug, info};

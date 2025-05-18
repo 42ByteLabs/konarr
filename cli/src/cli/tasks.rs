@@ -1,13 +1,10 @@
 use clap::Subcommand;
 use konarr::{
     Config,
-    models::{Projects, dependencies::snapshots::SnapshotState},
     tasks::{
         AdvisoriesSyncTask, AdvisoriesTask, AlertCalculatorTask, CatalogueTask, TaskTrait,
         sbom::SbomTask,
     },
-    tools::Tool,
-    utils::grypedb::GrypeDatabase,
 };
 use log::info;
 
@@ -27,7 +24,7 @@ pub enum TaskCommands {
     },
     /// Run the Grype Sync Task
     Grype {
-        /// Run the Grype Alerts Tas
+        /// Run the Grype Alerts Task
         #[clap(short, long, default_value = "false")]
         alerts: bool,
     },
@@ -44,7 +41,12 @@ pub async fn run(
             AlertCalculatorTask::spawn(&database).await?;
         }
         Some(TaskCommands::Catalogue { force }) => {
-            CatalogueTask::spawn(&database).await?;
+            let task = if force {
+                CatalogueTask::force()
+            } else {
+                CatalogueTask::default()
+            };
+            task.run(&database).await?;
         }
         Some(TaskCommands::Sbom { state }) => {
             let task = SbomTask::sbom_by_state(&state);
@@ -57,11 +59,13 @@ pub async fn run(
 
             AdvisoriesSyncTask::spawn(&database).await?;
 
-            AdvisoriesTask::spawn(&database).await?;
-            // scan_projects(&config, &connection).await?;
-            info!("Grype Alerts Task Complete");
+            if alerts {
+                info!("Running Grype Alerts Task");
+                AdvisoriesTask::spawn(&database).await?;
+            }
 
             AlertCalculatorTask::spawn(&database).await?;
+            info!("Grype Alerts Task Complete");
         }
         None => {
             info!("No subcommand provided, running interactive mode");

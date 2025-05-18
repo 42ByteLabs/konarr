@@ -1,6 +1,8 @@
 use anyhow::Result;
 use clap::Subcommand;
 use geekorm::prelude::*;
+use konarr::tasks::TaskTrait;
+use konarr::tasks::cleanup::CleanupTask;
 use log::{debug, info};
 
 use konarr::{Config, models::UserRole};
@@ -11,6 +13,11 @@ pub enum DatabaseCommands {
     /// Create a new user
     #[clap(visible_alias = "create-user")]
     User {},
+    /// Cleanup the database
+    Cleanup {
+        #[clap(long, short)]
+        force: bool,
+    },
 }
 
 pub async fn run(config: &mut Config, subcommands: Option<DatabaseCommands>) -> Result<()> {
@@ -43,6 +50,14 @@ pub async fn run(config: &mut Config, subcommands: Option<DatabaseCommands>) -> 
             new_user.save(&db.acquire().await).await?;
 
             info!("User created successfully");
+        }
+        Some(DatabaseCommands::Cleanup { force }) => {
+            let task = if force {
+                CleanupTask::force()
+            } else {
+                CleanupTask::default()
+            };
+            task.run(&db).await?;
         }
         None => {
             debug!("No subcommand provided, running interactive mode");

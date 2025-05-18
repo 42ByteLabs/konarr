@@ -4,13 +4,7 @@ use clap::Subcommand;
 use konarr::{
     Config,
     bom::{BillOfMaterialsBuilder, cyclonedx::spec_v1_6::Bom as CycloneDx},
-    models::{Projects, Snapshot, dependencies::snapshots::SnapshotState},
-    tasks::{
-        AdvisoriesSyncTask, AdvisoriesTask, AlertCalculatorTask, CatalogueTask, TaskTrait,
-        sbom::SbomTask,
-    },
-    tools::Tool,
-    utils::grypedb::GrypeDatabase,
+    models::{Projects, Snapshot},
 };
 use log::info;
 
@@ -57,7 +51,7 @@ pub async fn run(
 
             let (project, snapshot) = if let Some(project_id) = project {
                 let mut project =
-                    Projects::fetch_by_primary_key(&database.acquire().await, project).await?;
+                    Projects::fetch_by_primary_key(&database.acquire().await, project_id).await?;
 
                 log::debug!("Fetching latest snapshot");
                 let snapshot = project
