@@ -11,6 +11,7 @@ pub mod advisories;
 pub mod advisories_sync;
 pub mod alerts;
 pub mod catalogue;
+pub mod cleanup;
 pub mod projects;
 pub mod sbom;
 pub mod statistics;
@@ -25,6 +26,8 @@ pub use statistics::StatisticsTask;
 
 use crate::Config;
 use crate::models::{ServerSettings, Setting};
+
+use self::cleanup::CleanupTask;
 
 /// Initialse background tasks
 ///
@@ -111,6 +114,10 @@ pub async fn init(
             }
 
             if let Err(e) = StatisticsTask::task(&database).await {
+                log::error!("Task Error :: {}", e);
+            }
+
+            if let Err(e) = CleanupTask::task(&database).await {
                 log::error!("Task Error :: {}", e);
             }
         }

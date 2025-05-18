@@ -1,7 +1,5 @@
 //! # Task - Advisories
 
-use std::path::PathBuf;
-
 use crate::{
     Config, KonarrError,
     bom::{BomParser, Parsers},
@@ -18,10 +16,7 @@ use log::{debug, info, warn};
 use super::TaskTrait;
 
 /// Advisories Task to scan for security alerts
-pub struct AdvisoriesTask {
-    grype_path: PathBuf,
-    sboms_path: PathBuf,
-}
+pub struct AdvisoriesTask {}
 
 #[async_trait]
 impl TaskTrait for AdvisoriesTask {
@@ -33,20 +28,14 @@ impl TaskTrait for AdvisoriesTask {
 
 impl<'a> AdvisoriesTask {
     /// Create a new Advisories Task
-    pub fn new(config: &'a Config) -> Result<Self, KonarrError> {
-        Ok(Self {
-            grype_path: config.grype_path()?,
-            sboms_path: config.sboms_path()?,
-        })
+    pub fn new(_config: &'a Config) -> Result<Self, KonarrError> {
+        Ok(Self {})
     }
 }
 
 impl Default for AdvisoriesTask {
     fn default() -> Self {
-        Self {
-            grype_path: PathBuf::from("/var/lib/konarr/grype"),
-            sboms_path: PathBuf::from("/var/lib/konarr/sboms"),
-        }
+        Self {}
     }
 }
 
