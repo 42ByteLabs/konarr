@@ -41,7 +41,7 @@ pub trait BillOfMaterialsBuilder {
         dependencies: &Vec<Dependencies>,
     ) -> Result<(), crate::KonarrError> {
         for dep in dependencies.iter() {
-            self.add_component(&dep.component_id.data, &dep.component_version_id.data)?;
+            self.add_dependency(dep)?;
         }
         Ok(())
     }
@@ -51,7 +51,9 @@ pub trait BillOfMaterialsBuilder {
         &mut self,
         component: &Component,
         version: &ComponentVersion,
-    ) -> Result<(), crate::KonarrError>;
+    ) -> Result<(), crate::KonarrError> {
+        Ok(())
+    }
 
     /// Add a list of components to the BillOfMaterials
     fn add_components(&mut self, component: &Vec<Component>) -> Result<(), crate::KonarrError> {

@@ -19,10 +19,13 @@ pub struct Bom {
     #[serde(rename = "specVersion")]
     pub(crate) spec_version: String,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) metadata: Option<Metadata>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) components: Option<Vec<Component>>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) vulnerabilities: Option<Vec<Vulnerability>>,
 }
 
@@ -144,7 +147,7 @@ impl From<Bom> for BillOfMaterials {
 impl BillOfMaterialsBuilder for Bom {
     fn new() -> Self {
         Self {
-            schema: Some("https://cyclonedx.org/schema/bom-1.6.json".to_string()),
+            schema: Some("http://cyclonedx.org/schema/bom-1.6.schema.json".to_string()),
             bom_format: Some("CycloneDX".to_string()),
             spec_version: "1.6".to_string(),
             metadata: None,
@@ -154,21 +157,67 @@ impl BillOfMaterialsBuilder for Bom {
     }
 
     fn add_project(&mut self, project: &crate::models::Projects) -> Result<(), crate::KonarrError> {
+        let tool: Option<Tools> = if let Some(snapshot) = project.snapshots.last() {
+            let name = snapshot
+                .find_metadata("bom.tool.name")
+                .map(|v| v.as_string());
+            let version = snapshot
+                .find_metadata("bom.tool.version")
+                .map(|v| v.as_string());
+
+            Some(Tools {
+                components: vec![
+                    Component {
+                        comp_type: Some("application".to_string()),
+                        name: Some("konarr".to_string()),
+                        version: Some(crate::KONARR_VERSION.to_string()),
+                        ..Default::default()
+                    },
+                    Component {
+                        comp_type: Some("application".to_string()),
+                        name: name,
+                        version: version,
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            })
+        } else {
+            None
+        };
+
         if let Some(metadata) = self.metadata.as_mut() {
             metadata.timestamp = Some(project.created_at);
+            metadata.tools = tool;
+
             metadata.component = Some(Component {
+                comp_type: Some("container".to_string()),
                 name: Some(project.name.clone()),
+                version: project.version(),
                 ..Default::default()
             });
         } else {
             self.metadata = Some(Metadata {
                 timestamp: Some(chrono::Utc::now()),
+                tools: tool,
                 component: Some(Component {
+                    comp_type: Some("container".to_string()),
                     name: Some(project.name.clone()),
+                    version: project.version(),
                     ..Default::default()
                 }),
-                tools: None,
             });
+        }
+
+        Ok(())
+    }
+
+    fn add_dependency(
+        &mut self,
+        dep: &crate::models::Dependencies,
+    ) -> Result<(), crate::KonarrError> {
+        if let Some(components) = self.components.as_mut() {
+            components.push(Component::from(dep));
         }
 
         Ok(())
@@ -179,17 +228,6 @@ impl BillOfMaterialsBuilder for Bom {
         component: &crate::models::Component,
         version: &crate::models::ComponentVersion,
     ) -> Result<(), crate::KonarrError> {
-        if let Some(components) = self.components.as_mut() {
-            let comp = Component {
-                comp_type: Some(component.component_type.to_string()),
-                name: Some(component.name.clone()),
-                version: Some(version.version.clone()),
-                purl: Some(component.purl()),
-                ..Default::default()
-            };
-            components.push(comp);
-        }
-
         Ok(())
     }
 
@@ -198,39 +236,92 @@ impl BillOfMaterialsBuilder for Bom {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// Convert the component type to a string
+///
+/// Values:
+/// "framework",
+/// "library",
+/// "container",
+/// "platform",
+/// "operating-system",
+/// "device",
+/// "device-driver",
+/// "firmware",
+/// "file",
+/// "machine-learning-model",
+/// "data",
+/// "cryptographic-asset"
+fn comptype_to_string(typ: &crate::models::ComponentType) -> String {
+    match typ {
+        crate::models::ComponentType::Library
+        | crate::models::ComponentType::Framework
+        | crate::models::ComponentType::OperatingEnvironment => "library".to_string(),
+        crate::models::ComponentType::Container => "container".to_string(),
+        crate::models::ComponentType::CryptographyLibrary => "cryptographic-asset".to_string(),
+        crate::models::ComponentType::Application
+        | crate::models::ComponentType::ProgrammingLanguage => "platform".to_string(),
+        crate::models::ComponentType::Firmware => "firmware".to_string(),
+        _ => "library".to_string(),
+    }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub(crate) struct Metadata {
     pub(crate) timestamp: Option<chrono::DateTime<chrono::Utc>>,
     /// Creation Tools
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) tools: Option<Tools>,
     /// Main Component
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) component: Option<Component>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub(crate) struct Tools {
     pub(crate) components: Vec<Component>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) services: Option<Vec<ToolService>>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub(crate) struct Component {
     /// TODO: This can only be a set of known values
-    #[serde(rename = "type")]
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
     pub(crate) comp_type: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) version: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) purl: Option<String>,
 
+    /// Component Author (deprecated)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) author: Option<String>,
+}
+
+impl From<&crate::models::Dependencies> for Component {
+    fn from(value: &crate::models::Dependencies) -> Self {
+        let comptype = value.component_type();
+        Component {
+            comp_type: Some(comptype_to_string(&comptype)),
+            name: Some(value.name()),
+            version: value.version(),
+            purl: Some(value.purl()),
+            ..Default::default()
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct ToolService {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) vendor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) version: Option<String>,
 }
 
@@ -239,10 +330,15 @@ pub(crate) struct Vulnerability {
     #[serde(rename = "bom-ref")]
     pub(crate) bom_ref: String,
     pub(crate) id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) source: Option<VulnerabilitySource>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) references: Option<Vec<VulnerabilityRef>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) ratings: Option<Vec<VulnerabilityRating>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) affects: Option<Vec<VulnerabilityCompRef>>,
 }
 
