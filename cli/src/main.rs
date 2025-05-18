@@ -201,6 +201,10 @@ async fn main() -> Result<()> {
         Some(cli::ArgumentCommands::Search { subcommands }) => {
             Ok(cli::search::run(&config, subcommands).await?)
         }
+        #[cfg(feature = "database")]
+        Some(cli::ArgumentCommands::Generate { subcommands }) => {
+            Ok(cli::generate::run(&config, subcommands).await?)
+        }
         #[cfg(feature = "tasks")]
         Some(cli::ArgumentCommands::Tasks { subcommands }) => {
             Ok(cli::tasks::run(&config, subcommands).await?)

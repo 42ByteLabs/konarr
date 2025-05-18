@@ -17,12 +17,17 @@ pub async fn statistics(config: &Config) -> Result<()> {
 
 #[cfg(feature = "database")]
 async fn database_statistics(config: &Config) -> Result<()> {
-    let connection = &config.database().await?.connect()?;
+    use konarr::tasks::TaskTrait;
 
-    konarr::tasks::statistics(connection).await?;
+    let database = config.database().await?;
+
+    let stats = konarr::tasks::StatisticsTask::default();
+    stats.run(&database).await?;
 
     info!("Database Statistics");
-    let statistics = konarr::models::settings::ServerSettings::fetch_statistics(connection).await?;
+    let statistics =
+        konarr::models::settings::ServerSettings::fetch_statistics(&database.acquire().await)
+            .await?;
 
     print_stats(
         "Projects Statistics",
