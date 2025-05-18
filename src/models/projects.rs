@@ -391,7 +391,7 @@ impl Projects {
 
                 match Snapshot::fetch_by_primary_key(connection, snap.snapshot_id).await {
                     Ok(mut snapshot) => {
-                        snapshot.fetch_metadata(connection).await?;
+                        snapshot.fetch(connection).await?;
 
                         self.snapshots.push(snapshot);
                         Ok(self.snapshots.last_mut())
@@ -424,8 +424,9 @@ impl Projects {
         if let Some(snapshot) = self.snapshots.last_mut() {
             snapshot.fetch_alerts(connection).await?;
         } else if let Some(_) = self.fetch_latest_snapshot(connection).await? {
-            let mut snap = self.snapshots.last_mut().unwrap();
-            snap.fetch_alerts(connection).await?;
+            if let Some(snap) = self.snapshots.last_mut() {
+                snap.fetch_alerts(connection).await?;
+            }
         } else {
             log::warn!("No Snapshots found for Project: {:?}", self.id);
         }
@@ -436,13 +437,13 @@ impl Projects {
     pub async fn fetch_latest_snapshot_dependencies(
         &mut self,
         connection: &Connection<'_>,
-        page: &Page,
     ) -> Result<(), crate::KonarrError> {
         if let Some(snapshot) = self.snapshots.last_mut() {
-            snapshot.fetch_dependencies(connection, page).await?;
+            snapshot.components = snapshot.fetch_all_dependencies(connection).await?;
         } else if let Some(_) = self.fetch_latest_snapshot(connection).await? {
-            let mut snap = self.snapshots.last_mut().unwrap();
-            snap.fetch_dependencies(connection, page).await?;
+            if let Some(snap) = self.snapshots.last_mut() {
+                snap.components = snap.fetch_all_dependencies(connection).await?;
+            }
         } else {
             log::warn!("No Snapshots found for Project: {:?}", self.id);
         }

@@ -11,6 +11,12 @@ pub enum Setting {
     // Registration
     #[geekorm(key = "registration")]
     Registration,
+    /// Cleanup is enabled
+    #[geekorm(key = "cleanup")]
+    Cleanup,
+    /// Cleanup timer (in days)
+    #[geekorm(key = "cleanup.timer")]
+    CleanupTimer,
 
     // Server Settings
     /// Data Directory (e.g. /var/lib/konarr)

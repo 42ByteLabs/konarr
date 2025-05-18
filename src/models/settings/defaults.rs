@@ -2,11 +2,13 @@
 use super::{Setting, SettingType};
 
 /// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 40] = [
+pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 42] = [
     // Registration Settings
     (Setting::Registration, SettingType::Toggle, "enabled"),
     // If we are already initialized
     (Setting::Initialized, SettingType::Boolean, "false"),
+    (Setting::Cleanup, SettingType::Toggle, "disabled"),
+    (Setting::CleanupTimer, SettingType::Toggle, "90"),
     // Server Settings
     (
         Setting::ServerUrl,
