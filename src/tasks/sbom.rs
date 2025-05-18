@@ -65,6 +65,14 @@ impl SbomTask {
         }
     }
 
+    /// Create a new SbomTask for a specific state
+    pub fn sbom_by_state(state: impl Into<SnapshotState>) -> Self {
+        Self {
+            state: state.into(),
+            ..Default::default()
+        }
+    }
+
     /// Scan the failed snapshots
     pub fn failed() -> Self {
         Self {
