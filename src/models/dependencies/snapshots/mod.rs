@@ -290,8 +290,7 @@ impl Snapshot {
             let deps_count = self.count_dependencies(connection).await?;
             if deps_count != 0 {
                 log::debug!("Found {} dependencies", deps_count);
-                let page = Page::from((0, deps_count as u32));
-                self.components = self.fetch_dependencies(connection, &page).await?;
+                self.components = self.fetch_all_dependencies(connection).await?;
             }
 
             let bom_file_path = if let Some(path) = self.find_metadata("bom.path") {
@@ -299,7 +298,7 @@ impl Snapshot {
             } else if !self.components.is_empty() {
                 log::debug!("SBOM metadata not found, but components found");
                 log::info!(
-                    "Building SBOM from components: {} - {}",
+                    "Building SBOM from components: Id({}) - Comps({})",
                     self.id,
                     self.components.len()
                 );
@@ -373,7 +372,8 @@ impl Snapshot {
                 Ok(bom)
             }
             Err(err) => {
-                log::error!("Failed to parse SBOM");
+                log::error!("Failed to parse SBOM, requesting rescan and setting error");
+                self.sbom = None;
                 self.rescan(connection).await?;
                 self.set_error(connection, "Failed to parse SBOM".to_string())
                     .await?;
