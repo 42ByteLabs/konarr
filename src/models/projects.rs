@@ -542,6 +542,24 @@ impl Projects {
         Ok(())
     }
 
+    /// Get the latest snapshot version
+    pub fn version(&self) -> Option<String> {
+        if let Some(snapshot) = self.snapshots.last() {
+            snapshot
+                .find_metadata("bom.sha")
+                .cloned()
+                .map(|sha| sha.as_string())
+        } else {
+            log::warn!("No Snapshots found for Project: {:?}", self.id);
+            None
+        }
+    }
+
+    /// Get the project type
+    pub fn project_type(&self) -> ProjectType {
+        self.project_type.clone()
+    }
+
     /// Archive the Project
     pub async fn archive(&mut self, connection: &Connection<'_>) -> Result<(), crate::KonarrError> {
         self.status = ProjectStatus::Archived;

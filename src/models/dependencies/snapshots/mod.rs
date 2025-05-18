@@ -434,6 +434,25 @@ impl Snapshot {
         .map_err(|e| e.into())
     }
 
+    /// Fetch all Dependencies for the Snapshot
+    pub async fn fetch_all_dependencies(
+        &self,
+        connection: &Connection<'_>,
+    ) -> Result<Vec<Dependencies>, crate::KonarrError> {
+        let mut deps = Dependencies::query(
+            connection,
+            Dependencies::query_select()
+                .where_eq("snapshot_id", self.id)
+                .build()?,
+        )
+        .await?;
+
+        for dep in deps.iter_mut() {
+            dep.fetch(connection).await?;
+        }
+        Ok(deps)
+    }
+
     /// Find Metadata by Key
     pub fn find_metadata(&self, key: &str) -> Option<&SnapshotMetadata> {
         let key = SnapshotMetadataKey::from_str(key).ok()?;

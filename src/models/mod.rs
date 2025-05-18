@@ -23,7 +23,6 @@ pub use settings::{ServerSettings, Setting};
 
 use crate::tasks::alerts::AlertCalculatorTask;
 use crate::tasks::projects::ProjectsTask;
-use crate::tasks::sbom::SbomTask;
 use crate::tasks::statistics::StatisticsTask;
 use crate::tasks::{CatalogueTask, TaskTrait};
 use crate::{Config, KonarrError, db};
