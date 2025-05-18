@@ -34,30 +34,19 @@ pub struct SnapshotMetadata {
 
 impl SnapshotMetadata {
     /// Initialise SnapshotMetadata
-    pub async fn init<'a, T>(connection: &'a T) -> Result<(), crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    pub async fn init(connection: &Connection<'_>) -> Result<(), crate::KonarrError> {
         log::debug!("Initialising Snapshot Metadata Model");
         let all = match Self::all(connection).await {
             Ok(all) => all,
             Err(e) => {
                 log::error!("Failed to get all metadata: {:?}", e);
                 log::error!("Please report this error to the Konarr team");
-                return Err(e);
+                return Err(crate::KonarrError::GeekOrm(e));
             }
         };
         log::debug!("Found {} metadata entries", all.len());
 
         Ok(())
-    }
-
-    /// Fetch all Snapshot Metadata
-    pub async fn all<'a, T>(connection: &'a T) -> Result<Vec<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
-        Ok(Self::query(connection, Self::query_select().build()?).await?)
     }
 
     /// Update or Create Metadata
@@ -83,15 +72,12 @@ impl SnapshotMetadata {
         })
     }
     /// Add new Metadata to the Snapshot
-    pub async fn add<'a, T>(
-        connection: &'a T,
+    pub async fn add(
+        connection: &Connection<'_>,
         snapshot: impl Into<PrimaryKey<i32>>,
         key: &SnapshotMetadataKey,
         value: impl Into<Vec<u8>>,
-    ) -> Result<Self, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<Self, crate::KonarrError> {
         let snapshot = snapshot.into();
         debug!("Adding Metadata to Snapshot({:?}) :: {} ", snapshot, key);
 
@@ -101,14 +87,11 @@ impl SnapshotMetadata {
     }
 
     /// Find Metadata by Key for a Snapshot
-    pub async fn find_by_key<'a, T>(
-        connection: &'a T,
+    pub async fn find_by_key(
+        connection: &Connection<'_>,
         snapshot: impl Into<PrimaryKey<i32>>,
         key: &SnapshotMetadataKey,
-    ) -> Result<Option<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<Option<Self>, crate::KonarrError> {
         let snapshot = snapshot.into();
         Ok(Some(
             Self::query_first(
@@ -124,13 +107,10 @@ impl SnapshotMetadata {
     }
 
     /// Find Metadata by SHA for a Snapshot
-    pub async fn find_by_sha<'a, T>(
-        connection: &'a T,
+    pub async fn find_by_sha(
+        connection: &Connection<'_>,
         sha: impl Into<String>,
-    ) -> Result<Option<Self>, crate::KonarrError>
-    where
-        T: GeekConnection<Connection = T> + 'a,
-    {
+    ) -> Result<Option<Self>, crate::KonarrError> {
         let sha = sha.into();
         if sha.is_empty() {
             return Ok(None);
@@ -173,6 +153,10 @@ impl SnapshotMetadata {
 #[derive(Data, Debug, Default, Clone, Hash, Eq, PartialEq)]
 #[allow(missing_docs)]
 pub enum SnapshotMetadataKey {
+    /// Rescan Project
+    #[geekorm(key = "rescan")]
+    Rescan,
+
     // Operating System Info (Host or Container)
     #[geekorm(key = "os")]
     Os,
@@ -180,11 +164,17 @@ pub enum SnapshotMetadataKey {
     OsVersion,
     #[geekorm(key = "os.arch")]
     OsArch,
-    #[geekorm(key = "os.kernel")]
-    OsKernel,
     /// Only for ARM
     #[geekorm(key = "os.variant")]
     OsVariant,
+    #[geekorm(key = "os.kernel")]
+    OsKernel,
+    /// OS Distro (Linux only)
+    #[geekorm(key = "os.distro")]
+    OsDistro,
+    /// OS Distro Version (Linux only)
+    #[geekorm(key = "os.distro.version")]
+    OsDistroVersion,
 
     // OS Container Engine
     #[geekorm(key = "container.engine")]
@@ -208,6 +198,9 @@ pub enum SnapshotMetadataKey {
     /// Created date of the container image
     #[geekorm(key = "container.image.created")]
     ContainerImageCreated,
+    /// Container Image History
+    #[geekorm(key = "container.image.history")]
+    ContainerImageHistory,
     /// Container Description provided by the user
     #[geekorm(key = "container.description")]
     ContainerDescription,

@@ -1,6 +1,8 @@
 use anyhow::Result;
 use clap::Subcommand;
 use geekorm::prelude::*;
+use konarr::tasks::TaskTrait;
+use konarr::tasks::cleanup::CleanupTask;
 use log::{debug, info};
 
 use konarr::{Config, models::UserRole};
@@ -11,18 +13,22 @@ pub enum DatabaseCommands {
     /// Create a new user
     #[clap(visible_alias = "create-user")]
     User {},
+    /// Cleanup the database
+    Cleanup {
+        #[clap(long, short)]
+        force: bool,
+    },
 }
 
 pub async fn run(config: &mut Config, subcommands: Option<DatabaseCommands>) -> Result<()> {
     println!("Config :: {:#?}", config.database);
     let db = config.database().await?;
-    let connection = db.connect()?;
 
     info!("Connected!");
 
     match subcommands {
         Some(DatabaseCommands::Create {}) => {
-            konarr::models::database_initialise(config, &connection).await?;
+            konarr::models::database_initialise(config).await?;
         }
         Some(DatabaseCommands::User {}) => {
             let username = crate::utils::interactive::prompt_input("Username")?;
@@ -38,12 +44,20 @@ pub async fn run(config: &mut Config, subcommands: Option<DatabaseCommands>) -> 
                 konarr::models::SessionType::User,
                 konarr::models::SessionState::Inactive,
             );
-            session.save(&connection).await?;
+            session.save(&db.acquire().await).await?;
 
             let mut new_user = konarr::models::Users::new(username, password, role, session.id);
-            new_user.save(&connection).await?;
+            new_user.save(&db.acquire().await).await?;
 
             info!("User created successfully");
+        }
+        Some(DatabaseCommands::Cleanup { force }) => {
+            let task = if force {
+                CleanupTask::force()
+            } else {
+                CleanupTask::default()
+            };
+            task.run(&db).await?;
         }
         None => {
             debug!("No subcommand provided, running interactive mode");
@@ -57,7 +71,7 @@ pub async fn run(config: &mut Config, subcommands: Option<DatabaseCommands>) -> 
 
             match id {
                 0 => {
-                    konarr::models::database_initialise(config, &connection).await?;
+                    konarr::models::database_initialise(config).await?;
                 }
                 _ => {
                     info!("No action selected");

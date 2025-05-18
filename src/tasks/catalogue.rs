@@ -50,3 +50,10 @@ impl TaskTrait for CatalogueTask {
         Ok(())
     }
 }
+
+impl CatalogueTask {
+    /// Set the Catalogue Task to force
+    pub fn force() -> Self {
+        Self { force: true }
+    }
+}

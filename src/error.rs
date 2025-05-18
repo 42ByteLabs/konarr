@@ -39,6 +39,9 @@ pub enum KonarrError {
     /// Failed to fetch SBOM
     #[error("Failed to fetch SBOM: {0}")]
     FetchSBOM(String),
+    /// SBOM not found
+    #[error("SBOM not found: {0}")]
+    SBOMNotFound(String),
     /// Parsing PURL
     #[error("PURL parsing error")]
     PurlError(#[from] purl::ParseError),

@@ -25,6 +25,10 @@ pub struct KonarrSnapshot {
     /// If the snapshot is new
     #[serde(skip)]
     pub new: bool,
+
+    /// Updated Metadata
+    #[serde(skip)]
+    pub updated_metadata: bool,
 }
 
 impl KonarrSnapshot {
@@ -78,6 +82,7 @@ impl KonarrSnapshot {
         if !value.is_empty() {
             debug!("Adding Metadata for Snapshot({:?}) :: {}", self.id, key);
             self.metadata.insert(key, value.into());
+            self.updated_metadata = true;
         } else {
             debug!("Skipping empty metadata value for key: {}", key);
         }
@@ -86,6 +91,11 @@ impl KonarrSnapshot {
     /// Update Metadata of the snapshot
     #[cfg(feature = "agent")]
     pub async fn update_metadata(&self, client: &KonarrClient) -> Result<(), crate::KonarrError> {
+        if !self.updated_metadata {
+            debug!("No metadata changes to update for Snapshot({:?})", self.id);
+            return Ok(());
+        }
+
         debug!("Updating Metadata for Snapshot({:?})", self.id);
         client
             .patch(
@@ -93,6 +103,27 @@ impl KonarrSnapshot {
                 self.metadata.clone(),
             )
             .await?;
+        Ok(())
+    }
+
+    /// Add Docker Metadata to the snapshot
+    #[cfg(all(feature = "agent", feature = "docker"))]
+    pub async fn add_docker(&mut self, docker: &bollard::Docker) -> Result<(), crate::KonarrError> {
+        let version = docker.version().await?;
+
+        // OS Metadata
+        self.add_metadata("os", version.os.unwrap_or_default());
+        self.add_metadata("os.kernel", version.kernel_version.unwrap_or_default());
+        self.add_metadata("os.arch", version.arch.unwrap_or_default());
+        // Container Engine
+        self.add_metadata("container", "true");
+        let engine = version.platform.unwrap_or_default().name;
+        self.add_metadata("container.engine", engine);
+        self.add_metadata(
+            "container.engine.version",
+            version.version.unwrap_or_default(),
+        );
+
         Ok(())
     }
 

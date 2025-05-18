@@ -23,12 +23,19 @@ impl ServerSettings {
             ServerSettings::update_setting(connection, &Setting::ServerUrl, url.to_string())
                 .await?;
         }
+        // Data path
+        ServerSettings::update_setting(
+            connection,
+            &Setting::ServerData,
+            config.data_path()?.canonicalize()?.display().to_string(),
+        )
+        .await?;
 
         // Frontend setting
         ServerSettings::update_setting(
             connection,
             &Setting::ServerFrontendPath,
-            config.server.frontend.display().to_string(),
+            config.server.frontend.canonicalize()?.display().to_string(),
         )
         .await?;
 

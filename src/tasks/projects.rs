@@ -1,9 +1,9 @@
 //! Projects Task
 use async_trait::async_trait;
-use geekorm::{ConnectionManager, GeekConnector};
+use geekorm::ConnectionManager;
 
 use crate::KonarrError;
-use crate::models::{ProjectType, Projects, Snapshot, SnapshotMetadataKey};
+use crate::models::{Projects, Snapshot, SnapshotMetadataKey};
 
 use super::TaskTrait;
 
@@ -17,19 +17,10 @@ impl TaskTrait for ProjectsTask {
         let connection = database.acquire().await;
         log::info!("Task - Running Projects");
 
-        let mut projects = Projects::all(&connection).await?;
+        let mut projects = Projects::fetch_servers(&connection).await?;
 
         for project in projects.iter_mut() {
-            project.fetch_latest_snapshot(&connection).await?;
-
-            match project.project_type {
-                ProjectType::Group | ProjectType::Server | ProjectType::Cluster => {
-                    project.fetch_children(&connection).await?;
-
-                    update_grouped_projects(&connection, project).await?;
-                }
-                _ => {}
-            }
+            update_grouped_projects(&connection, project).await?;
         }
 
         log::debug!(
@@ -48,23 +39,26 @@ async fn update_grouped_projects(
 ) -> Result<(), crate::KonarrError> {
     let mut dependencies = 0;
 
-    for child in &project.children {
-        if let Some(snap) = child.snapshots.first() {
+    for child in project.children.iter_mut() {
+        if let Some(snap) = child.snapshots.last_mut() {
             if let Some(meta) = snap.metadata.get(&SnapshotMetadataKey::DependenciesTotal) {
                 dependencies += meta.as_i32();
+                log::debug!(
+                    "Project '{}' adding '{}' dependencies",
+                    child.name,
+                    meta.as_i32()
+                );
             }
         }
     }
 
-    if project.snapshots.is_empty() {
-        log::info!("Creating Snapshot for Project '{}'", project.name);
-        let mut snapshot = Snapshot::new();
-        snapshot.save(connection).await?;
+    log::debug!(
+        "Project '{}' has '{}' dependencies",
+        project.name,
+        dependencies
+    );
 
-        project.add_snapshot(connection, snapshot).await?;
-    }
-
-    let mut snap: Snapshot = if let Some(s) = project.snapshots.first() {
+    let mut snap: Snapshot = if let Some(s) = project.snapshots.last() {
         s.clone()
     } else {
         log::error!("No Snapshot Found");
@@ -80,6 +74,12 @@ async fn update_grouped_projects(
                 meta_deps,
                 dependencies
             );
+            snap.set_metadata(
+                connection,
+                SnapshotMetadataKey::DependenciesTotal,
+                dependencies.to_string().as_str(),
+            )
+            .await?;
         } else {
             log::debug!(
                 "Project('{}') Dependencies Total: {}",

@@ -33,6 +33,10 @@ pub struct Dependencies {
 }
 
 impl Dependencies {
+    /// Get component
+    pub fn component(&self) -> Component {
+        self.component_id.data.clone()
+    }
     /// Get component ID
     pub fn component_id(&self) -> PrimaryKey<i32> {
         self.component_id.data.id.clone()

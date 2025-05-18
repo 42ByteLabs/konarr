@@ -237,6 +237,13 @@ impl Alerts {
                 advisory.id,
             );
             alert.find_or_create(connection).await?;
+
+            // Update the state of the alert
+            if alert.state != SecurityState::Vulnerable {
+                alert.state = SecurityState::Vulnerable;
+                alert.update(connection).await?;
+            }
+
             debug!("Alert: {:?}", alert);
             alerts.push(alert);
         }

@@ -22,7 +22,8 @@ pub async fn run(
 ) -> Result<(), konarr::KonarrError> {
     debug!("Connecting to Database: {:?}", config.database);
 
-    let connection = config.database().await?.connect()?;
+    let database = config.database().await?;
+    let connection = database.acquire().await;
 
     info!("Connected to database!");
 
