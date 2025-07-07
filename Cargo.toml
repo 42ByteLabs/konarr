@@ -92,7 +92,7 @@ openssl = { version = "0.10", features = ["vendored"], optional = true }
 # Docker
 bollard = { version = "0.19", optional = true }
 figment = { version = "0.10", features = ["env", "serde_yaml", "yaml"] }
-tokio-tungstenite = { version = "0.26", features = ["url", "native-tls"], optional = true }
+tokio-tungstenite = { version = "0.27", features = ["url", "native-tls"], optional = true }
 
 [dev-dependencies]
 konarr = { path = ".", features = ["client"] }
