@@ -1,6 +1,6 @@
 name: "konarr"
 repository: "42ByteLabs/konarr"
-version: 0.4.3
+version: 0.4.4
 
 locations:
   - name: "Containers"
