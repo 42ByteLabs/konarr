@@ -140,7 +140,7 @@ This command does the following:
 - `-p 9000:9000` - This tells Docker to map port 9000 on the host machine to port 9000 on the container. This is the port that the Konarr server listens on by default.
 - `-v ./data:/data` - This tells Docker to mount the `./data` directory on the host machine to the `/data` directory on the container. This is where Konarr stores its data by default.
 - `-v ./config:/config` - This tells Docker to mount the `./config` directory on the host machine to the `/config` directory on the container. This is where Konarr looks for its configuration file by default.
-- `ghcr.io/42bytelabs/konarr:v0.4.4` - This is the name of the Docker image that we want to run. The `ghcr.io/42bytelabs/konarr` part is the name of the repository on GitHub Container Registry, and the `v0.1.0` part is the tag of the image that we want to run.
+- `ghcr.io/42bytelabs/konarr:v0.4.4` - This is the name of the Docker image that we want to run. The `ghcr.io/42bytelabs/konarr` part is the name of the repository on GitHub Container Registry, and the `v0.4.4` part is the tag of the image that we want to run.
 
 </details>
 
