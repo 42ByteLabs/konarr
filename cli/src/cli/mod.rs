@@ -185,7 +185,7 @@ pub fn update_config(
 ) -> Result<(), konarr::KonarrError> {
     log::debug!("Updating configuration with arguments");
     if let Some(instance) = &arguments.instance {
-        config.server.set_instance(&instance)?;
+        config.server.set_instance(instance)?;
     }
     if let Some(token) = &arguments.agent_token {
         config.agent.token = Some(token.to_string());
