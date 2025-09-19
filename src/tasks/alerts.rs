@@ -43,7 +43,7 @@ impl TaskTrait for AlertCalculatorTask {
 
         alert_calculator(&database.acquire().await, &mut projects).await?;
 
-        alerts_cleanup(&database, &projects).await?;
+        alerts_cleanup(database, &projects).await?;
 
         Ok(())
     }
@@ -163,7 +163,7 @@ pub async fn calculate_group_alerts(
 /// will be marked as Secure / Closed
 pub async fn alerts_cleanup(
     database: &ConnectionManager,
-    projects: &Vec<Projects>,
+    projects: &[Projects],
 ) -> Result<(), crate::KonarrError> {
     log::info!("Task - Running Alerts Cleanup");
 
@@ -175,8 +175,7 @@ pub async fn alerts_cleanup(
     let snapshot_alerts: Vec<Alerts> = projects
         .iter()
         .filter_map(|project| project.snapshots.last())
-        .map(|snapshot| snapshot.alerts.clone())
-        .flatten()
+        .flat_map(|snapshot| snapshot.alerts.clone())
         .collect();
 
     log::info!("Found {} active alerts in snapshots", snapshot_alerts.len());

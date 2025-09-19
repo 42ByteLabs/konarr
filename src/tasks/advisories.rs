@@ -13,7 +13,7 @@ use async_trait::async_trait;
 use geekorm::{ConnectionManager, prelude::*};
 use log::{debug, info, warn};
 
-use super::TaskTrait;
+use super::{AlertCalculatorTask, TaskTrait};
 
 /// Advisories Task to scan for security alerts
 pub struct AdvisoriesTask {}
@@ -22,6 +22,9 @@ pub struct AdvisoriesTask {}
 impl TaskTrait for AdvisoriesTask {
     async fn run(&self, database: &ConnectionManager) -> Result<(), crate::KonarrError> {
         self.scan(database).await?;
+
+        AlertCalculatorTask::spawn(database).await?;
+
         Ok(())
     }
 }

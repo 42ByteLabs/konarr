@@ -1,10 +1,9 @@
 //! This module contains the tasks that are run by the CLI.
 
+use geekorm::{Connection, ConnectionManager};
 use std::sync::Arc;
 use tokio::spawn;
 use tokio_schedule::Job;
-
-use geekorm::{Connection, ConnectionManager};
 
 pub mod advisories;
 #[cfg(feature = "tools-grypedb")]
@@ -25,9 +24,7 @@ pub use projects::ProjectsTask;
 pub use statistics::StatisticsTask;
 
 use crate::Config;
-use crate::models::{ServerSettings, Setting};
-
-use self::cleanup::CleanupTask;
+use cleanup::CleanupTask;
 
 /// Initialse background tasks
 ///
@@ -40,51 +37,6 @@ pub async fn init(
     database: &ConnectionManager,
 ) -> Result<(), crate::KonarrError> {
     log::info!("Initializing Background Tasks...");
-
-    let minutedb = database.clone();
-    let minute_config = Arc::clone(&config);
-
-    let minute = tokio_schedule::every(60).seconds().perform(move || {
-        let database = minutedb.clone();
-        let config = Arc::clone(&minute_config);
-
-        log::debug!("Running Background Tasks");
-
-        async move {
-            let rescan =
-                ServerSettings::fetch_by_name(&database.acquire().await, Setting::SecurityRescan)
-                    .await
-                    .map_err(|e| {
-                        log::error!("Task Error :: {}", e);
-                    });
-
-            if let Ok(mut rescan) = rescan {
-                if rescan.boolean() {
-                    log::info!("Rescanning Projects");
-                    // Reset the flag to disabled before we perform the scan
-                    if let Err(e) = rescan
-                        .set_update(&database.acquire().await, "disabled")
-                        .await
-                    {
-                        log::error!("Error resetting rescan flag: {}", e);
-                    }
-
-                    if let Ok(task) = AdvisoriesTask::new(&config) {
-                        if let Err(e) = task.run(&database).await {
-                            log::error!("Error rescanning projects: {}", e);
-                        }
-                    } else {
-                        log::error!("Error creating advisories task");
-                    }
-
-                    if let Err(e) = AlertCalculatorTask::task(&database).await {
-                        log::error!("Error running alert calculator: {}", e);
-                    }
-                }
-            }
-        }
-    });
-    spawn(minute);
 
     let hourlydb = database.clone();
     let hourly_config = Arc::clone(&config);
