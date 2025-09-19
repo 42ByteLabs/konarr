@@ -8,6 +8,7 @@
 #![deny(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
+#[cfg(feature = "sbom")]
 pub mod bom;
 #[cfg(feature = "client")]
 pub mod client;

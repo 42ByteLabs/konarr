@@ -2953,6 +2953,7 @@ dependencies = [
  "hex",
  "percent-encoding",
  "phf",
+ "serde",
  "smartstring",
  "thiserror 2.0.16",
  "unicase",

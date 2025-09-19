@@ -14,12 +14,14 @@ pub enum KonarrError {
     #[error("IO Error: {0}")]
     YamlError(#[from] serde_yaml::Error),
     /// JSON Error
+    #[cfg(feature = "sbom")]
     #[error("JSON Error: {0}")]
     JsonError(#[from] serde_json::Error),
     /// Figment Error
     #[error("Figment Error")]
     FigmentError(#[from] figment::Error),
     /// Semver Version Error
+    #[cfg(feature = "sbom")]
     #[error("Version Error")]
     VersionError(#[from] semver::Error),
 
@@ -43,6 +45,7 @@ pub enum KonarrError {
     #[error("SBOM not found: {0}")]
     SBOMNotFound(String),
     /// Parsing PURL
+    #[cfg(feature = "sbom")]
     #[error("PURL parsing error")]
     PurlError(#[from] purl::ParseError),
 

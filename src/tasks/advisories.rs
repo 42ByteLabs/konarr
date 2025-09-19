@@ -1,5 +1,6 @@
 //! # Task - Advisories
 
+use super::{AlertCalculatorTask, TaskTrait};
 use crate::{
     Config, KonarrError,
     bom::{BomParser, Parsers},
@@ -13,9 +14,8 @@ use async_trait::async_trait;
 use geekorm::{ConnectionManager, prelude::*};
 use log::{debug, info, warn};
 
-use super::{AlertCalculatorTask, TaskTrait};
-
 /// Advisories Task to scan for security alerts
+#[derive(Default)]
 pub struct AdvisoriesTask {}
 
 #[async_trait]
@@ -33,12 +33,6 @@ impl<'a> AdvisoriesTask {
     /// Create a new Advisories Task
     pub fn new(_config: &'a Config) -> Result<Self, KonarrError> {
         Ok(Self {})
-    }
-}
-
-impl Default for AdvisoriesTask {
-    fn default() -> Self {
-        Self {}
     }
 }
 
