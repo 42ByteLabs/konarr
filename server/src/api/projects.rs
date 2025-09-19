@@ -1,9 +1,8 @@
 use geekorm::prelude::*;
 use konarr::{
-    models::{self, ProjectType},
+    models::{self, ProjectStatus, ProjectType},
     tasks::TaskTrait,
 };
-use log::info;
 use rocket::{State, serde::json::Json};
 
 use super::{ApiResponse, ApiResult, security::SecuritySummary};
@@ -76,8 +75,8 @@ pub(crate) async fn get_project(
     let connection = state.connection().await;
     let mut project = models::Projects::fetch_by_primary_key(&connection, id).await?;
 
-    if project.status == models::ProjectStatus::Archived {
-        info!("Tried accessing an archived project: {}", project.id);
+    if project.status == ProjectStatus::Archived {
+        log::info!("Tried accessing an archived project: {}", project.id);
         Err(KonarrServerError::ProjectNotFoundError(id))
     } else {
         // Fetch Children
@@ -85,7 +84,13 @@ pub(crate) async fn get_project(
         // Fetch the latest snapshot for the current project
         project.fetch_latest_snapshot(&connection).await?;
 
-        info!("{:?} (snapshots: {})", project.id, project.snapshots.len());
+        log::info!(
+            "{:?} (children: {}, snapshots: {}, latest: {})",
+            project.id,
+            project.children.len(),
+            project.snapshot_count.unwrap_or_default(),
+            project.latest_snapshot().map(|s| s.id.into()).unwrap_or(0)
+        );
 
         Ok(Json(project.into()))
     }
@@ -108,21 +113,21 @@ pub(crate) async fn get_projects(
     page.set_total(total as u32);
 
     let projects = if let Some(search) = search {
-        info!("Searching for projects with name: '{}'", search);
+        log::info!("Searching for projects with name: '{}'", search);
         models::Projects::search_title(&connection, search).await?
     } else if parents.unwrap_or(false) {
-        info!("Get the parent projects");
+        log::info!("Get the parent projects");
         models::Projects::find_parents(&connection).await?
     } else if top.unwrap_or(false) {
-        info!("Fetching the top level projects");
+        log::info!("Fetching the top level projects");
         models::Projects::fetch_top_level(&connection, &page).await?
         // state.projects.read_page(&page)?
     } else if let Some(prjtype) = r#type {
         if prjtype.as_str() == "all" {
-            info!("Fetching all projects");
+            log::info!("Fetching all projects");
             models::Projects::page(&connection, &page).await?
         } else {
-            info!("Fetching by type: {}", prjtype);
+            log::info!("Fetching by type: {}", prjtype);
             models::Projects::fetch_project_type(&connection, prjtype, &page).await?
         }
     } else {
@@ -188,15 +193,15 @@ pub async fn patch_project(
         models::Projects::fetch_by_primary_key(&connection, project_id as i32).await?;
 
     if let Some(title) = &project_req.title {
-        info!("Updating Project (title) :: {}", title);
+        log::info!("Updating Project (title) :: {}", title);
         project.title = Some(title.clone());
     }
     if let Some(typ) = &project_req.project_type {
-        info!("Updating Project (type) :: {}", typ);
+        log::info!("Updating Project (type) :: {}", typ);
         project.project_type = ProjectType::from(typ.clone());
     }
     if let Some(desc) = &project_req.description {
-        info!("Update Project (description) :: {}", desc);
+        log::info!("Update Project (description) :: {}", desc);
         if desc.is_empty() {
             project.description = None;
         } else {
@@ -226,7 +231,7 @@ pub(crate) async fn update_project_metadata(
     // Fetch Children and Latest Snapshot
     project.fetch_children(&connection).await?;
     project.fetch_snapshots(&connection).await?;
-    info!("{:?} (snapshots: {})", project.id, project.snapshots.len());
+    log::info!("{:?} (snapshots: {})", project.id, project.snapshots.len());
 
     Ok(Json(project.into()))
 }
@@ -243,9 +248,10 @@ pub async fn delete_project(
         Ok(project) => project,
         Err(_) => return Err(KonarrServerError::ProjectNotFoundError(id)),
     };
-    info!(
+    log::info!(
         "Archiving Project :: {} by {}",
-        project.name, session.user.username
+        project.name,
+        session.user.username
     );
     project.archive(&connection).await?;
 
@@ -260,12 +266,9 @@ pub async fn delete_project(
 impl From<models::Projects> for ProjectResp {
     fn from(project: models::Projects) -> Self {
         // Get the latest snapshot (last)
-        let snapshot: Option<models::Snapshot> = project.snapshots.last().cloned();
-        let security: Option<SecuritySummary> = if let Some(snap) = &snapshot {
-            Some(snap.into())
-        } else {
-            None
-        };
+        let snapshot: Option<models::Snapshot> = project.latest_snapshot();
+        let security: Option<SecuritySummary> = snapshot.as_ref().map(|snap| snap.into());
+
         let parent: Option<i32> = if project.parent > 0 {
             Some(project.parent)
         } else {
@@ -288,7 +291,7 @@ impl From<models::Projects> for ProjectResp {
             description: project.description.clone(),
             created_at: project.created_at,
             snapshot: snapshot.map(|snap| snap.into()),
-            snapshots: project.snapshots.len() as u32,
+            snapshots: project.snapshot_count.unwrap_or_default() as u32,
             security,
             parent,
             children: project

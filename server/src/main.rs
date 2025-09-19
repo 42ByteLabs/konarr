@@ -37,7 +37,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub async fn connection(&self) -> Connection {
+    pub async fn connection(&self) -> Connection<'_> {
         self.database.acquire().await
     }
 }
