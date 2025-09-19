@@ -29,5 +29,4 @@ jobs:
     permissions:
       contents: read
     with:
-      features: "models,tasks,tools-grypedb"
-
+      features: "models,sbom,tasks,tools-grypedb"
