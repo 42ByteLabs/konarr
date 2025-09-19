@@ -56,7 +56,7 @@ impl Config {
     pub fn save(&self, path: &PathBuf) -> Result<(), Error> {
         debug!("Saving Configuration: {:?}", path);
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(&parent)?;
+            std::fs::create_dir_all(parent)?;
         }
         let config = serde_yaml::to_string(self)?;
         std::fs::write(path, config)?;
@@ -138,7 +138,7 @@ impl Config {
     }
 
     /// Get Sessions Configuration
-    pub fn sessions<'c>(&'c self) -> &'c SessionsConfig {
+    pub fn sessions(&self) -> &SessionsConfig {
         &self.sessions
     }
 }

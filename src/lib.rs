@@ -5,6 +5,7 @@
 //! Secure your Homelabs and Production environments with Konarr.
 //!
 #![deny(missing_docs, unused_imports)]
+#![allow(clippy::result_large_err)]
 #![deny(unsafe_code)]
 #![doc = include_str!("../README.md")]
 

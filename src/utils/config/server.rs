@@ -5,8 +5,9 @@ use url::Url;
 
 impl ServerConfig {
     /// Set Instance from URL
-    pub fn set_instance(&mut self, instance: &String) -> Result<(), KonarrError> {
-        let url: Url = Url::parse(instance)?;
+    pub fn set_instance(&mut self, instance: impl Into<String>) -> Result<(), KonarrError> {
+        let instance = instance.into();
+        let url: Url = Url::parse(instance.as_str())?;
 
         self.scheme = Some(url.scheme().to_string());
         if let Some(host) = url.host_str() {
@@ -67,7 +68,6 @@ impl ServerConfig {
     pub fn generate_secret() -> String {
         log::debug!("Generating Server Secret...");
         let secret = generate_random_string(32);
-        let secret64 = base64::engine::general_purpose::STANDARD.encode(secret);
-        secret64
+        base64::engine::general_purpose::STANDARD.encode(secret)
     }
 }
