@@ -200,23 +200,12 @@ async fn run_docker(
     }
 
     debug!("Getting Docker Version and updating Snapshot Metadata");
-    let version = docker.version().await?;
-    let engine = version.platform.unwrap_or_default().name;
 
     let mut server_snapshot = server_project.snapshot.clone().expect(
         "Snapshot is required to update metadata. Please create a snapshot before running this command");
 
-    // OS Metadata
-    server_snapshot.add_metadata("os", version.os.unwrap_or_default());
-    server_snapshot.add_metadata("os.kernel", version.kernel_version.unwrap_or_default());
-    server_snapshot.add_metadata("os.arch", version.arch.unwrap_or_default());
-    // Container Engine
-    server_snapshot.add_metadata("container", "true");
-    server_snapshot.add_metadata("container.engine", engine);
-    server_snapshot.add_metadata(
-        "container.engine.version",
-        version.version.unwrap_or_default(),
-    );
+    // Add Docker Metadata
+    server_snapshot.add_docker(&docker).await?;
 
     info!("Updated server snapshot metadata...");
     server_snapshot.update_metadata(client).await?;

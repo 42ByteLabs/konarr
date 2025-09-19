@@ -1,49 +1,38 @@
 //! # Task - Advisories
 
-use std::path::PathBuf;
-
+use super::{AlertCalculatorTask, TaskTrait};
 use crate::{
     Config, KonarrError,
     bom::{BomParser, Parsers},
-    models::{Alerts, Projects, ServerSettings, Setting, security::SecurityState},
+    models::{
+        Alerts, Projects, ServerSettings, Setting, dependencies::snapshots::SnapshotState,
+        security::SecurityState,
+    },
     tools::{Grype, Tool, ToolConfig},
 };
 use async_trait::async_trait;
 use geekorm::{ConnectionManager, prelude::*};
 use log::{debug, info, warn};
 
-use super::TaskTrait;
-
 /// Advisories Task to scan for security alerts
-pub struct AdvisoriesTask {
-    grype_path: PathBuf,
-    sboms_path: PathBuf,
-}
+#[derive(Default)]
+pub struct AdvisoriesTask {}
 
 #[async_trait]
 impl TaskTrait for AdvisoriesTask {
     async fn run(&self, database: &ConnectionManager) -> Result<(), crate::KonarrError> {
         self.scan(database).await?;
+
+        AlertCalculatorTask::spawn(database).await?;
+
         Ok(())
     }
 }
 
 impl<'a> AdvisoriesTask {
     /// Create a new Advisories Task
-    pub fn new(config: &'a Config) -> Result<Self, KonarrError> {
-        Ok(Self {
-            grype_path: config.grype_path()?,
-            sboms_path: config.sboms_path()?,
-        })
-    }
-}
-
-impl Default for AdvisoriesTask {
-    fn default() -> Self {
-        Self {
-            grype_path: PathBuf::from("/var/lib/konarr/grype"),
-            sboms_path: PathBuf::from("/var/lib/konarr/sboms"),
-        }
+    pub fn new(_config: &'a Config) -> Result<Self, KonarrError> {
+        Ok(Self {})
     }
 }
 
@@ -77,7 +66,7 @@ impl AdvisoriesTask {
         }
         log::debug!("Grype Config: {:?}", tool_grype);
 
-        let mut projects = Projects::all(&database.acquire().await).await?;
+        let mut projects = Projects::fetch_containers(&database.acquire().await).await?;
         info!("Projects Count: {}", projects.len());
 
         for project in projects.iter_mut() {
@@ -96,10 +85,20 @@ impl AdvisoriesTask {
     ) -> Result<(), KonarrError> {
         debug!("Project: {}", project.name);
 
+        let sbom_dir = std::env::temp_dir().join("konarr");
+        if !sbom_dir.exists() {
+            tokio::fs::create_dir_all(&sbom_dir).await?;
+        }
+
         if let Some(snapshot) = project.snapshots.first() {
+            if snapshot.state == SnapshotState::Failed {
+                warn!("Snapshot is in failed state, skipping");
+                return Ok(());
+            }
+
             let mut snapshot = snapshot.clone();
             info!(
-                "Scanning Snapshot ::: {} - {}",
+                "Scanning Snapshot :: {} - {}",
                 snapshot.id,
                 snapshot.components.len()
             );
@@ -137,22 +136,30 @@ impl AdvisoriesTask {
             let mut results = Vec::new();
 
             // SBOM Data
-            let sbom_data = snapshot.sbom(&database.acquire().await).await?;
-            let sbom_path = snapshot.sbom_path(&database.acquire().await).await?;
-
-            let full_path = self.sboms_path.join(sbom_path.as_str());
-            if !full_path.exists() {
-                warn!("SBOM does not exist: {}", full_path.display());
+            let sbom_data = if let Ok(data) = snapshot.sbom(&database.acquire().await).await {
+                data
+            } else {
+                warn!("No SBOM data for project: {}", project.name);
+                snapshot.rescan(&database.acquire().await).await?;
                 return Ok(());
-            }
-            log::debug!("Using Grype to scan SBOM: {}", full_path.display());
+            };
+
+            let sbom = Parsers::parse(&sbom_data)?;
+            log::info!("BillOfMaterials(comps='{}')", sbom.components.len(),);
+
+            let sbom_file = uuid::Uuid::new_v4().to_string();
+            let sbom_path =
+                sbom_dir.join(format!("{}.{}", sbom_file, sbom.sbom_type.to_file_name()));
 
             // The SBOM needs to be written to disk to be scanned by Grype
-            tokio::fs::write(&full_path, sbom_data).await?;
+            tokio::fs::write(&sbom_path, sbom_data).await?;
 
-            let bom = tool_config.run(&full_path.display().to_string()).await?;
-            let sbom = Parsers::parse(bom.as_bytes())?;
-            log::debug!(
+            log::debug!("Using Grype to scan SBOM: {}", sbom_path.display());
+
+            let bom = tool_config.run(&sbom_path.display().to_string()).await?;
+
+            let sbom = Parsers::parse(&bom.as_bytes())?;
+            log::info!(
                 "BillOfMaterials(comps='{}', vulns='{}')",
                 sbom.components.len(),
                 sbom.vulnerabilities.len()
@@ -175,10 +182,14 @@ impl AdvisoriesTask {
                 }
             }
 
-            // TODO: Cleanup
+            // Remove re-scan alerts metadata
+            snapshot
+                .set_metadata(&database.acquire().await, "rescan", "false")
+                .await?;
 
-            // log::debug!("Removing SBOM: {}", full_path.display());
-            // tokio::fs::remove_file(full_path).await?;
+            snapshot.updated_at = Some(chrono::Utc::now());
+            snapshot.state = SnapshotState::Completed;
+            snapshot.update(&database.acquire().await).await?;
 
             info!(
                 "Project('{}', snapshot = '{}', components = '{}', vulnerabilities = '{}')",

@@ -1,20 +1,26 @@
 [
-  {
-    "mode": "AddColumn",
-    "table": "Snapshot",
-    "column": "updated_at",
-    "rename": null
-  },
-  {
-    "mode": "AddColumn",
-    "table": "Snapshot",
-    "column": "sbom",
-    "rename": null
-  },
-  {
-    "mode": "AddColumn",
-    "table": "Snapshot",
-    "column": "error",
-    "rename": null
-  }
+    {
+        "mode": "AddColumn",
+        "table": "Snapshot",
+        "column": "updated_at",
+        "rename": null
+    },
+    {
+        "mode": "AddColumn",
+        "table": "Snapshot",
+        "column": "sbom",
+        "rename": null
+    },
+    {
+        "mode": "AddColumn",
+        "table": "Snapshot",
+        "column": "error",
+        "rename": null
+    },
+    {
+        "mode": "AddColumn",
+        "table": "Projects",
+        "column": "updated_at",
+        "rename": null
+    }
 ]

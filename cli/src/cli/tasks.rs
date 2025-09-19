@@ -1,11 +1,10 @@
 use clap::Subcommand;
-use geekorm::prelude::*;
 use konarr::{
     Config,
-    models::Projects,
-    tasks::{alert_calculator, catalogue},
-    tools::Tool,
-    utils::grypedb::GrypeDatabase,
+    tasks::{
+        AdvisoriesSyncTask, AdvisoriesTask, AlertCalculatorTask, CatalogueTask, TaskTrait,
+        sbom::SbomTask,
+    },
 };
 use log::info;
 
@@ -18,9 +17,14 @@ pub enum TaskCommands {
         #[clap(short, long, default_value = "false")]
         force: bool,
     },
+    Sbom {
+        /// State of the SBOM
+        #[clap(short, long, default_value = "Processing")]
+        state: String,
+    },
     /// Run the Grype Sync Task
     Grype {
-        /// Run the Grype Alerts Tas
+        /// Run the Grype Alerts Task
         #[clap(short, long, default_value = "false")]
         alerts: bool,
     },
@@ -30,54 +34,38 @@ pub async fn run(
     config: &Config,
     subcommands: Option<TaskCommands>,
 ) -> Result<(), konarr::KonarrError> {
-    let connection = config.database().await?.connect()?;
+    let database = config.database().await?;
 
     match subcommands {
         Some(TaskCommands::Alerts {}) => {
-            alert_calculator(&connection).await?;
+            AlertCalculatorTask::spawn(&database).await?;
         }
         Some(TaskCommands::Catalogue { force }) => {
-            catalogue(&connection, force).await?;
+            let task = if force {
+                CatalogueTask::force()
+            } else {
+                CatalogueTask::default()
+            };
+            task.run(&database).await?;
+        }
+        Some(TaskCommands::Sbom { state }) => {
+            let task = SbomTask::sbom_by_state(&state);
+            info!("Running SBOM Task with state: {}", state);
+
+            task.run(&database).await?;
         }
         Some(TaskCommands::Grype { alerts }) => {
             info!("Running Grype Sync Task");
 
-            let grype_path = config.data_path()?.join("grypedb");
-            info!("Grype data path: {:?}", grype_path);
-
-            GrypeDatabase::sync(&grype_path).await?;
+            AdvisoriesSyncTask::spawn(&database).await?;
 
             if alerts {
                 info!("Running Grype Alerts Task");
-
-                let projects = Projects::all(&connection).await?;
-                let mut snaps = vec![];
-                for proj in projects.iter() {
-                    if let Some(snap) = proj.fetch_latest_snapshot(&connection).await? {
-                        snaps.push(snap);
-                    }
-                }
-
-                let tool_config = konarr::tools::grype::Grype::init().await;
-
-                for snap in snaps {
-                    let mut proj = snap.fetch_project(&connection).await?;
-                    info!("Scanning: {}", proj.name);
-
-                    konarr::tasks::advisories::scan_project(
-                        &config,
-                        &connection,
-                        &tool_config,
-                        &mut proj,
-                    )
-                    .await?;
-                }
-
-                // scan_projects(&config, &connection).await?;
-                info!("Grype Alerts Task Complete");
+                AdvisoriesTask::spawn(&database).await?;
             }
 
-            konarr::tasks::alert_calculator(&connection).await?;
+            AlertCalculatorTask::spawn(&database).await?;
+            info!("Grype Alerts Task Complete");
         }
         None => {
             info!("No subcommand provided, running interactive mode");

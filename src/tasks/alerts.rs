@@ -2,8 +2,9 @@
 
 use std::collections::HashMap;
 
+use crate::models::security::SecurityState;
 use crate::models::{
-    Alerts, ProjectType, Projects, ServerSettings, dependencies::snapshots::AlertsSummary,
+    Alerts, Projects, ServerSettings, dependencies::snapshots::AlertsSummary,
     security::SecuritySeverity, settings::Setting,
 };
 use async_trait::async_trait;
@@ -19,22 +20,30 @@ pub struct AlertCalculatorTask;
 #[async_trait]
 impl TaskTrait for AlertCalculatorTask {
     async fn run(&self, database: &ConnectionManager) -> Result<(), crate::KonarrError> {
-        let connection = database.acquire().await;
-        let page = Page::from((0, 1_000));
-        let mut projects =
-            Projects::fetch_project_type(&connection, ProjectType::Container, &page).await?;
-        log::debug!("Found `{}` Container projects", projects.len());
-
-        for project in projects.iter_mut() {
-            project.fetch_latest_snapshot(&connection).await?;
+        if !ServerSettings::feature_security(&database.acquire().await).await? {
+            log::error!("Security Feature is not enabled");
+            return Ok(());
         }
 
-        alert_calculator(&connection, &mut projects).await?;
+        let mut projects = Projects::fetch_containers(&database.acquire().await).await?;
 
-        log::debug!(
-            "Task - Running Alert Calculator - Actions :: {}",
-            connection.count()
-        );
+        for project in projects.iter_mut() {
+            project
+                .fetch_latest_snapshot_alerts(&database.acquire().await)
+                .await?;
+
+            // This is needed to ensure all the alerts are correct
+            // TODO: This should be removed in the future
+            project
+                .check_latest_snapshot(&database.acquire().await)
+                .await?;
+        }
+
+        log::debug!("Found `{}` Container projects", projects.len());
+
+        alert_calculator(&database.acquire().await, &mut projects).await?;
+
+        alerts_cleanup(database, &projects).await?;
 
         Ok(())
     }
@@ -45,10 +54,6 @@ pub async fn alert_calculator(
     connection: &geekorm::Connection<'_>,
     projects: &mut Vec<Projects>,
 ) -> Result<(), crate::KonarrError> {
-    if !ServerSettings::feature_security(connection).await? {
-        log::error!("Security Feature is not enabled");
-        return Ok(());
-    }
     info!("Task - Running Alert Calculator");
 
     let mut summary = AlertsSummary::new();
@@ -57,9 +62,13 @@ pub async fn alert_calculator(
     let mut project_summaries: HashMap<i32, AlertsSummary> = HashMap::new();
 
     for project in projects.iter_mut() {
-        project.fetch_latest_snapshot(connection).await?;
         if let Some(snapshot) = project.snapshots.last_mut() {
-            debug!("Project('{}', snapshot='{}')", project.name, snapshot.id);
+            info!(
+                "Project('{}', snapshot='{}', alerts='{}')",
+                project.name,
+                snapshot.id,
+                snapshot.alerts.len()
+            );
 
             let snap_summary = snapshot.calculate_alerts_summary(connection).await?;
             for (key, value) in snap_summary.iter() {
@@ -114,20 +123,11 @@ pub async fn calculate_group_alerts(
     project_summaries: &HashMap<i32, AlertsSummary>,
 ) -> Result<(), crate::KonarrError> {
     log::debug!("Calculating Group Alerts");
-    // TODO: Only Server's are supported
-    let mut groups = Projects::query(
-        connection,
-        Projects::query_select()
-            .where_eq("project_type", ProjectType::Server)
-            .build()?,
-    )
-    .await?;
+    let mut groups = Projects::fetch_servers(connection).await?;
     log::debug!("Found {} groups", groups.len());
 
     for group in groups.iter_mut() {
         let group_id: i32 = group.id.into();
-
-        group.fetch_latest_snapshot(connection).await?;
 
         if let Some(snapshot) = group.snapshots.last_mut() {
             log::debug!("Group('{}', snapshot='{}')", group.name, snapshot.id);
@@ -158,13 +158,53 @@ pub async fn calculate_group_alerts(
 }
 
 /// Alerts Cleanup Task
+///
+/// Any alerts in old snapshots that are not referenced by any project
+/// will be marked as Secure / Closed
 pub async fn alerts_cleanup(
-    connection: &geekorm::Connection<'_>,
-    projects: &Vec<Projects>,
+    database: &ConnectionManager,
+    projects: &[Projects],
 ) -> Result<(), crate::KonarrError> {
     log::info!("Task - Running Alerts Cleanup");
 
-    let alerts = Alerts::all(connection).await?;
+    // Fetch all active alerts
+    let alerts =
+        Alerts::fetch_by_state(&database.acquire().await, SecurityState::Vulnerable).await?;
+    log::info!("Found {} active alerts", alerts.len());
+
+    let snapshot_alerts: Vec<Alerts> = projects
+        .iter()
+        .filter_map(|project| project.snapshots.last())
+        .flat_map(|snapshot| snapshot.alerts.clone())
+        .collect();
+
+    log::info!("Found {} active alerts in snapshots", snapshot_alerts.len());
+
+    // Filter alerts that are not in any active snapshot
+    let mut orphaned_alerts: Vec<Alerts> = alerts
+        .iter()
+        .filter(|alert| {
+            !snapshot_alerts
+                .iter()
+                .any(|snapshot_alert| snapshot_alert.id == alert.id)
+        })
+        .cloned()
+        .collect();
+    log::info!("Found {} orphaned alerts", orphaned_alerts.len());
+
+    assert_eq!(orphaned_alerts.len(), alerts.len() - snapshot_alerts.len());
+
+    if !orphaned_alerts.is_empty() {
+        log::info!("Found {} active alerts", alerts.len());
+        log::info!("Found {} orphaned alerts", orphaned_alerts.len());
+
+        for alert in orphaned_alerts.iter_mut() {
+            alert.state = SecurityState::Secure;
+            alert.update(&database.acquire().await).await?;
+        }
+    } else {
+        log::debug!("No orphaned alerts found");
+    }
 
     Ok(())
 }

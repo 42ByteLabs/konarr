@@ -5,14 +5,27 @@ use geekorm::prelude::*;
 #[derive(Data, Debug, Default, Clone, PartialEq)]
 #[allow(missing_docs)]
 pub enum Setting {
-    // Setup Settings
+    /// Initialization status
     #[geekorm(key = "initialized")]
     Initialized,
-    // Registration
+    /// Registration
     #[geekorm(key = "registration")]
     Registration,
+    /// Server Version
+    #[geekorm(key = "version")]
+    Version,
+
+    /// Cleanup is enabled
+    #[geekorm(key = "cleanup")]
+    Cleanup,
+    /// Cleanup timer (in days)
+    #[geekorm(key = "cleanup.timer")]
+    CleanupTimer,
 
     // Server Settings
+    /// Data Directory (e.g. /var/lib/konarr)
+    #[geekorm(key = "server.data")]
+    ServerData,
     /// Server URL (e.g. http://localhost:9000)
     #[geekorm(key = "server.url")]
     ServerUrl,

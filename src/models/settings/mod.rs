@@ -273,6 +273,16 @@ impl ServerSettings {
         self.value == "true" || self.value == "1" || self.value == "enabled"
     }
 
+    /// Get the Setting as a String
+    pub fn string(&self) -> String {
+        self.value.clone()
+    }
+
+    /// Get the Setting as an Integer
+    pub fn integer(&self) -> Result<i64, std::num::ParseIntError> {
+        self.value.parse::<i64>()
+    }
+
     /// Regenerate the Setting Value (42 alphanumeric characters)
     pub fn regenerate(&mut self) {
         self.value = geekorm::utils::generate_random_string(42, "kagent_")

@@ -9,6 +9,8 @@ pub mod database;
 #[cfg(feature = "database")]
 pub mod display;
 #[cfg(feature = "database")]
+pub mod generate;
+#[cfg(feature = "database")]
 pub mod index;
 #[cfg(feature = "database")]
 pub mod search;
@@ -134,6 +136,14 @@ pub enum ArgumentCommands {
         #[clap(subcommand)]
         subcommands: Option<search::SearchCommands>,
     },
+
+    /// Generate
+    #[cfg(feature = "database")]
+    Generate {
+        #[clap(subcommand)]
+        subcommands: Option<generate::GenerateCommands>,
+    },
+
     /// Run various tasks
     #[cfg(feature = "tasks")]
     Tasks {
@@ -175,7 +185,7 @@ pub fn update_config(
 ) -> Result<(), konarr::KonarrError> {
     log::debug!("Updating configuration with arguments");
     if let Some(instance) = &arguments.instance {
-        config.server.set_instance(&instance)?;
+        config.server.set_instance(instance)?;
     }
     if let Some(token) = &arguments.agent_token {
         config.agent.token = Some(token.to_string());

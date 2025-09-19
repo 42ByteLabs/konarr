@@ -25,6 +25,7 @@ use std::path::PathBuf;
 
 #[cfg(feature = "client")]
 mod client;
+#[allow(clippy::module_inception)]
 mod config;
 #[cfg(feature = "tools-grypedb")]
 mod grypedb;
@@ -202,11 +203,9 @@ pub struct SessionsRoleConfig {
 impl Default for SessionsConfig {
     fn default() -> Self {
         Self {
-            admins: SessionsRoleConfig { expires: 1 as i32 },
-            users: SessionsRoleConfig { expires: 24 as i32 },
-            agents: SessionsRoleConfig {
-                expires: 720 as i32,
-            },
+            admins: SessionsRoleConfig { expires: 1 },
+            users: SessionsRoleConfig { expires: 24 },
+            agents: SessionsRoleConfig { expires: 720 },
         }
     }
 }

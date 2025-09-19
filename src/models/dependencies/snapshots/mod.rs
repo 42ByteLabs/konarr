@@ -1,22 +1,18 @@
 //! # Snapshot Model
 
-use std::{collections::HashMap, str::FromStr};
-
 use chrono::{DateTime, Utc};
 use geekorm::{Connection, prelude::*};
-use log::{debug, info};
+use log::debug;
 use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, str::FromStr};
 
 use crate::{
     KonarrError,
-    bom::{BillOfMaterials, BomParser, Parsers},
-    models::{
-        Alerts, Dependencies, ProjectSnapshots, Projects, ServerSettings,
-        security::{SecuritySeverity, SecurityState},
-    },
+    models::{Alerts, Dependencies, ProjectSnapshots, Projects, security::SecuritySeverity},
 };
 
 pub mod metadata;
+pub mod sboms;
 
 pub use metadata::{SnapshotMetadata, SnapshotMetadataKey};
 
@@ -40,6 +36,7 @@ pub struct Snapshot {
 
     /// Last Updated / Checked for Changes
     #[serde(default)]
+    #[geekorm(update = "Some(Utc::now())")]
     pub updated_at: Option<DateTime<Utc>>,
 
     /// SBOM (Bill of Materials) as Binary Data
@@ -53,6 +50,11 @@ pub struct Snapshot {
     #[geekorm(skip)]
     #[serde(skip)]
     pub components: Vec<Dependencies>,
+
+    /// Count of the Components
+    #[geekorm(skip)]
+    #[serde(skip)]
+    pub components_count: usize,
 
     /// Snapshot Metadata
     #[geekorm(skip)]
@@ -75,6 +77,20 @@ impl Snapshot {
                 .build()?,
         )
         .await?)
+    }
+
+    /// Count snapshots dependencies
+    pub async fn count_dependencies(
+        &self,
+        connection: &Connection<'_>,
+    ) -> Result<usize, crate::KonarrError> {
+        Ok(Dependencies::row_count(
+            connection,
+            Dependencies::query_count()
+                .where_eq("snapshot_id", self.id)
+                .build()?,
+        )
+        .await? as usize)
     }
 
     /// Fetch Project for the Snapshot
@@ -100,216 +116,55 @@ impl Snapshot {
         // .await?)
     }
 
-    /// Find or create a new Snapshot from Bill of Materials
-    ///
-    /// If the snapshot already exists, it will return the existing snapshot.
-    pub async fn from_bom(
-        connection: &Connection<'_>,
-        bom: &BillOfMaterials,
-    ) -> Result<Self, crate::KonarrError> {
-        let connection = connection.into();
-        // Based on the SHA, check if the snapshot already exists
-        let mut snapshot: Snapshot =
-            match SnapshotMetadata::find_by_sha(connection, bom.sha.clone()).await {
-                Ok(Some(meta)) => {
-                    debug!("Snapshot Found with same SHA :: {:?}", meta);
-                    let mut snap =
-                        Snapshot::fetch_by_primary_key(connection, meta.snapshot_id).await?;
-                    snap.fetch(connection).await?;
-                    snap.fetch_metadata(connection).await?;
-
-                    snap
-                }
-                _ => {
-                    let mut snap = Self::new();
-                    snap.save(connection).await?;
-                    snap
-                }
-            };
-
-        // Inline processing of the BOM
-        snapshot.process_bom(connection, bom).await?;
-
-        Ok(snapshot)
-    }
-
-    /// Add Bill of Materials to the Snapshot
-    pub async fn add_bom(
+    /// Set the state of the Snapshot
+    pub async fn set_state(
         &mut self,
         connection: &Connection<'_>,
-        bom: Vec<u8>,
-    ) -> Result<(), crate::KonarrError> {
-        self.state = SnapshotState::Created;
-        self.sbom = Some(bom);
+        state: SnapshotState,
+    ) -> Result<(), KonarrError> {
+        log::debug!("Processing SBOM for Snapshot: {:?}", self);
+        self.state = state;
+        // Clear error if not failed
+        if self.state != SnapshotState::Failed {
+            self.error = None;
+        }
+        self.updated_at = Some(Utc::now());
         self.update(connection).await?;
         Ok(())
-    }
-
-    /// Process the Bill of Materials to create Dependencies
-    pub async fn process_bom(
-        &mut self,
-        connection: &Connection<'_>,
-        bom: &BillOfMaterials,
-    ) -> Result<(), crate::KonarrError> {
-        let metadata = vec![
-            (SnapshotMetadataKey::BomType, bom.sbom_type.to_string()),
-            (SnapshotMetadataKey::BomVersion, bom.version.clone()),
-            (
-                SnapshotMetadataKey::DependenciesTotal,
-                bom.components.len().to_string(),
-            ),
-            (SnapshotMetadataKey::BomSha, bom.sha.clone()),
-        ];
-        for (key, value) in metadata {
-            SnapshotMetadata::update_or_create(connection, self.id, &key, value).await?;
-        }
-        // Tools
-        // TODO: Supporting multiple tools (for now, only one tool)
-        for tool in bom.tools.iter() {
-            SnapshotMetadata::update_or_create(
-                connection,
-                self.id,
-                &SnapshotMetadataKey::BomToolName,
-                tool.name.clone(),
-            )
-            .await?;
-            if !tool.version.is_empty() {
-                SnapshotMetadata::update_or_create(
-                    connection,
-                    self.id,
-                    &SnapshotMetadataKey::BomToolVersion,
-                    tool.version.clone(),
-                )
-                .await?;
-            }
-
-            let name = format!("{}@{}", tool.name, tool.version);
-            SnapshotMetadata::update_or_create(
-                connection,
-                self.id,
-                &SnapshotMetadataKey::BomTool,
-                name,
-            )
-            .await?;
-        }
-
-        // Container Metadata
-        if let Some(image) = &bom.container.image {
-            // TODO: Assume its from docker.io by default? Latest?
-            SnapshotMetadata::update_or_create(
-                connection,
-                self.id,
-                &SnapshotMetadataKey::ContainerImage,
-                image.clone(),
-            )
-            .await?;
-            // TODO: Parse the image to get the registry, repository, tag
-        }
-        // TODO: Assume latest?
-        if let Some(version) = &bom.container.version {
-            SnapshotMetadata::update_or_create(
-                connection,
-                self.id,
-                &SnapshotMetadataKey::ContainerVersion,
-                version.clone(),
-            )
-            .await?;
-        }
-
-        for comp in bom.components.iter() {
-            // Create dependency from PURL
-            Dependencies::from_bom_compontent(connection, self.id, comp).await?;
-        }
-        info!("Finished indexing dependencies");
-
-        if ServerSettings::feature_security(connection).await? {
-            info!("Indexing Security Alerts from BillOfMaterials");
-
-            for vuln in bom.vulnerabilities.iter() {
-                Alerts::from_bom_vulnerability(connection, self, vuln).await?;
-            }
-            SnapshotMetadata::update_or_create(
-                connection,
-                self.id,
-                &SnapshotMetadataKey::SecurityToolsAlerts,
-                "true",
-            )
-            .await?;
-
-            // Calculate the totals
-            info!("Calculating Security Alert Totals");
-            self.calculate_alerts_summary(connection).await?;
-        }
-
-        Ok(())
-    }
-
-    /// Gets the SBOM from the database (v0.5+) or disk (v0.4)
-    ///
-    /// If the SBOM is not found in the database, it will try to read it from disk.
-    /// If the SBOM is found on disk, it will be added to the database.
-    pub async fn sbom(
-        &mut self,
-        connection: &Connection<'_>,
-    ) -> Result<Vec<u8>, crate::KonarrError> {
-        // v0.5+ stores the SBOM in the database
-        if let Some(bomdata) = &self.sbom {
-            log::debug!("SBOM found in database");
-            Ok(bomdata.clone())
-        } else {
-            // v0.4 only stores the SBOM on disk
-            log::debug!("SBOM not found in database, trying to read from disk");
-            let bom_path = if let Some(path) = self.find_metadata("bom.path") {
-                path.as_string()
-            } else {
-                // TODO: What if the path already exists?
-                let bpath = format!("{}.json", uuid::Uuid::new_v4());
-                self.set_metadata(connection, "bom.path", &bpath).await?;
-                bpath
-            };
-
-            let sbom_data = tokio::fs::read(bom_path).await?;
-            self.add_bom(connection, sbom_data.clone()).await?;
-
-            // TODO: Cleanup the old SBOM file?
-
-            Ok(sbom_data)
-        }
-    }
-
-    /// Get the Bill of Materials (SBOM) from the database
-    pub async fn get_bom(
-        &mut self,
-        connection: &Connection<'_>,
-    ) -> Result<BillOfMaterials, crate::KonarrError> {
-        let sbom = self.sbom(connection).await?;
-        Parsers::parse(&sbom)
-    }
-
-    /// Get the SBOM path from the database
-    pub async fn sbom_path(
-        &mut self,
-        connection: &Connection<'_>,
-    ) -> Result<String, crate::KonarrError> {
-        if let Some(path) = self.find_metadata("bom.path") {
-            Ok(path.as_string())
-        } else {
-            // Create a new path
-            let bpath = format!("{}.json", uuid::Uuid::new_v4());
-            self.set_metadata(connection, "bom.path", &bpath).await?;
-            Ok(bpath)
-        }
     }
 
     /// Set the state of the Snapshot and add an error message
     pub async fn set_error(
         &mut self,
         connection: &Connection<'_>,
-        error: String,
+        error: impl Into<String>,
     ) -> Result<(), crate::KonarrError> {
+        let error = error.into();
+
+        log::error!("Failed to process SBOM: {:?}", error);
         self.state = SnapshotState::Failed;
         self.error = Some(error);
+        self.updated_at = Some(Utc::now());
         self.update(connection).await?;
+        Ok(())
+    }
+
+    /// Reset error and state of the Snapshot
+    pub async fn reset_error(
+        &mut self,
+        connection: &Connection<'_>,
+    ) -> Result<(), crate::KonarrError> {
+        self.state = SnapshotState::Created;
+        self.error = None;
+        self.updated_at = Some(Utc::now());
+        self.update(connection).await?;
+        Ok(())
+    }
+
+    /// Rescan the Project
+    pub async fn rescan(&mut self, connection: &Connection<'_>) -> Result<(), crate::KonarrError> {
+        self.set_metadata(connection, SnapshotMetadataKey::Rescan, "true")
+            .await?;
         Ok(())
     }
 
@@ -328,6 +183,30 @@ impl Snapshot {
         )
         .await
         .map_err(|e| e.into())
+    }
+
+    /// Fetch all Dependencies for the Snapshot
+    pub async fn fetch_all_dependencies(
+        &self,
+        connection: &Connection<'_>,
+    ) -> Result<Vec<Dependencies>, crate::KonarrError> {
+        let mut deps = Dependencies::query(
+            connection,
+            Dependencies::query_select()
+                .where_eq("snapshot_id", self.id)
+                .build()?,
+        )
+        .await?;
+
+        for dep in deps.iter_mut() {
+            dep.fetch(connection).await?;
+        }
+        Ok(deps)
+    }
+
+    /// Get Metadata by Key
+    pub fn metadata(&self, key: impl Into<SnapshotMetadataKey>) -> Option<&SnapshotMetadata> {
+        self.metadata.get(&key.into())
     }
 
     /// Find Metadata by Key
@@ -370,6 +249,36 @@ impl Snapshot {
         Ok(())
     }
 
+    /// Update Metadata for the Snapshot if it exists and is different
+    pub async fn update_metadata(
+        &mut self,
+        connection: &Connection<'_>,
+        key: impl Into<SnapshotMetadataKey>,
+        value: impl Into<Value>,
+    ) -> Result<(), crate::KonarrError> {
+        let key = key.into();
+        let value: Value = value.into();
+        let value_data: Vec<u8> = match value {
+            Value::Integer(i) => i.to_string().into_bytes(),
+            Value::Boolean(b) => b.to_string().into_bytes(),
+            _ => todo!("Unsupported value type"),
+        };
+        let value_str = String::from_utf8_lossy(&value_data).to_string();
+
+        if let Some(meta) = self.metadata.get(&key) {
+            if meta.value != value_data {
+                log::debug!("Updating Snapshot({}) {}: \"{}\"", self.id, key, value_str);
+                SnapshotMetadata::update_or_create(connection, self.id, &key, value_data).await?;
+            } else {
+                log::debug!("Snapshot({}) {}: {}", self.id, key, value_str);
+            }
+        } else {
+            log::debug!("Adding Snapshot({}) {}: {}", self.id, key, value_str);
+            SnapshotMetadata::update_or_create(connection, self.id, &key, value_data).await?;
+        }
+        Ok(())
+    }
+
     /// Fetch Alerts for the Snapshot
     pub async fn fetch_alerts(
         &mut self,
@@ -380,6 +289,7 @@ impl Snapshot {
             alert.fetch_advisory_id(connection).await?;
         }
 
+        log::debug!("Found {} Alerts for Snapshot({})", alerts.len(), self.id);
         self.alerts = alerts;
 
         Ok(&self.alerts)
@@ -431,9 +341,6 @@ impl Snapshot {
         log::debug!("Calculating Alert Summary for {} Alerts", alerts.len());
 
         for alert in alerts.iter_mut() {
-            if alert.state != SecurityState::Vulnerable {
-                continue;
-            }
             let advisory = alert.fetch_advisory_id(connection).await?;
             let severity = advisory.severity.clone();
 
@@ -462,16 +369,21 @@ impl Snapshot {
             .await?;
             total += count;
         }
-        debug!("Alert Summary for Snapshot({}): {:?}", self.id, total);
-        self.set_metadata(connection, "security.alerts.total", &total.to_string())
-            .await?;
+
+        self.set_metadata(
+            connection,
+            SnapshotMetadataKey::SecurityAlertTotal,
+            total.to_string().as_str(),
+        )
+        .await?;
+        log::debug!("Alert Summary for Snapshot({}): {:?}", self.id, total);
 
         Ok(())
     }
 }
 
 /// Snapshot State
-#[derive(Data, Debug, Clone, Default)]
+#[derive(Data, Debug, Clone, Default, PartialEq, Eq)]
 pub enum SnapshotState {
     /// Snapshot Created (but not processed)
     #[default]
@@ -480,6 +392,8 @@ pub enum SnapshotState {
     Processing,
     /// Snapshot Completed (finished and ready for use)
     Completed,
+    /// Summary (this is for servers with no SBOM, just a summary of the children)
+    Summary,
     /// Snapshot Failed (error during processing)
     Failed,
 }

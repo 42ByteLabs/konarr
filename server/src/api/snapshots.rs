@@ -36,6 +36,8 @@ pub(crate) struct SnapshotResp {
 
     created_at: chrono::DateTime<chrono::Utc>,
 
+    status: Option<String>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<chrono::DateTime<chrono::Utc>>,
 
@@ -182,7 +184,9 @@ pub(crate) async fn upload_bom(
         .add_bom(&state.connection().await, data.to_vec())
         .await?;
 
-    SbomTask::spawn(&state.database.clone()).await?;
+    SbomTask::sbom(snapshot.id.into())
+        .spawn_task(&state.database)
+        .await?;
 
     Ok(Json(snapshot.into()))
 }
@@ -317,6 +321,7 @@ pub async fn get_snapshots(
 
         resp.push(SnapshotResp {
             id: snapshot.id.into(),
+            status: Some(snapshot.state.to_string()),
             created_at: snapshot.created_at,
             updated_at: snapshot.updated_at,
             dependencies: count,
@@ -335,18 +340,24 @@ impl From<models::Snapshot> for SnapshotResp {
 
         for (name, meta) in snapshot.metadata.iter() {
             if *name == SnapshotMetadataKey::DependenciesTotal {
-                count = meta.as_string().parse().unwrap_or(0);
+                // count = meta.as_string().parse().unwrap_or(0);
+                count = meta.as_i32();
+                continue;
+            } else if name.to_string().starts_with("security.") {
                 continue;
             }
             metadata.insert(name.to_string(), meta.as_string());
         }
 
+        let security = SecuritySummary::from(&snapshot);
+
         SnapshotResp {
             id: snapshot.id.into(),
+            status: Some(snapshot.state.to_string()),
             created_at: snapshot.created_at,
             updated_at: snapshot.updated_at,
             dependencies: count,
-            security: SecuritySummary::default(),
+            security,
             metadata,
         }
     }

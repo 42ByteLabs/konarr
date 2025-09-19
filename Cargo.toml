@@ -3,7 +3,7 @@ resolver = "2"
 members = [".", "server", "cli"]
 
 [workspace.package]
-version = "0.4.4"
+version = "0.5.0"
 license = "Apache-2.0"
 description = "Konarr"
 
@@ -51,6 +51,8 @@ models = ["dep:geekorm", "dep:libsql"]
 # Tools
 tools = ["dep:tokio", "client"]
 tools-grypedb = ["tools", "models", "dep:hex", "dep:flate2", "dep:tar"]
+# SBOM Generation/Parsing
+sbom = ["models", "dep:purl", "dep:serde_json", "dep:semver"]
 # Client
 client = ["dep:reqwest", "dep:openssl", "dep:tokio"]
 agent = []
@@ -76,10 +78,10 @@ geekorm = { version = "0.11", features = ["all", "semver", "libsql", "migrations
 libsql = { version = "^0.9", optional = true }
 
 # SBOM
-purl = { version = "^0.1" }
-serde_json = "1.0"
+purl = { version = "^0.1", features = ["serde"], optional = true }
+serde_json = { version = "1.0", optional = true }
 sha2 = "0.10"
-semver = { version = "1.0", features = ["serde"] }
+semver = { version = "1.0", features = ["serde"], optional = true }
 
 # Runtime
 tokio = { version = "1", features = ["full"], optional = true }

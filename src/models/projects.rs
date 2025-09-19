@@ -5,7 +5,9 @@ use geekorm::{Connection, prelude::*};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 
-use super::{Dependencies, Snapshot};
+use super::{
+    Dependencies, SecurityState, Snapshot, SnapshotMetadata, SnapshotMetadataKey, SnapshotState,
+};
 
 /// Status of the Project
 #[derive(Data, Debug, Default, Clone, PartialEq)]
@@ -53,6 +55,11 @@ pub struct Projects {
     #[geekorm(skip)]
     #[serde(skip)]
     pub snapshots: Vec<Snapshot>,
+
+    /// Snapshot count
+    #[geekorm(skip)]
+    #[serde(skip)]
+    pub snapshot_count: Option<i64>,
 
     /// Datetime Created
     #[geekorm(new = "Utc::now()")]
@@ -142,6 +149,23 @@ impl Projects {
         .await?)
     }
 
+    /// Count snapshots
+    pub async fn count_snapshots(
+        &mut self,
+        connection: &Connection<'_>,
+    ) -> Result<i64, crate::KonarrError> {
+        self.snapshot_count = Some(
+            ProjectSnapshots::row_count(
+                connection,
+                ProjectSnapshots::query_count()
+                    .where_eq("project_id", self.id)
+                    .build()?,
+            )
+            .await?,
+        );
+        Ok(self.snapshot_count.unwrap_or(0))
+    }
+
     /// Search for Projects
     pub async fn search_title(
         connection: &Connection<'_>,
@@ -214,6 +238,72 @@ impl Projects {
         .await?;
         for proj in projects.iter_mut() {
             proj.fetch_children(connection).await?;
+            proj.fetch_latest_snapshot(connection).await?;
+        }
+
+        Ok(projects)
+    }
+
+    /// Fetch servers, clusters, and groups
+    ///
+    /// Get the children and metdata for the servers
+    pub async fn fetch_servers(
+        connection: &Connection<'_>,
+    ) -> Result<Vec<Self>, crate::KonarrError> {
+        log::debug!("Fetching Projects by Type: {:?}", ProjectType::Server);
+
+        let mut projects = Projects::query(
+            connection,
+            Projects::query_select()
+                .where_eq("status", ProjectStatus::Active)
+                .and()
+                .where_eq("project_type", ProjectType::Server)
+                .or()
+                .where_eq("project_type", ProjectType::Cluster)
+                .or()
+                .where_eq("project_type", ProjectType::Group)
+                .order_by("created_at", QueryOrder::Desc)
+                .build()?,
+        )
+        .await?;
+        for proj in projects.iter_mut() {
+            proj.fetch_children(connection).await?;
+            proj.fetch_latest_snapshot(connection).await?;
+
+            // Servers have a snapshot created by default
+            if proj.snapshots.is_empty() {
+                log::info!("Creating Snapshot for Project '{}'", proj.name);
+                let mut snapshot = Snapshot::new();
+                // TODO: Is this the correct way to set the state?
+                snapshot.state = SnapshotState::Completed;
+                snapshot.save(connection).await?;
+
+                proj.add_snapshot(connection, snapshot).await?;
+            }
+        }
+
+        Ok(projects)
+    }
+
+    /// Fetch containers
+    pub async fn fetch_containers(
+        connection: &Connection<'_>,
+    ) -> Result<Vec<Self>, crate::KonarrError> {
+        log::debug!("Fetching Projects by Type: {:?}", ProjectType::Container);
+
+        let mut projects = Projects::query(
+            connection,
+            Projects::query_select()
+                .where_eq("status", ProjectStatus::Active)
+                .and()
+                .where_eq("project_type", ProjectType::Container)
+                .or()
+                .where_eq("project_type", ProjectType::Application)
+                .order_by("created_at", QueryOrder::Desc)
+                .build()?,
+        )
+        .await?;
+        for proj in projects.iter_mut() {
             proj.fetch_latest_snapshot(connection).await?;
         }
 
@@ -297,12 +387,23 @@ impl Projects {
         Ok(())
     }
 
+    /// Get the latest snapshot if it exists
+    pub fn latest_snapshot(&self) -> Option<Snapshot> {
+        self.snapshots.last().cloned()
+    }
+
     /// Fetch latest Snapshot
     pub async fn fetch_latest_snapshot(
         &mut self,
         connection: &Connection<'_>,
     ) -> Result<Option<&mut Snapshot>, crate::KonarrError> {
         log::debug!("Fetching Latest Snapshot for Project: {:?}", self.id);
+
+        // This asset makes sure that we halt if a snapshot is already present
+        assert_eq!(self.snapshots.len(), 0);
+
+        self.count_snapshots(connection).await?;
+
         match ProjectSnapshots::query_first(
             connection,
             ProjectSnapshots::query_select()
@@ -318,6 +419,7 @@ impl Projects {
 
                 match Snapshot::fetch_by_primary_key(connection, snap.snapshot_id).await {
                     Ok(mut snapshot) => {
+                        snapshot.fetch(connection).await?;
                         snapshot.fetch_metadata(connection).await?;
 
                         self.snapshots.push(snapshot);
@@ -341,6 +443,69 @@ impl Projects {
                 Ok(None)
             }
         }
+    }
+
+    /// Fetch latest snapshot alerts
+    pub async fn fetch_latest_snapshot_alerts(
+        &mut self,
+        connection: &Connection<'_>,
+    ) -> Result<(), crate::KonarrError> {
+        if let Some(snapshot) = self.snapshots.last_mut() {
+            snapshot.fetch_alerts(connection).await?;
+        } else if let Some(_) = self.fetch_latest_snapshot(connection).await? {
+            if let Some(snap) = self.snapshots.last_mut() {
+                snap.fetch_alerts(connection).await?;
+            }
+        } else {
+            log::warn!("No Snapshots found for Project: {:?}", self.id);
+        }
+        Ok(())
+    }
+
+    /// Fetch the latest snapshot dependencies
+    pub async fn fetch_latest_snapshot_dependencies(
+        &mut self,
+        connection: &Connection<'_>,
+    ) -> Result<(), crate::KonarrError> {
+        if let Some(snapshot) = self.snapshots.last_mut() {
+            snapshot.components = snapshot.fetch_all_dependencies(connection).await?;
+        } else if let Some(_) = self.fetch_latest_snapshot(connection).await? {
+            if let Some(snap) = self.snapshots.last_mut() {
+                snap.components = snap.fetch_all_dependencies(connection).await?;
+            }
+        } else {
+            log::warn!("No Snapshots found for Project: {:?}", self.id);
+        }
+        Ok(())
+    }
+
+    /// Checks the latest snapshot
+    ///
+    /// This includes:
+    /// - Re-opening all the alerts for the snapshot if they are closed
+    pub async fn check_latest_snapshot(
+        &mut self,
+        connection: &Connection<'_>,
+    ) -> Result<(), crate::KonarrError> {
+        if let Some(snap) = self.snapshots.last_mut() {
+            // Check if the snapshot has a sbom
+            if snap.get_bom(connection).await.is_err() {
+                log::warn!("No SBOM found for Snapshot: {:?}", snap.id);
+                snap.rescan(connection).await?;
+                return Ok(());
+            }
+
+            // Re-open all the alerts for the snapshot
+            for alert in snap.alerts.iter_mut() {
+                if alert.state != SecurityState::Vulnerable {
+                    alert.state = SecurityState::Vulnerable;
+                    alert.updated_at = Utc::now();
+                    alert.update(connection).await?;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Add snapshot to project
@@ -382,7 +547,7 @@ impl Projects {
     /// Calculate Alerts for all projects with snapshots
     pub async fn calculate_alerts(
         connection: &Connection<'_>,
-        projects: &mut Vec<Self>,
+        projects: &mut [Self],
     ) -> Result<(), crate::KonarrError> {
         for project in projects.iter_mut() {
             project.fetch_latest_snapshot(connection).await?;
@@ -405,6 +570,34 @@ impl Projects {
         }
 
         Ok(())
+    }
+
+    /// Get metadata from the latest snapshot
+    pub fn get_metadata(&self, key: impl Into<SnapshotMetadataKey>) -> Option<SnapshotMetadata> {
+        if let Some(snapshot) = self.snapshots.last() {
+            snapshot.metadata(key).cloned()
+        } else {
+            log::warn!("No Snapshots found for Project: {:?}", self.id);
+            None
+        }
+    }
+
+    /// Get the latest snapshot version
+    pub fn version(&self) -> Option<String> {
+        if let Some(snapshot) = self.snapshots.last() {
+            snapshot
+                .find_metadata("bom.sha")
+                .cloned()
+                .map(|sha| sha.as_string())
+        } else {
+            log::warn!("No Snapshots found for Project: {:?}", self.id);
+            None
+        }
+    }
+
+    /// Get the project type
+    pub fn project_type(&self) -> ProjectType {
+        self.project_type.clone()
     }
 
     /// Archive the Project

@@ -1,16 +1,16 @@
 //! This module contains the tasks that are run by the CLI.
 
+use geekorm::{Connection, ConnectionManager};
 use std::sync::Arc;
 use tokio::spawn;
 use tokio_schedule::Job;
-
-use geekorm::{Connection, ConnectionManager};
 
 pub mod advisories;
 #[cfg(feature = "tools-grypedb")]
 pub mod advisories_sync;
 pub mod alerts;
 pub mod catalogue;
+pub mod cleanup;
 pub mod projects;
 pub mod sbom;
 pub mod statistics;
@@ -20,12 +20,11 @@ pub use advisories::AdvisoriesTask;
 pub use advisories_sync::AdvisoriesSyncTask;
 pub use alerts::AlertCalculatorTask;
 pub use catalogue::CatalogueTask;
+pub use projects::ProjectsTask;
 pub use statistics::StatisticsTask;
 
 use crate::Config;
-use crate::models::{ServerSettings, Setting};
-
-use self::projects::ProjectsTask;
+use cleanup::CleanupTask;
 
 /// Initialse background tasks
 ///
@@ -38,48 +37,6 @@ pub async fn init(
     database: &ConnectionManager,
 ) -> Result<(), crate::KonarrError> {
     log::info!("Initializing Background Tasks...");
-
-    let minutedb = database.clone();
-    let minute_config = Arc::clone(&config);
-
-    let minute = tokio_schedule::every(60).seconds().perform(move || {
-        let database = minutedb.clone();
-        let config = Arc::clone(&minute_config);
-
-        log::info!("Running Background Tasks");
-
-        async move {
-            let connection = database.acquire().await;
-
-            let rescan = ServerSettings::fetch_by_name(&connection, Setting::SecurityRescan)
-                .await
-                .map_err(|e| {
-                    log::error!("Task Error :: {}", e);
-                });
-
-            if let Ok(mut rescan) = rescan {
-                if rescan.boolean() {
-                    log::info!("Rescanning Projects");
-                    // Reset the flag to disabled before we perform the scan
-                    if let Err(e) = rescan.set_update(&connection, "disabled").await {
-                        log::error!("Error resetting rescan flag: {}", e);
-                    }
-
-                    // Drop the connection before starting the other tasks
-                    drop(connection);
-
-                    if let Ok(task) = AdvisoriesTask::new(&config) {
-                        if let Err(e) = task.run(&database).await {
-                            log::error!("Error rescanning projects: {}", e);
-                        }
-                    } else {
-                        log::error!("Error creating advisories task");
-                    }
-                }
-            }
-        }
-    });
-    spawn(minute);
 
     let hourlydb = database.clone();
     let hourly_config = Arc::clone(&config);
@@ -111,6 +68,10 @@ pub async fn init(
             if let Err(e) = StatisticsTask::task(&database).await {
                 log::error!("Task Error :: {}", e);
             }
+
+            if let Err(e) = CleanupTask::task(&database).await {
+                log::error!("Task Error :: {}", e);
+            }
         }
     });
     spawn(hourly);
@@ -122,7 +83,7 @@ pub async fn init(
 #[async_trait::async_trait]
 pub trait TaskTrait
 where
-    Self: Sized + Default + Send + Sync,
+    Self: Sized + Default + Send + Sync + 'static,
 {
     /// Initialize the Task
     #[allow(unused_variables)]
@@ -156,6 +117,24 @@ where
             log::info!("Spawned Task :: {}", name);
 
             Self::task(&database)
+                .await
+                .map_err(|e| {
+                    log::error!("Failed to run alert calculator: {:?}", e);
+                })
+                .ok();
+            log::info!("Spawned Task Completed :: {}", name);
+        });
+        Ok(())
+    }
+
+    /// Spawn and run the task as a background task
+    async fn spawn_task(self, database: &ConnectionManager) -> Result<(), crate::KonarrError> {
+        let database = database.clone();
+        tokio::spawn(async move {
+            let name = std::any::type_name::<Self>();
+            log::info!("Spawned Task :: {}", name);
+
+            self.run(&database)
                 .await
                 .map_err(|e| {
                     log::error!("Failed to run alert calculator: {:?}", e);

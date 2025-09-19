@@ -1,4 +1,4 @@
-#![deny(unsafe_code)]
+#![deny(unsafe_code, unused_imports)]
 
 use anyhow::{Result, anyhow};
 use log::{debug, error, info, warn};
@@ -200,6 +200,10 @@ async fn main() -> Result<()> {
         #[cfg(feature = "database")]
         Some(cli::ArgumentCommands::Search { subcommands }) => {
             Ok(cli::search::run(&config, subcommands).await?)
+        }
+        #[cfg(feature = "database")]
+        Some(cli::ArgumentCommands::Generate { subcommands }) => {
+            Ok(cli::generate::run(&config, subcommands).await?)
         }
         #[cfg(feature = "tasks")]
         Some(cli::ArgumentCommands::Tasks { subcommands }) => {
