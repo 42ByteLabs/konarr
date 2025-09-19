@@ -5,10 +5,9 @@ use geekorm::{Connection, prelude::*};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::models::dependencies::snapshots::SnapshotState;
-
-use super::security::SecurityState;
-use super::{Dependencies, Snapshot};
+use super::{
+    Dependencies, SecurityState, Snapshot, SnapshotMetadata, SnapshotMetadataKey, SnapshotState,
+};
 
 /// Status of the Project
 #[derive(Data, Debug, Default, Clone, PartialEq)]
@@ -56,6 +55,11 @@ pub struct Projects {
     #[geekorm(skip)]
     #[serde(skip)]
     pub snapshots: Vec<Snapshot>,
+
+    /// Snapshot count
+    #[geekorm(skip)]
+    #[serde(skip)]
+    pub snapshot_count: Option<i64>,
 
     /// Datetime Created
     #[geekorm(new = "Utc::now()")]
@@ -143,6 +147,23 @@ impl Projects {
                 .build()?,
         )
         .await?)
+    }
+
+    /// Count snapshots
+    pub async fn count_snapshots(
+        &mut self,
+        connection: &Connection<'_>,
+    ) -> Result<i64, crate::KonarrError> {
+        self.snapshot_count = Some(
+            ProjectSnapshots::row_count(
+                connection,
+                ProjectSnapshots::query_count()
+                    .where_eq("project_id", self.id)
+                    .build()?,
+            )
+            .await?,
+        );
+        Ok(self.snapshot_count.unwrap_or(0))
     }
 
     /// Search for Projects
@@ -366,6 +387,11 @@ impl Projects {
         Ok(())
     }
 
+    /// Get the latest snapshot if it exists
+    pub fn latest_snapshot(&self) -> Option<Snapshot> {
+        self.snapshots.last().cloned()
+    }
+
     /// Fetch latest Snapshot
     pub async fn fetch_latest_snapshot(
         &mut self,
@@ -375,6 +401,8 @@ impl Projects {
 
         // This asset makes sure that we halt if a snapshot is already present
         assert_eq!(self.snapshots.len(), 0);
+
+        self.count_snapshots(connection).await?;
 
         match ProjectSnapshots::query_first(
             connection,
@@ -392,6 +420,7 @@ impl Projects {
                 match Snapshot::fetch_by_primary_key(connection, snap.snapshot_id).await {
                     Ok(mut snapshot) => {
                         snapshot.fetch(connection).await?;
+                        snapshot.fetch_metadata(connection).await?;
 
                         self.snapshots.push(snapshot);
                         Ok(self.snapshots.last_mut())
@@ -518,7 +547,7 @@ impl Projects {
     /// Calculate Alerts for all projects with snapshots
     pub async fn calculate_alerts(
         connection: &Connection<'_>,
-        projects: &mut Vec<Self>,
+        projects: &mut [Self],
     ) -> Result<(), crate::KonarrError> {
         for project in projects.iter_mut() {
             project.fetch_latest_snapshot(connection).await?;
@@ -541,6 +570,16 @@ impl Projects {
         }
 
         Ok(())
+    }
+
+    /// Get metadata from the latest snapshot
+    pub fn get_metadata(&self, key: impl Into<SnapshotMetadataKey>) -> Option<SnapshotMetadata> {
+        if let Some(snapshot) = self.snapshots.last() {
+            snapshot.metadata(key).cloned()
+        } else {
+            log::warn!("No Snapshots found for Project: {:?}", self.id);
+            None
+        }
     }
 
     /// Get the latest snapshot version

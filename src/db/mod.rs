@@ -12,11 +12,9 @@ where
     let latest = &LatestMigration;
     match latest.validate_database(connection, &Database).await {
         Ok(MigrationState::Initialized) => {
-            log::info!("Database is initialized");
+            LatestMigration::create(connection).await?;
         }
-        Ok(MigrationState::UpToDate) => {
-            log::info!("Database is up to date");
-        }
+        Ok(MigrationState::UpToDate) => {}
         Ok(MigrationState::OutOfDate(_)) => {
             return Err(geekorm::Error::Unknown);
         }
@@ -26,3 +24,4 @@ where
     }
     Ok(())
 }
+

@@ -15,10 +15,10 @@ pub use auth::users::{UserRole, Users};
 pub use cache::DbCache;
 pub use components::{Component, ComponentManager, ComponentType, ComponentVersion};
 pub use dependencies::Dependencies;
-pub use dependencies::snapshots::{Snapshot, SnapshotMetadata, SnapshotMetadataKey};
+pub use dependencies::snapshots::{Snapshot, SnapshotMetadata, SnapshotMetadataKey, SnapshotState};
 pub use projects::{ProjectSnapshots, ProjectStatus, ProjectType, Projects};
 pub use security::advisories::AdvisoriesMetadata;
-pub use security::{Advisories, Alerts};
+pub use security::{Advisories, Alerts, SecurityState};
 pub use settings::{ServerSettings, Setting};
 
 use crate::tasks::alerts::AlertCalculatorTask;

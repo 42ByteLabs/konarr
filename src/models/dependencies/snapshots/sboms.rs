@@ -14,6 +14,11 @@ use crate::{
 };
 
 impl Snapshot {
+    /// Check if the Snapshot has an SBOM
+    pub fn has_sbom(&self) -> bool {
+        self.sbom.is_some()
+    }
+
     /// Find or create a new Snapshot from Bill of Materials
     ///
     /// If the snapshot already exists, it will return the existing snapshot.
@@ -21,7 +26,6 @@ impl Snapshot {
         connection: &Connection<'_>,
         bom: &BillOfMaterials,
     ) -> Result<Self, crate::KonarrError> {
-        let connection = connection.into();
         // Based on the SHA, check if the snapshot already exists
         let mut snapshot: Snapshot =
             match SnapshotMetadata::find_by_sha(connection, bom.sha.clone()).await {

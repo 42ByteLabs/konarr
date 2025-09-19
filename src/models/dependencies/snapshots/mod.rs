@@ -116,12 +116,32 @@ impl Snapshot {
         // .await?)
     }
 
+    /// Set the state of the Snapshot
+    pub async fn set_state(
+        &mut self,
+        connection: &Connection<'_>,
+        state: SnapshotState,
+    ) -> Result<(), KonarrError> {
+        log::debug!("Processing SBOM for Snapshot: {:?}", self);
+        self.state = state;
+        // Clear error if not failed
+        if self.state != SnapshotState::Failed {
+            self.error = None;
+        }
+        self.updated_at = Some(Utc::now());
+        self.update(connection).await?;
+        Ok(())
+    }
+
     /// Set the state of the Snapshot and add an error message
     pub async fn set_error(
         &mut self,
         connection: &Connection<'_>,
-        error: String,
+        error: impl Into<String>,
     ) -> Result<(), crate::KonarrError> {
+        let error = error.into();
+
+        log::error!("Failed to process SBOM: {:?}", error);
         self.state = SnapshotState::Failed;
         self.error = Some(error);
         self.updated_at = Some(Utc::now());
@@ -184,6 +204,11 @@ impl Snapshot {
         Ok(deps)
     }
 
+    /// Get Metadata by Key
+    pub fn metadata(&self, key: impl Into<SnapshotMetadataKey>) -> Option<&SnapshotMetadata> {
+        self.metadata.get(&key.into())
+    }
+
     /// Find Metadata by Key
     pub fn find_metadata(&self, key: &str) -> Option<&SnapshotMetadata> {
         let key = SnapshotMetadataKey::from_str(key).ok()?;
@@ -221,6 +246,36 @@ impl Snapshot {
 
         self.metadata = metadata.into_iter().map(|m| (m.key.clone(), m)).collect();
 
+        Ok(())
+    }
+
+    /// Update Metadata for the Snapshot if it exists and is different
+    pub async fn update_metadata(
+        &mut self,
+        connection: &Connection<'_>,
+        key: impl Into<SnapshotMetadataKey>,
+        value: impl Into<Value>,
+    ) -> Result<(), crate::KonarrError> {
+        let key = key.into();
+        let value: Value = value.into();
+        let value_data: Vec<u8> = match value {
+            Value::Integer(i) => i.to_string().into_bytes(),
+            Value::Boolean(b) => b.to_string().into_bytes(),
+            _ => todo!("Unsupported value type"),
+        };
+        let value_str = String::from_utf8_lossy(&value_data).to_string();
+
+        if let Some(meta) = self.metadata.get(&key) {
+            if meta.value != value_data {
+                log::debug!("Updating Snapshot({}) {}: \"{}\"", self.id, key, value_str);
+                SnapshotMetadata::update_or_create(connection, self.id, &key, value_data).await?;
+            } else {
+                log::debug!("Snapshot({}) {}: {}", self.id, key, value_str);
+            }
+        } else {
+            log::debug!("Adding Snapshot({}) {}: {}", self.id, key, value_str);
+            SnapshotMetadata::update_or_create(connection, self.id, &key, value_data).await?;
+        }
         Ok(())
     }
 
@@ -337,6 +392,8 @@ pub enum SnapshotState {
     Processing,
     /// Snapshot Completed (finished and ready for use)
     Completed,
+    /// Summary (this is for servers with no SBOM, just a summary of the children)
+    Summary,
     /// Snapshot Failed (error during processing)
     Failed,
 }
