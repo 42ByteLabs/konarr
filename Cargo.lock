@@ -369,9 +369,9 @@ dependencies = [
 
 [[package]]
 name = "bollard"
-version = "0.19.2"
+version = "0.19.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8796b390a5b4c86f9f2e8173a68c2791f4fa6b038b84e96dbc01c016d1e6722c"
+checksum = "ec7646ee90964aa59e9f832a67182791396a19a5b1d76eb17599a8310a7e2e09"
 dependencies = [
  "base64 0.22.1",
  "bollard-stubs",
@@ -392,7 +392,7 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "serde_urlencoded",
- "thiserror 2.0.16",
+ "thiserror 2.0.17",
  "tokio",
  "tokio-util",
  "tower-service",
@@ -402,9 +402,9 @@ dependencies = [
 
 [[package]]
 name = "bollard-stubs"
-version = "1.49.0-rc.28.3.3"
+version = "1.49.1-rc.28.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e7814991259013d5a5bee4ae28657dae0747d843cf06c40f7fc0c2894d6fa38"
+checksum = "5731fe885755e92beff1950774068e0cae67ea6ec7587381536fca84f1779623"
 dependencies = [
  "serde",
  "serde_json",
@@ -1187,7 +1187,7 @@ dependencies = [
  "serde",
  "serde_json",
  "syn",
- "thiserror 2.0.16",
+ "thiserror 2.0.17",
  "tokio",
  "url",
  "uuid",
@@ -1207,7 +1207,7 @@ dependencies = [
  "serde",
  "serde_json",
  "syn",
- "thiserror 2.0.16",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1967,7 +1967,7 @@ dependencies = [
  "geekorm",
  "hex",
  "konarr",
- "libsql 0.9.23",
+ "libsql 0.9.24",
  "log",
  "openssl",
  "purl",
@@ -1979,9 +1979,9 @@ dependencies = [
  "serde_yaml",
  "sha2",
  "tar",
- "thiserror 2.0.16",
+ "thiserror 2.0.17",
  "tokio",
- "tokio-tungstenite 0.27.0",
+ "tokio-tungstenite 0.28.0",
  "tokio_schedule",
  "url",
  "uuid",
@@ -2003,7 +2003,7 @@ dependencies = [
  "glob",
  "indicatif",
  "konarr",
- "libsql 0.9.23",
+ "libsql 0.9.24",
  "log",
  "openssl",
  "serde",
@@ -2024,7 +2024,7 @@ dependencies = [
  "env_logger",
  "geekorm",
  "konarr",
- "libsql 0.9.23",
+ "libsql 0.9.24",
  "log",
  "rocket",
  "rocket-governor",
@@ -2033,7 +2033,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "thiserror 2.0.16",
+ "thiserror 2.0.17",
  "tokio",
  "uuid",
 ]
@@ -2117,9 +2117,9 @@ dependencies = [
 
 [[package]]
 name = "libsql"
-version = "0.9.23"
+version = "0.9.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36fb477c6e2e4f6b87595c4f8dc31ee6c2f900c7e25fa13768ab9c5f9bb37201"
+checksum = "a76ffc6aaaac50c1362ebd22f7db457336ab4ee72ee115aaea11f47edf9d7720"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -2135,10 +2135,10 @@ dependencies = [
  "http 0.2.12",
  "hyper 0.14.32",
  "hyper-rustls 0.25.0",
- "libsql-hrana 0.9.23",
+ "libsql-hrana 0.9.24",
  "libsql-sqlite3-parser",
- "libsql-sys 0.9.23",
- "libsql_replication 0.9.23",
+ "libsql-sys 0.9.24",
+ "libsql_replication 0.9.24",
  "parking_lot",
  "serde",
  "serde_json",
@@ -2167,9 +2167,9 @@ dependencies = [
 
 [[package]]
 name = "libsql-ffi"
-version = "0.9.23"
+version = "0.9.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f734c99f40a8cb757837e780711eb92ab60063f5c314f232af7c419f38b963f"
+checksum = "aaaa869a3c33a125231e8963f7890dae9c6de1ce4133e68121467203896203a0"
 dependencies = [
  "bindgen",
  "cc",
@@ -2191,9 +2191,9 @@ dependencies = [
 
 [[package]]
 name = "libsql-hrana"
-version = "0.9.23"
+version = "0.9.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1ff3f941cc9412c647600d424f3f862ea9ee5d4f9fd3d9ed1a0edc5eb43f4c4"
+checksum = "28d0a122bc4af29ffe51a4bb27f7d1b61cf2a4ef5131dad3fecdf1f5fbc6329a"
 dependencies = [
  "base64 0.21.7",
  "bytes",
@@ -2203,15 +2203,15 @@ dependencies = [
 
 [[package]]
 name = "libsql-rusqlite"
-version = "0.9.23"
+version = "0.9.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ee6c2a9c840619846be7413014977df5ac0e71c0d789f02051f89f2ef3ab8fc"
+checksum = "5c2e7739b3828a547d21834779ea699a3b46c3dcfafba75da103d36adcb7c0ab"
 dependencies = [
  "bitflags 2.9.4",
  "fallible-iterator 0.2.0",
  "fallible-streaming-iterator",
  "hashlink",
- "libsql-ffi 0.9.23",
+ "libsql-ffi 0.9.24",
  "smallvec",
 ]
 
@@ -2263,13 +2263,13 @@ dependencies = [
 
 [[package]]
 name = "libsql-sys"
-version = "0.9.23"
+version = "0.9.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43f24addd5c671ec2c5a91ceacfa117b2a28a867a7341d0ff8bcb897fec33927"
+checksum = "b075329f2ea5a8dc2c61b0d92ec095f823505954e1413c0a5220b40b0e4b0083"
 dependencies = [
  "bytes",
- "libsql-ffi 0.9.23",
- "libsql-rusqlite 0.9.23",
+ "libsql-ffi 0.9.24",
+ "libsql-rusqlite 0.9.24",
  "once_cell",
  "tracing",
  "zerocopy 0.7.35",
@@ -2303,17 +2303,17 @@ dependencies = [
 
 [[package]]
 name = "libsql_replication"
-version = "0.9.23"
+version = "0.9.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb1c17412a063285c4f371ddca79ec31affac414f1d5033e1800fe29f1625e5b"
+checksum = "0b47841eedbf05399c552048a11529dcf1fe3d43c1ccc77de55209ba2769d44b"
 dependencies = [
  "aes",
  "async-stream",
  "async-trait",
  "bytes",
  "cbc",
- "libsql-rusqlite 0.9.23",
- "libsql-sys 0.9.23",
+ "libsql-rusqlite 0.9.24",
+ "libsql-sys 0.9.24",
  "parking_lot",
  "prost",
  "serde",
@@ -2955,7 +2955,7 @@ dependencies = [
  "phf",
  "serde",
  "smartstring",
- "thiserror 2.0.16",
+ "thiserror 2.0.17",
  "unicase",
 ]
 
@@ -3506,9 +3506,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.225"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd6c24dee235d0da097043389623fb913daddf92c76e9f5a1db88607a0bcbd1d"
+checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
  "serde_core",
  "serde_derive",
@@ -3516,18 +3516,18 @@ dependencies = [
 
 [[package]]
 name = "serde_core"
-version = "1.0.225"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "659356f9a0cb1e529b24c01e43ad2bdf520ec4ceaf83047b83ddcc2251f96383"
+checksum = "41d385c7d4ca58e59fc732af25c3983b67ac852c1a25000afe1175de458b67ad"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.225"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ea936adf78b1f766949a4977b91d2f5595825bd6ec079aa9543ad2685fc4516"
+checksum = "d540f220d3187173da220f885ab66608367b6574e925011a9353e4badda91d79"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3883,11 +3883,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.16"
+version = "2.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3467d614147380f2e4e374161426ff399c91084acd2363eaf549172b3d5e60c0"
+checksum = "f63587ca0f12b72a0600bcba1d40081f830876000bb46dd2337a3051618f4fc8"
 dependencies = [
- "thiserror-impl 2.0.16",
+ "thiserror-impl 2.0.17",
 ]
 
 [[package]]
@@ -3903,9 +3903,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.16"
+version = "2.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c5e1be1c48b9172ee610da68fd9cd2770e7a4056cb3fc98710ee6906f0c7960"
+checksum = "3ff15c8ecd7de3849db632e14d18d2571fa09dfc5ed93479bc4485c7a517c913"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4069,16 +4069,16 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.27.0"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "489a59b6730eda1b0171fcfda8b121f4bee2b35cba8645ca35c5f7ba3eb736c1"
+checksum = "d25a406cddcc431a75d3d9afc6a7c0f7428d4891dd973e4d54c56b46127bf857"
 dependencies = [
  "futures-util",
  "log",
  "native-tls",
  "tokio",
  "tokio-native-tls",
- "tungstenite 0.27.0",
+ "tungstenite 0.28.0",
 ]
 
 [[package]]
@@ -4366,9 +4366,9 @@ dependencies = [
 
 [[package]]
 name = "tungstenite"
-version = "0.27.0"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eadc29d668c91fcc564941132e17b28a7ceb2f3ebf0b9dae3e03fd7a6748eb0d"
+checksum = "8628dcc84e5a09eb3d8423d6cb682965dea9133204e8fb3efee74c2a0c259442"
 dependencies = [
  "bytes",
  "data-encoding",
@@ -4378,7 +4378,7 @@ dependencies = [
  "native-tls",
  "rand 0.9.2",
  "sha1",
- "thiserror 2.0.16",
+ "thiserror 2.0.17",
  "url",
  "utf-8",
 ]
