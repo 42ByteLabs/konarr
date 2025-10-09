@@ -152,6 +152,7 @@ async fn server(config: Config, database: ConnectionManager) -> Result<()> {
         .mount("/", FileServer::from(frontend))
         // Mount API
         .mount("/api", routes![api::base::base])
+        .mount("/api/health", routes![api::health::health])
         .mount("/api/auth", api::auth::routes())
         .mount("/api/projects", api::projects::routes())
         .mount("/api/snapshots", api::snapshots::routes())

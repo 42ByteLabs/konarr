@@ -14,6 +14,7 @@ pub mod admin;
 pub mod auth;
 pub mod base;
 pub mod dependencies;
+pub mod health;
 pub mod projects;
 pub mod security;
 pub mod snapshots;
