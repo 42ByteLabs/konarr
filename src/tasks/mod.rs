@@ -11,6 +11,7 @@ pub mod advisories_sync;
 pub mod alerts;
 pub mod catalogue;
 pub mod cleanup;
+pub mod dependencies;
 pub mod projects;
 pub mod sbom;
 pub mod statistics;
@@ -20,6 +21,7 @@ pub use advisories::AdvisoriesTask;
 pub use advisories_sync::AdvisoriesSyncTask;
 pub use alerts::AlertCalculatorTask;
 pub use catalogue::CatalogueTask;
+pub use dependencies::DependenciesTask;
 pub use projects::ProjectsTask;
 pub use statistics::StatisticsTask;
 
