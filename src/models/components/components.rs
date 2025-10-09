@@ -10,7 +10,7 @@ use super::{ComponentManager, ComponentType, ComponentVersion};
 use crate::utils::catalogue::Catalogue;
 
 /// Component Model
-#[derive(Table, Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Table, Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Component {
     /// Primary Key
     #[geekorm(primary_key, auto_increment)]

@@ -2,8 +2,8 @@ use clap::Subcommand;
 use konarr::{
     Config,
     tasks::{
-        AdvisoriesSyncTask, AdvisoriesTask, AlertCalculatorTask, CatalogueTask, TaskTrait,
-        sbom::SbomTask,
+        AdvisoriesSyncTask, AdvisoriesTask, AlertCalculatorTask, CatalogueTask, DependenciesTask,
+        TaskTrait, sbom::SbomTask,
     },
 };
 use log::info;
@@ -17,6 +17,7 @@ pub enum TaskCommands {
         #[clap(short, long, default_value = "false")]
         force: bool,
     },
+    Depencencies {},
     Sbom {
         /// State of the SBOM
         #[clap(short, long, default_value = "Processing")]
@@ -47,6 +48,10 @@ pub async fn run(
                 CatalogueTask::default()
             };
             task.run(&database).await?;
+        }
+        Some(TaskCommands::Depencencies {}) => {
+            // DependenciesTask::spawn(&database).await?;
+            DependenciesTask::spawn(&database).await?;
         }
         Some(TaskCommands::Sbom { state }) => {
             let task = SbomTask::sbom_by_state(&state);
