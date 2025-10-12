@@ -5,14 +5,14 @@ use geekorm::{Connection, prelude::*};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 
-pub mod projectsnapshot;
 pub mod data;
+pub mod projectsnapshot;
 
 use super::{
     Dependencies, SecurityState, Snapshot, SnapshotMetadata, SnapshotMetadataKey, SnapshotState,
 };
+pub use data::{ProjectStatus, ProjectType};
 pub use projectsnapshot::ProjectSnapshots;
-pub use data::{ProjectType, ProjectStatus};
 
 /// Project Model
 #[derive(Table, Debug, Default, Clone, Serialize, Deserialize)]
@@ -81,31 +81,6 @@ impl Projects {
         }
 
         Ok(projects)
-    }
-
-    /// Count the active Projects
-    pub async fn count_active(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
-        ProjectStatus::count_active(connection).await
-    }
-
-    /// Count the Archived Projects
-    pub async fn count_archived(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
-        ProjectStatus::count_archived(connection).await
-    }
-
-    /// Count the Inactive Projects
-    pub async fn count_inactive(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
-        ProjectStatus::count_inactive(connection).await
-    }
-
-    /// Count the number of Servers
-    pub async fn count_servers(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
-        ProjectType::count_servers(connection).await
-    }
-
-    /// Count of number of Projects
-    pub async fn count_containers(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
-        ProjectType::count_containers(connection).await
     }
 
     /// Count snapshots

@@ -2,7 +2,7 @@
 use async_trait::async_trait;
 use geekorm::{ConnectionManager, GeekConnector, QueryBuilderTrait};
 
-use crate::models::{Component, ComponentType, Projects, ServerSettings, Setting, Users};
+use crate::models::{Component, ComponentType, ProjectStatus, ProjectType, ServerSettings, Setting, Users};
 
 use super::TaskTrait;
 
@@ -63,31 +63,31 @@ pub async fn project_statistics(
     ServerSettings::update_statistic(
         connection,
         Setting::StatsProjectsTotal,
-        Projects::count_active(connection).await?,
+        ProjectStatus::count_active(connection).await?,
     )
     .await?;
     ServerSettings::update_statistic(
         connection,
         Setting::StatsProjectsInactive,
-        Projects::count_inactive(connection).await?,
+        ProjectStatus::count_inactive(connection).await?,
     )
     .await?;
     ServerSettings::update_statistic(
         connection,
         Setting::StatsProjectsArchived,
-        Projects::count_archived(connection).await?,
+        ProjectStatus::count_archived(connection).await?,
     )
     .await?;
     ServerSettings::update_statistic(
         connection,
         Setting::StatsProjectsServers,
-        Projects::count_servers(connection).await?,
+        ProjectType::count_servers(connection).await?,
     )
     .await?;
     ServerSettings::update_statistic(
         connection,
         Setting::StatsProjectsContainers,
-        Projects::count_containers(connection).await?,
+        ProjectType::count_containers(connection).await?,
     )
     .await?;
 
