@@ -108,7 +108,7 @@ pub(crate) async fn get_projects(
     parents: Option<bool>,
 ) -> ApiResult<ApiResponse<Vec<ProjectResp>>> {
     let connection = state.connection().await;
-    let total = models::Projects::count_active(&connection).await?;
+    let total = models::ProjectStatus::count_active(&connection).await?;
     let mut page = Page::from((page, limit));
     page.set_total(total as u32);
 
