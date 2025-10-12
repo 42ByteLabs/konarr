@@ -32,19 +32,22 @@ pub fn routes() -> Vec<rocket::Route> {
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub(crate) struct SnapshotResp {
+    /// Snapshot ID
     id: i32,
-
-    created_at: chrono::DateTime<chrono::Utc>,
-
+    /// Status of the snapshot
     status: Option<String>,
-
+    /// If there was an error while processing the snapshot
+    error: Option<String>,
+    /// Where the snapshot was updated
+    created_at: chrono::DateTime<chrono::Utc>,
+    /// When the snapshot was Updateed
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<chrono::DateTime<chrono::Utc>>,
-
+    /// Dependency count
     dependencies: i32,
-
+    /// Security Summary
     security: SecuritySummary,
-
+    /// Metadata of the snapshot
     metadata: HashMap<String, String>,
 }
 
@@ -322,6 +325,7 @@ pub async fn get_snapshots(
         resp.push(SnapshotResp {
             id: snapshot.id.into(),
             status: Some(snapshot.state.to_string()),
+            error: snapshot.error.clone(),
             created_at: snapshot.created_at,
             updated_at: snapshot.updated_at,
             dependencies: count,
@@ -354,6 +358,7 @@ impl From<models::Snapshot> for SnapshotResp {
         SnapshotResp {
             id: snapshot.id.into(),
             status: Some(snapshot.state.to_string()),
+            error: snapshot.error,
             created_at: snapshot.created_at,
             updated_at: snapshot.updated_at,
             dependencies: count,
