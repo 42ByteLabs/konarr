@@ -5,21 +5,14 @@ use geekorm::{Connection, prelude::*};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 
+pub mod projectsnapshot;
+pub mod data;
+
 use super::{
     Dependencies, SecurityState, Snapshot, SnapshotMetadata, SnapshotMetadataKey, SnapshotState,
 };
-
-/// Status of the Project
-#[derive(Data, Debug, Default, Clone, PartialEq)]
-pub enum ProjectStatus {
-    /// Active
-    #[default]
-    Active,
-    /// Inactive
-    Inactive,
-    /// Archived
-    Archived,
-}
+pub use projectsnapshot::ProjectSnapshots;
+pub use data::{ProjectType, ProjectStatus};
 
 /// Project Model
 #[derive(Table, Debug, Default, Clone, Serialize, Deserialize)]
@@ -92,61 +85,27 @@ impl Projects {
 
     /// Count the active Projects
     pub async fn count_active(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
-        Ok(Projects::row_count(
-            connection,
-            Projects::query_count()
-                .where_ne("status", ProjectStatus::Archived)
-                .build()?,
-        )
-        .await?)
+        ProjectStatus::count_active(connection).await
     }
 
     /// Count the Archived Projects
     pub async fn count_archived(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
-        Ok(Projects::row_count(
-            connection,
-            Projects::query_count()
-                .where_eq("status", ProjectStatus::Archived)
-                .build()?,
-        )
-        .await?)
+        ProjectStatus::count_archived(connection).await
     }
 
     /// Count the Inactive Projects
     pub async fn count_inactive(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
-        Ok(Projects::row_count(
-            connection,
-            Projects::query_count()
-                .where_eq("status", ProjectStatus::Inactive)
-                .build()?,
-        )
-        .await?)
+        ProjectStatus::count_inactive(connection).await
     }
 
     /// Count the number of Servers
     pub async fn count_servers(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
-        Ok(Projects::row_count(
-            connection,
-            Projects::query_count()
-                .where_eq("project_type", ProjectType::Server)
-                .and()
-                .where_eq("status", ProjectStatus::Active)
-                .build()?,
-        )
-        .await?)
+        ProjectType::count_servers(connection).await
     }
 
     /// Count of number of Projects
     pub async fn count_containers(connection: &Connection<'_>) -> Result<i64, crate::KonarrError> {
-        Ok(Projects::row_count(
-            connection,
-            Projects::query_count()
-                .where_eq("project_type", ProjectType::Container)
-                .and()
-                .where_eq("status", ProjectStatus::Active)
-                .build()?,
-        )
-        .await?)
+        ProjectType::count_containers(connection).await
     }
 
     /// Count snapshots
@@ -154,15 +113,8 @@ impl Projects {
         &mut self,
         connection: &Connection<'_>,
     ) -> Result<i64, crate::KonarrError> {
-        self.snapshot_count = Some(
-            ProjectSnapshots::row_count(
-                connection,
-                ProjectSnapshots::query_count()
-                    .where_eq("project_id", self.id)
-                    .build()?,
-            )
-            .await?,
-        );
+        self.snapshot_count =
+            Some(ProjectSnapshots::count_by_project_id(connection, self.id).await?);
         Ok(self.snapshot_count.unwrap_or(0))
     }
 
@@ -404,16 +356,7 @@ impl Projects {
 
         self.count_snapshots(connection).await?;
 
-        match ProjectSnapshots::query_first(
-            connection,
-            ProjectSnapshots::query_select()
-                .where_eq("project_id", self.id)
-                .order_by("snapshot_id", QueryOrder::Desc)
-                .limit(1)
-                .build()?,
-        )
-        .await
-        {
+        match ProjectSnapshots::fetch_latest(connection, self.id).await {
             Ok(snap) => {
                 log::debug!("Snapshot ID: {} - {:?}", snap.id, snap.snapshot_id);
 
@@ -605,43 +548,4 @@ impl Projects {
         self.status = ProjectStatus::Archived;
         self.update(connection).await.map_err(|e| e.into())
     }
-}
-
-/// Project Snapshots
-#[derive(Table, Debug, Default, Clone, Serialize, Deserialize)]
-pub struct ProjectSnapshots {
-    /// Primary Key
-    #[geekorm(primary_key, auto_increment)]
-    pub id: PrimaryKey<i32>,
-    /// Project ID
-    #[geekorm(foreign_key = "Projects.id")]
-    pub project_id: ForeignKey<i32, Projects>,
-    /// Snapshot ID
-    #[geekorm(foreign_key = "Snapshot.id")]
-    pub snapshot_id: ForeignKey<i32, Snapshot>,
-
-    /// Datetime Created
-    #[geekorm(new = "Utc::now()")]
-    pub created_at: DateTime<Utc>,
-}
-
-/// Project Type
-#[derive(Data, Debug, Default, Clone, PartialEq)]
-pub enum ProjectType {
-    /// Group of Projects
-    #[geekorm(aliases = "group,groups")]
-    Group,
-    /// Single Application
-    #[default]
-    #[geekorm(aliases = "app,application,applications")]
-    Application,
-    /// Server
-    #[geekorm(aliases = "server,servers")]
-    Server,
-    /// Cluster (Kubernetes, Docker Swarm, etc.)
-    #[geekorm(aliases = "cluster")]
-    Cluster,
-    /// Container
-    #[geekorm(aliases = "container,containers,docker")]
-    Container,
 }
