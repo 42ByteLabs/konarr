@@ -13,6 +13,8 @@ use crate::{
     models::{Alerts, Dependencies, ServerSettings, Setting, SnapshotMetadataKey},
 };
 
+const SBOM_MIN_SIZE: usize = 100;
+
 impl Snapshot {
     /// Check if the Snapshot has an SBOM
     pub fn has_sbom(&self) -> bool {
@@ -57,8 +59,16 @@ impl Snapshot {
         connection: &Connection<'_>,
         bom: Vec<u8>,
     ) -> Result<(), crate::KonarrError> {
+        // Make sure we aren't uploading small files that can't possibly be a file
+        if bom.len() > SBOM_MIN_SIZE {
+            self.set_error(connection, "SBOM file is too small").await?;
+            return Err(KonarrError::ParseSBOM("SBOM file is too small".to_string()));
+        }
+
         self.state = SnapshotState::Created;
+        debug!("Updating snapshot state to `Created`");
         self.sbom = Some(bom);
+        debug!("SBOM({}) is {} bytes", self.id, self.sbom.iter().len());
         self.update(connection).await?;
         Ok(())
     }
