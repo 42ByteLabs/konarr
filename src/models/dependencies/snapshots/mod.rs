@@ -392,6 +392,8 @@ pub enum SnapshotState {
     Processing,
     /// Snapshot Completed (finished and ready for use)
     Completed,
+    /// Snapshot is Stale (older than the latest snapshot for the project)
+    Stale,
     /// Summary (this is for servers with no SBOM, just a summary of the children)
     Summary,
     /// Snapshot Failed (error during processing)
