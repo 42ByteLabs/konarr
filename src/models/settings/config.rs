@@ -24,20 +24,38 @@ impl ServerSettings {
                 .await?;
         }
         // Data path
-        ServerSettings::update_setting(
-            connection,
-            &Setting::ServerData,
-            config.data_path()?.canonicalize()?.display().to_string(),
-        )
-        .await?;
+        if let Some(path) = config.data_path().ok() {
+            log::debug!("Server Data Path: {}", path.canonicalize()?.display());
+            if !path.exists() {
+                log::debug!("Creating data path: {}", path.display());
+                tokio::fs::create_dir_all(&path).await?;
+            }
 
-        // Frontend setting
-        ServerSettings::update_setting(
-            connection,
-            &Setting::ServerFrontendPath,
-            config.server.frontend.canonicalize()?.display().to_string(),
-        )
-        .await?;
+            ServerSettings::update_setting(
+                connection,
+                &Setting::ServerData,
+                config.data_path()?.canonicalize()?.display().to_string(),
+            )
+            .await?;
+        }
+
+        if let Some(path) = config.server.frontend.canonicalize().ok() {
+            if path.exists() && path.is_dir() {
+                log::debug!("Server Frontend Path: {}", path.display());
+                // Frontend setting
+                ServerSettings::update_setting(
+                    connection,
+                    &Setting::ServerFrontendPath,
+                    path.display().to_string(),
+                )
+                .await?;
+            } else {
+                log::warn!(
+                    "Frontend path does not exist or is not a directory: {}",
+                    path.display()
+                );
+            }
+        }
 
         Ok(())
     }
