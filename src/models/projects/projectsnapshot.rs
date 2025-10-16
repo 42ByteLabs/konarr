@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use geekorm::{Connection, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use crate::models::Snapshot;
+use crate::models::{Snapshot, SnapshotState};
 
 use super::Projects;
 
@@ -54,5 +54,48 @@ impl ProjectSnapshots {
                 .build()?,
         )
         .await
+    }
+
+    /// Fetch all of the snapshots for a given project id that is not the current/latest
+    /// snapshot.
+    pub async fn fetch_previous_by_project_id(
+        connection: &Connection<'_>,
+        project_id: PrimaryKey<i32>,
+        latest_snapshot_id: PrimaryKey<i32>,
+    ) -> Result<Vec<Self>, geekorm::Error> {
+        ProjectSnapshots::query(
+            connection,
+            ProjectSnapshots::query_select()
+                .where_eq("project_id", project_id)
+                .where_ne("snapshot_id", latest_snapshot_id)
+                .order_by("snapshot_id", QueryOrder::Desc)
+                .build()?,
+        )
+        .await
+    }
+
+    /// Fetch all snapshots for a given project and mark them as stale
+    /// if they are not the latest snapshot.
+    pub async fn set_stale(
+        connection: &Connection<'_>,
+        project_id: impl Into<PrimaryKey<i32>>,
+    ) -> Result<(), crate::KonarrError> {
+        let project_id = project_id.into();
+        let latest = Self::fetch_latest(connection, project_id).await?;
+        let snapshots =
+            Self::fetch_previous_by_project_id(connection, project_id, latest.id).await?;
+
+        for snapshot in snapshots {
+            let mut snap = Snapshot::fetch_by_primary_key(connection, snapshot.snapshot_id).await?;
+            if snap.state == SnapshotState::Completed {
+                log::debug!(
+                    "Marking snapshot {} as stale for project {}",
+                    snap.id,
+                    project_id
+                );
+                snap.set_state(connection, SnapshotState::Stale).await?;
+            }
+        }
+        Ok(())
     }
 }
