@@ -9,15 +9,18 @@ use crate::bom::{
 };
 
 /// CycloneDX SBOM v1.6
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Bom {
     #[serde(rename = "$schema")]
     pub(crate) schema: Option<String>,
     #[serde(rename = "bomFormat")]
     pub(crate) bom_format: Option<String>,
-
     #[serde(rename = "specVersion")]
     pub(crate) spec_version: String,
+    #[serde(rename = "serialNumber")]
+    pub(crate) serial_number: Option<String>,
+
+    pub(crate) version: Option<i32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) metadata: Option<Metadata>,
@@ -112,8 +115,8 @@ impl From<Bom> for BillOfMaterials {
                     .as_ref()
                     .map_or("Unknown".to_string(), |r| {
                         r.iter()
-                            .max_by_key(|rating| rating.severity.len())
-                            .map_or("Unknown".to_string(), |rating| rating.severity.clone())
+                            .max_by_key(|rating| rating.severity())
+                            .map_or("Unknown".to_string(), |rating| rating.severity().clone())
                     });
                 let source = vulnerability
                     .source
@@ -150,9 +153,7 @@ impl BillOfMaterialsBuilder for Bom {
             schema: Some("http://cyclonedx.org/schema/bom-1.6.schema.json".to_string()),
             bom_format: Some("CycloneDX".to_string()),
             spec_version: "1.6".to_string(),
-            metadata: None,
-            components: Some(vec![]),
-            vulnerabilities: None,
+            ..Default::default()
         }
     }
 
@@ -294,6 +295,8 @@ pub(crate) struct Tools {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub(crate) struct Component {
+    #[serde(rename = "bom-ref", skip_serializing_if = "Option::is_none")]
+    pub(crate) bom_ref: Option<String>,
     /// TODO: This can only be a set of known values
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
     pub(crate) comp_type: Option<String>,
@@ -306,9 +309,9 @@ pub(crate) struct Component {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) purl: Option<String>,
 
-    /// Component Author (deprecated)
+    /// Publisher
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) author: Option<String>,
+    pub(crate) publisher: Option<String>,
 }
 
 impl From<&crate::models::Dependencies> for Component {
@@ -359,7 +362,20 @@ pub(crate) struct VulnerabilitySource {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct VulnerabilityRating {
-    pub(crate) severity: String,
+    pub(crate) score: Option<f32>,
+    pub(crate) severity: Option<String>,
+    pub(crate) method: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) vector: Option<String>,
+}
+
+impl VulnerabilityRating {
+    pub fn severity(&self) -> String {
+        if let Some(sev) = &self.severity {
+            return sev.clone();
+        }
+        "Unknown".to_string()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
