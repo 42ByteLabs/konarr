@@ -2,7 +2,9 @@
 use async_trait::async_trait;
 use geekorm::{ConnectionManager, GeekConnector, QueryBuilderTrait};
 
-use crate::models::{Component, ComponentType, ProjectStatus, ProjectType, ServerSettings, Setting, Users};
+use crate::models::{
+    Component, ComponentType, ProjectStatus, ProjectType, ServerSettings, Setting, Users,
+};
 
 use super::TaskTrait;
 

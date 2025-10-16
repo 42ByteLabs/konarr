@@ -41,14 +41,18 @@ impl ProjectSnapshots {
     }
 
     /// Fetch the latest snapshot
-    pub async fn fetch_latest(connection: &Connection<'_>, project_id: PrimaryKey<i32>) -> Result<Self, geekorm::Error> {
+    pub async fn fetch_latest(
+        connection: &Connection<'_>,
+        project_id: PrimaryKey<i32>,
+    ) -> Result<Self, geekorm::Error> {
         ProjectSnapshots::query_first(
             connection,
             ProjectSnapshots::query_select()
                 .where_eq("project_id", project_id)
                 .order_by("snapshot_id", QueryOrder::Desc)
                 .limit(1)
-                .build()?
-        ).await
+                .build()?,
+        )
+        .await
     }
 }
