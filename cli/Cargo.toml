@@ -22,15 +22,22 @@ default = ["agent"]
 # Database
 database = ["dep:geekorm", "dep:libsql", "konarr/models"]
 # Tasks
-tasks = ["database", "konarr/tasks", "konarr/tools-grypedb"]
+tasks = ["database", "konarr/tasks", "konarr/tools-grypedb", "konarr/sbom"]
 # Agent
-agent = ["dep:bollard", "dep:openssl", "konarr/client", "konarr/docker", "konarr/tools", "konarr/agent"]
+agent = [
+    "dep:bollard",
+    "dep:openssl",
+    "konarr/client",
+    "konarr/docker",
+    "konarr/tools",
+    "konarr/agent",
+]
 
 [dependencies]
 konarr = { version = "0.5.0", path = "../", default-features = false }
 
 tokio = { version = "1", features = ["full"] }
-tokio_schedule = "^0.3" 
+tokio_schedule = "^0.3"
 
 # CLI
 clap = { version = "4.5", features = ["derive", "env"] }
@@ -54,4 +61,3 @@ glob = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-

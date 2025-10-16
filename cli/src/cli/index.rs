@@ -32,7 +32,6 @@ pub async fn run(
     debug!("Connecting to Database: {:?}", config.database);
 
     let database = config.database().await?;
-    let connection = database.acquire().await;
 
     info!("Connected to database!");
 
@@ -49,14 +48,15 @@ pub async fn run(
             if path.is_file() {
                 // Find or Create the project
                 let mut project = if let Some(project_id) = config.agent.project_id {
-                    Projects::fetch_by_primary_key(&connection, project_id as i32).await?
+                    Projects::fetch_by_primary_key(&database.acquire().await, project_id as i32)
+                        .await?
                 } else if let Some(project_name) = &config.agent.host {
-                    Projects::fetch_by_name(&connection, project_name).await?
+                    Projects::fetch_by_name(&database.acquire().await, project_name).await?
                 } else {
                     let input = crate::utils::interactive::prompt_input("Project Name")
                         .expect("Failed to get input");
                     let mut proj = Projects::new(input, ProjectType::Container);
-                    proj.fetch_or_create(&connection).await?;
+                    proj.fetch_or_create(&database.acquire().await).await?;
                     proj
                 };
                 info!("Project Name :: {:?}", project);
@@ -82,15 +82,20 @@ pub async fn run(
                 info!("BOM Dependencies    :: {}", bom.components.len());
                 info!("BOM Vulnerabilities :: {}", bom.vulnerabilities.len());
 
-                let mut snapshot = Snapshot::from_bom(&connection, &bom).await?;
+                let mut snapshot = Snapshot::from_bom(&database, &bom).await?;
                 info!("Snapshot ID: {:?}", snapshot.id);
 
-                snapshot.add_bom(&connection, data).await?;
+                snapshot.add_bom(&database.acquire().await, data).await?;
                 snapshot
-                    .set_state(&connection, konarr::models::SnapshotState::Completed)
+                    .set_state(
+                        &database.acquire().await,
+                        konarr::models::SnapshotState::Completed,
+                    )
                     .await?;
 
-                project.add_snapshot(&connection, snapshot).await?;
+                project
+                    .add_snapshot(&database.acquire().await, snapshot)
+                    .await?;
             } else if path.is_dir() {
                 todo!("Directory Parsing");
             }
