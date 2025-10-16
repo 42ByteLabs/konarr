@@ -13,6 +13,8 @@ pub enum IndexCommand {
     Sbom {
         #[clap(long)]
         path: PathBuf,
+        #[clap(long)]
+        format: Option<String>,
     },
     Advisories {
         #[clap(short, long)]
@@ -35,7 +37,7 @@ pub async fn run(
     info!("Connected to database!");
 
     match subcommands {
-        Some(IndexCommand::Sbom { path }) => {
+        Some(IndexCommand::Sbom { path, format }) => {
             info!("Running SBOM Command");
 
             if !path.exists() {
@@ -60,7 +62,13 @@ pub async fn run(
                 info!("Project Name :: {:?}", project);
 
                 info!("File Path: {:?}", path);
-                let bom = konarr::bom::Parsers::parse_path(path)?;
+                let data = tokio::fs::read(&path).await?;
+
+                let bom = if let Some(frmt) = format {
+                    konarr::bom::Parsers::parse_with_name(&data, frmt)?
+                } else {
+                    konarr::bom::Parsers::parse(&data)?
+                };
 
                 info!("BOM Type            :: {}", bom.sbom_type);
                 info!("BOM Version         :: {}", bom.version);
@@ -74,8 +82,13 @@ pub async fn run(
                 info!("BOM Dependencies    :: {}", bom.components.len());
                 info!("BOM Vulnerabilities :: {}", bom.vulnerabilities.len());
 
-                let snapshot = Snapshot::from_bom(&connection, &bom).await?;
+                let mut snapshot = Snapshot::from_bom(&connection, &bom).await?;
                 info!("Snapshot ID: {:?}", snapshot.id);
+
+                snapshot.add_bom(&connection, data).await?;
+                snapshot
+                    .set_state(&connection, konarr::models::SnapshotState::Completed)
+                    .await?;
 
                 project.add_snapshot(&connection, snapshot).await?;
             } else if path.is_dir() {
