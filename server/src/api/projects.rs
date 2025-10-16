@@ -169,7 +169,7 @@ pub struct ProjectUpdateRequest {
     #[serde(rename = "type")]
     pub(crate) project_type: Option<String>,
     pub(crate) description: Option<String>,
-    pub(crate) parent: Option<u32>,
+    pub(crate) parent: Option<i32>,
 }
 
 #[patch("/<id>", data = "<project_req>", format = "json")]
@@ -209,7 +209,10 @@ pub async fn patch_project(
         }
     }
     if let Some(parent) = &project_req.parent {
-        project.parent = *parent as i32;
+        if parent != project.id.value() {
+            log::info!("Updating Project (parent) :: {}", parent);
+            project.parent = *parent;
+        }
         // TODO: Update the name of the project?
     }
 
