@@ -42,7 +42,7 @@ impl TaskTrait for SbomTask {
             };
             log::debug!("Parsed SBOM: {:?}", bom);
 
-            if let Err(err) = snapshot.process_bom(&database.acquire().await, &bom).await {
+            if let Err(err) = snapshot.process_bom(&database, &bom).await {
                 snapshot
                     .set_error(&database.acquire().await, err.to_string())
                     .await?;
