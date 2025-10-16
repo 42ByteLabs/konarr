@@ -64,7 +64,7 @@ impl ProjectStatus {
         Ok(Projects::row_count(
             connection,
             Projects::query_count()
-                .where_ne("status", ProjectStatus::Archived)
+                .where_eq("status", ProjectStatus::Archived)
                 .build()?,
         )
         .await?)
