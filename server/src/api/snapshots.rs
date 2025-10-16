@@ -40,7 +40,7 @@ pub(crate) struct SnapshotResp {
     error: Option<String>,
     /// Where the snapshot was updated
     created_at: chrono::DateTime<chrono::Utc>,
-    /// When the snapshot was Updateed
+    /// When the snapshot was Updated
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<chrono::DateTime<chrono::Utc>>,
     /// Dependency count
