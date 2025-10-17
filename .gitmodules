@@ -5,4 +5,4 @@
 [submodule "docs"]
 	path = docs
 	url = https://github.com/42ByteLabs/konarr-docs
-	branch = main
+	branch = "main"
