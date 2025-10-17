@@ -15,10 +15,41 @@ use crate::models::{Component, ComponentVersion, Dependencies, Projects};
 pub trait BomParser {
     /// Parse data from bytes
     fn parse(data: &[u8]) -> Result<BillOfMaterials, crate::KonarrError>;
+    /// Parse data from bytes with name
+    fn parse_with_name(
+        data: &[u8],
+        name: impl Into<String>,
+    ) -> Result<BillOfMaterials, crate::KonarrError> {
+        let name = name.into();
+        match name.as_str() {
+            "cyclonedx-1.5" | "cdx-1.5" => crate::bom::cyclonedx::spec_v1_5::Bom::parse(data),
+            "cyclonedx-1.6" | "cdx-1.6" => crate::bom::cyclonedx::spec_v1_6::Bom::parse(data),
+            _ => Err(KonarrError::ParseSBOM(format!(
+                "SBOM Format unknow: {}",
+                name
+            ))),
+        }
+    }
+
     /// Parse SBOM from file path
     fn parse_path(path: PathBuf) -> Result<BillOfMaterials, crate::KonarrError> {
         let data = std::fs::read(path.clone())?;
         Self::parse(&data)
+    }
+    /// Parse SBOM
+    fn parse_path_with_name(
+        path: PathBuf,
+        name: impl Into<String>,
+    ) -> Result<BillOfMaterials, crate::KonarrError> {
+        let name = name.into();
+        match name.as_str() {
+            "cyclonedx-1.5" => crate::bom::cyclonedx::spec_v1_5::Bom::parse_path(path),
+            "cyclonedx-1.6" | "cdx-1.6" => crate::bom::cyclonedx::spec_v1_6::Bom::parse_path(path),
+            _ => Err(KonarrError::ParseSBOM(format!(
+                "SBOM Format unknow: {}",
+                name
+            ))),
+        }
     }
 }
 

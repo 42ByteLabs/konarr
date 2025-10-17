@@ -108,7 +108,7 @@ pub(crate) async fn get_projects(
     parents: Option<bool>,
 ) -> ApiResult<ApiResponse<Vec<ProjectResp>>> {
     let connection = state.connection().await;
-    let total = models::Projects::count_active(&connection).await?;
+    let total = models::ProjectStatus::count_active(&connection).await?;
     let mut page = Page::from((page, limit));
     page.set_total(total as u32);
 
@@ -169,7 +169,7 @@ pub struct ProjectUpdateRequest {
     #[serde(rename = "type")]
     pub(crate) project_type: Option<String>,
     pub(crate) description: Option<String>,
-    pub(crate) parent: Option<u32>,
+    pub(crate) parent: Option<i32>,
 }
 
 #[patch("/<id>", data = "<project_req>", format = "json")]
@@ -209,7 +209,10 @@ pub async fn patch_project(
         }
     }
     if let Some(parent) = &project_req.parent {
-        project.parent = *parent as i32;
+        if parent != project.id.value() {
+            log::info!("Updating Project (parent) :: {}", parent);
+            project.parent = *parent;
+        }
         // TODO: Update the name of the project?
     }
 
