@@ -1,6 +1,6 @@
 //! # Dependencies Model / Tables
 
-use geekorm::prelude::*;
+use geekorm::{Connection, prelude::*};
 use purl::GenericPurl;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -322,6 +322,20 @@ impl Dependencies {
                 .where_eq("snapshot_id", snapshot.into())
                 .and()
                 .where_eq("component_id", component.into())
+                .build()?,
+        )
+        .await?)
+    }
+
+    /// Count all of the dependencies for a given Snapshot ID
+    pub async fn count_by_snapshot(
+        connection: &Connection<'_>,
+        snapshop: impl Into<PrimaryKey<i32>>,
+    ) -> Result<i64, crate::KonarrError> {
+        Ok(Dependencies::row_count(
+            connection,
+            Dependencies::query_count()
+                .where_eq("snapshot_id", snapshop.into())
                 .build()?,
         )
         .await?)
