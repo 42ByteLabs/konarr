@@ -330,12 +330,12 @@ impl Dependencies {
     /// Count all of the dependencies for a given Snapshot ID
     pub async fn count_by_snapshot(
         connection: &Connection<'_>,
-        snapshop: impl Into<PrimaryKey<i32>>,
+        snapshot: impl Into<PrimaryKey<i32>>,
     ) -> Result<i64, crate::KonarrError> {
         Ok(Dependencies::row_count(
             connection,
             Dependencies::query_count()
-                .where_eq("snapshot_id", snapshop.into())
+                .where_eq("snapshot_id", snapshot.into())
                 .build()?,
         )
         .await?)
