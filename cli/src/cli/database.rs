@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::Subcommand;
 use geekorm::prelude::*;
+use konarr::models::Users;
 use konarr::tasks::TaskTrait;
 use konarr::tasks::cleanup::CleanupTask;
 use log::{debug, info};
@@ -46,8 +47,27 @@ pub async fn run(config: &mut Config, subcommands: Option<DatabaseCommands>) -> 
             );
             session.save(&db.acquire().await).await?;
 
-            let mut new_user = konarr::models::Users::new(username, password, role, session.id);
-            new_user.save(&db.acquire().await).await?;
+            // Find or create the user
+            let connection = db.acquire().await;
+
+            match Users::fetch_by_username(&connection, &username).await {
+                Ok(mut user) => {
+                    info!("User already exists");
+                    info!("Updating user password and role");
+                    user.hash_password(password)?;
+                    user.role = role;
+                    info!("Saving user");
+                    user.update(&connection).await?;
+                    info!("User updated: {:?}", user);
+                }
+                Err(err) => {
+                    debug!("User not found: {}", err);
+                    info!("Creating new user");
+                    let mut user = Users::new(&username, &password, role.clone(), session.id);
+                    user.save(&connection).await?;
+                    info!("User created: {:?}", user);
+                }
+            };
 
             info!("User created successfully");
         }
