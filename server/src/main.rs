@@ -158,6 +158,7 @@ async fn server(config: Config, database: ConnectionManager) -> Result<()> {
         .mount("/api/snapshots", api::snapshots::routes())
         .mount("/api/dependencies", api::dependencies::routes())
         .mount("/api/security", api::security::routes())
+        .mount("/api/user", api::user::routes())
         .mount("/api/admin", api::admin::routes())
         .mount("/api", api::websock::routes());
 

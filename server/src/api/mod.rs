@@ -18,6 +18,7 @@ pub mod health;
 pub mod projects;
 pub mod security;
 pub mod snapshots;
+pub mod user;
 pub mod websock;
 
 /// API Response Wrapper
