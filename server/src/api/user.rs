@@ -2,12 +2,29 @@ use geekorm::prelude::*;
 use konarr::models::Sessions;
 use rocket::{State, serde::json::Json};
 
+use super::ApiResult;
 use crate::{AppState, error::KonarrServerError, guards::Session};
-
-use super::{ApiResult, base::UserResponse};
 
 pub fn routes() -> Vec<rocket::Route> {
     routes![whoami, update_password, list_sessions, revoke_session]
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
+pub struct UserResponse {
+    /// Username of the user
+    pub username: String,
+    /// Avatar URL of the user
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avatar: Option<String>,
+    /// Role of the user (Admin, User)
+    pub role: String,
+    /// User state (Active, Disabled, Reset)
+    pub state: String,
+    /// When the user account was created
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    /// Last login timestamp
+    pub last_login: chrono::DateTime<chrono::Utc>,
 }
 
 #[get("/whoami")]
@@ -16,11 +33,14 @@ pub async fn whoami(_state: &State<AppState>, session: Session) -> ApiResult<Use
         username: session.user.username.clone(),
         avatar: None,
         role: session.user.role.to_string(),
+        state: session.user.state.to_string(),
+        created_at: session.user.created_at,
+        last_login: session.user.last_login,
     }))
 }
 
 #[derive(serde::Deserialize)]
-#[serde(crate = "rocket::serde")]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct UpdatePasswordReq {
     pub current_password: String,
     pub new_password: String,
@@ -67,14 +87,16 @@ pub async fn update_password(
         username: user.username,
         avatar: None,
         role: user.role.to_string(),
+        state: user.state.to_string(),
+        created_at: user.created_at,
+        last_login: user.last_login,
     }))
 }
 
 #[derive(serde::Serialize)]
-#[serde(crate = "rocket::serde")]
+#[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub struct SessionSummary {
     pub id: i32,
-    pub token: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub last_accessed: chrono::DateTime<chrono::Utc>,
     pub state: String,
@@ -95,7 +117,6 @@ pub async fn list_sessions(
 
     let out = vec![SessionSummary {
         id: sess.id.into(),
-        token: sess.token.clone(),
         created_at: sess.created_at,
         last_accessed: sess.last_accessed,
         state: sess.state.to_string(),
