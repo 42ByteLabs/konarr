@@ -203,13 +203,12 @@ pub(crate) async fn get_snapshot_dependencies(
     page: Option<u32>,
     limit: Option<u32>,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
-    let page = Page::from((page, limit));
+    let total = models::Dependencies::count_by_snapshot(&state.connection().await, id).await?;
+    let page = Page::from((page, limit, total as u32));
 
     let mut snapshot =
         models::Snapshot::fetch_by_primary_key(&state.connection().await, id as i32).await?;
     snapshot.fetch_metadata(&state.connection().await).await?;
-
-    let total = snapshot.find_metadata_usize("bom.dependencies.count");
 
     let mut deps = if let Some(search) = search {
         models::Dependencies::search(&state.connection().await, snapshot.id, search).await?
