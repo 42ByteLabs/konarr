@@ -4,9 +4,8 @@ use konarr::{
 };
 use rocket::{State, serde::json::Json};
 
-use crate::{AppState, guards::Session};
-
 use super::ApiResult;
+use crate::{AppState, api::user::UserResponse, guards::Session};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
@@ -41,18 +40,6 @@ pub struct ConfigResponse {
     pub initialised: bool,
     /// Is the server open for registration
     pub registration: bool,
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase", crate = "rocket::serde")]
-pub struct UserResponse {
-    /// Username of the user
-    pub username: String,
-    /// Avatar URL of the user
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub avatar: Option<String>,
-    /// Role of the user (Admin, User)
-    pub role: String,
 }
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
@@ -197,6 +184,9 @@ pub async fn base(state: &State<AppState>, session: Option<Session>) -> ApiResul
                 username: session.user.username.clone(),
                 avatar: None,
                 role: session.user.role.to_string(),
+                state: session.user.state.to_string(),
+                created_at: session.user.created_at,
+                last_login: session.user.last_login,
             }),
             projects: Some(ProjectsSummary {
                 total: find_statistic(&stats, Setting::StatsProjectsTotal),
