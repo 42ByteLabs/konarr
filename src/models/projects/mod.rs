@@ -126,8 +126,7 @@ impl Projects {
         let mut projects = Projects::query(
             connection,
             Projects::query_select()
-                .where_eq("status", ProjectStatus::Active)
-                .and()
+                .where_ne("status", ProjectStatus::Archived)
                 .where_eq("parent", 0)
                 .order_by("created_at", QueryOrder::Desc)
                 .page(page)
@@ -155,7 +154,7 @@ impl Projects {
         let mut projects = Projects::query(
             connection,
             Projects::query_select()
-                .where_eq("status", ProjectStatus::Active)
+                .where_ne("status", ProjectStatus::Archived)
                 .and()
                 .where_eq("project_type", project_type)
                 .order_by("created_at", QueryOrder::Desc)

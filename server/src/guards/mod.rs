@@ -11,8 +11,10 @@ use rocket::{
 };
 
 pub mod limit;
+pub mod pagination;
 
 use crate::{AppState, error::KonarrServerError};
+pub use pagination::Pagination;
 
 #[derive(Debug, Clone)]
 pub struct Session {

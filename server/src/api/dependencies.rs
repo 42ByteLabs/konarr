@@ -1,10 +1,15 @@
+use std::str::FromStr;
+
 use geekorm::prelude::*;
 
 use konarr::models;
 use rocket::{State, serde::json::Json};
 
 use super::{ApiResponse, ApiResult, projects::ProjectResp};
-use crate::{AppState, guards::Session};
+use crate::{
+    AppState,
+    guards::{Pagination, Session},
+};
 
 pub fn routes() -> Vec<rocket::Route> {
     routes![get_dependency, get_dependencies]
@@ -33,12 +38,6 @@ pub(crate) struct DependencyResp {
     projects: Option<Vec<ProjectResp>>,
 }
 
-#[derive(Default, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase", crate = "rocket::serde")]
-pub(crate) struct DependencySummaryResp {
-    pub count: i32,
-}
-
 /// Get single Dependency by ID
 #[get("/<id>?<snapshot>")]
 pub(crate) async fn get_dependency(
@@ -48,7 +47,13 @@ pub(crate) async fn get_dependency(
     snapshot: Option<u32>,
 ) -> ApiResult<DependencyResp> {
     let connection = state.connection().await;
+
     if let Some(snapshot_id) = snapshot {
+        log::info!(
+            "Fetching dependency with id '{}' for snapshot '{}'",
+            id,
+            snapshot_id
+        );
         let mut dep =
             models::Dependencies::fetch_dependency_by_snapshot(&connection, snapshot_id as i32, id)
                 .await?;
@@ -56,15 +61,12 @@ pub(crate) async fn get_dependency(
 
         Ok(Json(dep.into()))
     } else {
+        log::info!("Fetching dependency with id '{}'", id);
         let mut dep = models::Component::fetch_by_primary_key(&connection, id).await?;
         dep.fetch(&connection).await?;
 
-        let projects: Vec<ProjectResp> =
-            models::Projects::find_project_by_component(&connection, dep.id.into())
-                .await?
-                .iter()
-                .map(|p| p.clone().into())
-                .collect();
+        let projects =
+            models::Projects::find_project_by_component(&connection, dep.id.into()).await?;
 
         let versions: Vec<String> =
             models::ComponentVersion::fetch_by_component_id(&connection, dep.id)
@@ -73,13 +75,15 @@ pub(crate) async fn get_dependency(
                 .map(|v| v.clone().version)
                 .collect();
 
+        log::info!("Performed {} actions", connection.count());
+
         Ok(Json(DependencyResp {
             id: dep.id.into(),
             r#type: dep.component_type.to_string(),
             manager: dep.manager.to_string(),
             name: dep.name.to_string(),
             purl: Some(dep.purl()),
-            projects: Some(projects),
+            projects: Some(projects.into_iter().map(|p| p.into()).collect()),
             versions,
             ..Default::default()
         }))
@@ -87,48 +91,50 @@ pub(crate) async fn get_dependency(
 }
 
 /// Get all Dependencies (components)
-#[get("/?<search>&<top>&<deptype>&<page>&<limit>")]
+#[get("/?<search>&<top>&<select>")]
 pub async fn get_dependencies(
     state: &State<AppState>,
     _session: Session,
     search: Option<String>,
     top: Option<bool>,
-    deptype: Option<String>,
-    page: Option<u32>,
-    limit: Option<u32>,
+    select: Option<String>,
+    pagination: Pagination,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
-    let connection = state.connection().await;
-    let page = Page::from((page, limit));
+    let total: u32 = models::Component::row_count(
+        &state.connection().await,
+        models::Component::query_count().build()?,
+    )
+    .await? as u32;
 
-    let deps = if let Some(search) = search {
-        models::Component::find_by_name(&connection, search, &page).await?
-    } else if let Some(dtyp) = deptype {
-        models::Component::find_by_component_type(
-            &connection,
-            models::ComponentType::from(dtyp),
-            &page,
-        )
-        .await?
+    let page = pagination.page_with_total(total);
+
+    let mut query = models::Component::query_select().order_by("name", QueryOrder::Asc);
+
+    if let Some(search) = search {
+        log::info!("Searching for components with name: '{}'", search);
+        query = query.where_like("name", format!("%{}%", search));
+    }
+    if let Some(dtyp) = select {
+        log::info!("Filtering components by type: '{}'", dtyp);
+        query = query.where_eq("component_type", models::ComponentType::from_str(&dtyp)?);
     } else if top.unwrap_or(false) {
-        models::Component::top(&connection, &page).await?
-    } else {
-        // Fetch all
-        models::Component::query(
-            &connection,
-            models::Component::query_select().page(&page).build()?,
-        )
-        .await?
-    };
+        // Fetch top level
+        log::info!("Fetching the top level components");
+        query = query
+            .where_ne("component_type", models::ComponentType::Library)
+            .and()
+            .where_ne("component_type", models::ComponentType::Unknown)
+            .and()
+            .where_ne("component_type", models::ComponentType::Framework)
+    }
 
-    let total: u32 =
-        models::Component::row_count(&connection, models::Component::query_count().build()?).await?
-            as u32;
-    let pages = (total as f64 / page.limit() as f64).ceil() as u32;
+    let deps = models::Component::query(&state.connection().await, query.build()?).await?;
 
     Ok(Json(ApiResponse::new(
         deps.iter().map(|dep| dep.clone().into()).collect(),
         total,
-        pages,
+        deps.len() as u32,
+        page.pages(),
     )))
 }
 

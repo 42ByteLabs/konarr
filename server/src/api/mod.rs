@@ -41,11 +41,11 @@ impl<T> ApiResponse<T>
 where
     T: serde::Serialize,
 {
-    pub fn new(data: T, total: u32, pages: u32) -> Self {
+    pub fn new(data: T, total: u32, count: u32, pages: u32) -> Self {
         Self {
             data,
             total,
-            count: total,
+            count,
             pages,
         }
     }
