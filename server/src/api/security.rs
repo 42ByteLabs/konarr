@@ -1,6 +1,6 @@
 //! # Security API
 
-use geekorm::{GeekConnector, QueryBuilderTrait, QueryOrder, prelude::Page};
+use geekorm::{GeekConnector, QueryBuilderTrait, QueryOrder};
 use konarr::models::{
     Snapshot,
     security::{Alerts, SecuritySeverity, SecurityState},
@@ -9,7 +9,10 @@ use log::info;
 use rocket::{State, serde::json::Json};
 
 use super::{ApiResponse, ApiResult, dependencies::DependencyResp};
-use crate::{AppState, guards::Session};
+use crate::{
+    AppState,
+    guards::{Pagination, Session},
+};
 
 /// Security Summary
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
@@ -45,19 +48,17 @@ pub(crate) struct AlertResp {
     dependency: Option<DependencyResp>,
 }
 
-#[get("/?<page>&<limit>&<search>&<state>&<severity>")]
+#[get("/?<search>&<state>&<severity>")]
 pub(crate) async fn get_alerts(
     app_state: &State<AppState>,
     _session: Session,
-    page: Option<u32>,
-    limit: Option<u32>,
+    pagination: Pagination,
     state: Option<String>,
     search: Option<String>,
     severity: Option<String>,
 ) -> ApiResult<ApiResponse<Vec<AlertResp>>> {
     let total = Alerts::count_vulnerable(&app_state.connection().await).await?;
-    let mut page = Page::from((page, limit));
-    page.set_total(total as u32);
+    let page = pagination.page_with_total(total as u32);
 
     let state = SecurityState::from(state);
 
@@ -85,6 +86,7 @@ pub(crate) async fn get_alerts(
     Ok(Json(ApiResponse::new(
         alerts.into_iter().map(|a| a.into()).collect(),
         total,
+        total as u32,
         page.pages(),
     )))
 }
