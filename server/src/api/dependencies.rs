@@ -49,6 +49,11 @@ pub(crate) async fn get_dependency(
     let connection = state.connection().await;
 
     if let Some(snapshot_id) = snapshot {
+        log::info!(
+            "Fetching dependency with id '{}' for snapshot '{}'",
+            id,
+            snapshot_id
+        );
         let mut dep =
             models::Dependencies::fetch_dependency_by_snapshot(&connection, snapshot_id as i32, id)
                 .await?;
@@ -56,15 +61,12 @@ pub(crate) async fn get_dependency(
 
         Ok(Json(dep.into()))
     } else {
+        log::info!("Fetching dependency with id '{}'", id);
         let mut dep = models::Component::fetch_by_primary_key(&connection, id).await?;
         dep.fetch(&connection).await?;
 
-        let projects: Vec<ProjectResp> =
-            models::Projects::find_project_by_component(&connection, dep.id.into())
-                .await?
-                .iter()
-                .map(|p| p.clone().into())
-                .collect();
+        let projects =
+            models::Projects::find_project_by_component(&connection, dep.id.into()).await?;
 
         let versions: Vec<String> =
             models::ComponentVersion::fetch_by_component_id(&connection, dep.id)
@@ -73,13 +75,15 @@ pub(crate) async fn get_dependency(
                 .map(|v| v.clone().version)
                 .collect();
 
+        log::info!("Performed {} actions", connection.count());
+
         Ok(Json(DependencyResp {
             id: dep.id.into(),
             r#type: dep.component_type.to_string(),
             manager: dep.manager.to_string(),
             name: dep.name.to_string(),
             purl: Some(dep.purl()),
-            projects: Some(projects),
+            projects: Some(projects.into_iter().map(|p| p.into()).collect()),
             versions,
             ..Default::default()
         }))
