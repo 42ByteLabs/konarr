@@ -7,7 +7,7 @@ use rocket::{
 /// Pagination request guard
 #[derive(Debug, Clone, Copy)]
 pub struct Pagination {
-    /// Current page number (1-based)
+    /// Current page number (0-based)
     pub page: u32,
     /// Number of items per page
     pub limit: u32,
