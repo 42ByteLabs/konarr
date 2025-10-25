@@ -4,7 +4,7 @@ use geekorm::ConnectionManager;
 
 use crate::KonarrError;
 use crate::models::dependencies::snapshots::SnapshotState;
-use crate::models::{Projects, SnapshotMetadataKey};
+use crate::models::{ProjectSnapshots, Projects, SnapshotMetadataKey};
 
 use super::TaskTrait;
 
@@ -22,6 +22,9 @@ impl TaskTrait for ProjectsTask {
 
         for project in projects.iter_mut() {
             update_grouped_projects(&connection, project).await?;
+
+            log::info!("Setting Project '{}' Snapshots as Stale", project.name);
+            ProjectSnapshots::set_stale(&connection, project.id).await?;
         }
 
         log::debug!(

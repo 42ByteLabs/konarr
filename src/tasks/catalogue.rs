@@ -3,7 +3,7 @@ use geekorm::{ConnectionManager, prelude::*};
 
 use super::TaskTrait;
 use crate::{
-    models::{Component, ComponentType, SnapshotMetadataKey, SnapshotState},
+    models::{Component, ComponentType, SnapshotMetadataKey},
     utils::catalogue::Catalogue,
 };
 
@@ -48,20 +48,11 @@ impl TaskTrait for CatalogueTask {
             log::info!("Updated `{}` component out of `{}`", counter, comps.len());
         }
 
-        if self.snapshot.is_some() {
-            self.process_snapshot(database).await?;
-        } else {
-            for snapshot in crate::models::Snapshot::fetch_by_state(
-                &database.acquire().await,
-                SnapshotState::Completed,
-            )
-            .await?
-            {
-                log::info!("Processing Snapshot ID: {}", snapshot.id);
-                self.process_snapshot(database).await?;
-            }
+        if let Some(snapshot) = self.snapshot {
+            process_snapshot(database, snapshot).await?;
         }
 
+        log::info!("Catalogue Task Completed");
         Ok(())
     }
 }
@@ -81,52 +72,48 @@ impl CatalogueTask {
             snapshot: Some(id.into()),
         }
     }
+}
 
-    /// Once the catalogue has been run, process the snapshot metadata.
-    /// This function will process a specific snapshot and catalogue its components
-    /// and update the snapshot metadata accordingly.
-    pub async fn process_snapshot(
-        &self,
-        database: &ConnectionManager,
-    ) -> Result<(), crate::KonarrError> {
-        if let Some(snap_id) = self.snapshot {
-            log::info!("Processing catalogue Snapshot ID: {}", snap_id);
-            let mut snapshot =
-                crate::models::Snapshot::fetch_by_primary_key(&database.acquire().await, snap_id)
+/// Once the catalogue has been run, process the snapshot metadata.
+/// This function will process a specific snapshot and catalogue its components
+/// and update the snapshot metadata accordingly.
+async fn process_snapshot(
+    database: &ConnectionManager,
+    snapshot_id: i32,
+) -> Result<(), crate::KonarrError> {
+    log::info!("Processing catalogue Snapshot ID: {}", snapshot_id);
+    let mut snapshot =
+        crate::models::Snapshot::fetch_by_primary_key(&database.acquire().await, snapshot_id)
+            .await?;
+    let dependencies = snapshot
+        .fetch_all_dependencies(&database.acquire().await)
+        .await?;
+
+    for dependency in dependencies {
+        let comp = dependency.component();
+        match comp.component_type {
+            ComponentType::OperatingSystem => {
+                // Capture OS Name and Version
+                snapshot
+                    .set_metadata(
+                        &database.acquire().await,
+                        SnapshotMetadataKey::Os,
+                        &dependency.name(),
+                    )
                     .await?;
-            let dependencies = snapshot
-                .fetch_all_dependencies(&database.acquire().await)
-                .await?;
 
-            for dependency in dependencies {
-                let comp = dependency.component();
-                match comp.component_type {
-                    ComponentType::OperatingSystem => {
-                        // Capture OS Name and Version
-                        snapshot
-                            .set_metadata(
-                                &database.acquire().await,
-                                SnapshotMetadataKey::Os,
-                                &dependency.name(),
-                            )
-                            .await?;
-
-                        if let Some(version) = dependency.version() {
-                            snapshot
-                                .set_metadata(
-                                    &database.acquire().await,
-                                    SnapshotMetadataKey::OsVersion,
-                                    &version,
-                                )
-                                .await?;
-                        }
-                    }
-                    _ => {}
+                if let Some(version) = dependency.version() {
+                    snapshot
+                        .set_metadata(
+                            &database.acquire().await,
+                            SnapshotMetadataKey::OsVersion,
+                            &version,
+                        )
+                        .await?;
                 }
             }
-        } else {
-            log::warn!("No Snapshot ID provided for processing");
+            _ => {}
         }
-        Ok(())
     }
+    Ok(())
 }
