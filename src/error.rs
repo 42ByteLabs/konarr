@@ -56,6 +56,9 @@ pub enum KonarrError {
     #[error("Invalid Data: {0}")]
     InvalidData(String),
 
+    /// Registration Error
+    #[error("Registration Error: {0}")]
+    RegistrationError(String),
     /// Authentication Error
     #[error("Authentication Error: {0}")]
     AuthenticationError(String),

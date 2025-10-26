@@ -2,9 +2,10 @@
 use super::{Setting, SettingType};
 
 /// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 42] = [
+pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 43] = [
     // Registration Settings
     (Setting::Registration, SettingType::Toggle, "enabled"),
+    (Setting::PasswordStrength, SettingType::String, "3"),
     // If we are already initialized
     (Setting::Initialized, SettingType::Boolean, "false"),
     (Setting::Cleanup, SettingType::Toggle, "disabled"),

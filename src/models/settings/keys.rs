@@ -11,6 +11,9 @@ pub enum Setting {
     /// Registration
     #[geekorm(key = "registration")]
     Registration,
+    /// Password Strength Requirement
+    #[geekorm(key = "password.strength")]
+    PasswordStrength,
     /// Server Version
     #[geekorm(key = "version")]
     Version,

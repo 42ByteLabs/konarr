@@ -7,4 +7,6 @@ pub mod config;
 pub mod containers;
 #[cfg(feature = "tools-grypedb")]
 pub mod grypedb;
+#[cfg(feature = "models")]
+pub mod password;
 pub mod rand;

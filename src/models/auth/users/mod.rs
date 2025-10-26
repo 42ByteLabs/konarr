@@ -2,6 +2,8 @@
 use geekorm::prelude::*;
 use serde::{Deserialize, Serialize};
 
+pub mod register;
+
 use crate::{
     KonarrError,
     utils::config::{SessionsConfig, SessionsRoleConfig},
@@ -215,43 +217,3 @@ impl Users {
         .await
     }
 }
-
-// impl From<&str> for UserState {
-//     fn from(value: &str) -> Self {
-//         match value.to_lowercase().as_str() {
-//             "active" | "activate" => UserState::Active,
-//             "reset" => UserState::Reset,
-//             _ => UserState::Disabled,
-//         }
-//     }
-// }
-
-// impl ToString for UserState {
-//     fn to_string(&self) -> String {
-//         match self {
-//             UserState::Active => "active".to_string(),
-//             UserState::Reset => "reset".to_string(),
-//             UserState::Disabled => "disabled".to_string(),
-//         }
-//     }
-// }
-
-// impl From<&str> for UserRole {
-//     fn from(role: &str) -> Self {
-//         match role {
-//             "admin" => UserRole::Admin,
-//             "agent" => UserRole::Agent,
-//             _ => UserRole::User,
-//         }
-//     }
-// }
-
-// impl ToString for UserRole {
-//     fn to_string(&self) -> String {
-//         match self {
-//             UserRole::Admin => "admin".to_string(),
-//             UserRole::User => "user".to_string(),
-//             UserRole::Agent => "agent".to_string(),
-//         }
-//     }
-// }
