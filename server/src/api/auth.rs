@@ -1,5 +1,6 @@
 use geekorm::prelude::*;
-use konarr::models::{self, SessionState, SessionType, UserRole, Users, settings::ServerSettings};
+use konarr::models::auth::users::register::UserRegistrationRequest;
+use konarr::models::{UserRole, Users, settings::ServerSettings};
 use konarr::tasks::TaskTrait;
 use log::info;
 use rocket::{State, http::CookieJar, serde::json::Json};
@@ -99,12 +100,9 @@ pub async fn register(
     if session.is_some() {
         return Ok(Json(LoginResponse::failed("Already logged in")));
     }
-    let connection = state.connection().await;
-    let registration: String = ServerSettings::fetch_by_name(&connection, "registration")
-        .await?
-        .value;
 
-    if registration == *"enabled" {
+    if Users::open_registration(&state.database).await? {
+        // Check if passwords match
         if payload.password != payload.password_confirm {
             return Ok(Json(LoginResponse::failed("Passwords do not match")));
         }
@@ -115,23 +113,23 @@ pub async fn register(
             UserRole::User
         };
 
-        let mut session = models::Sessions::new(SessionType::User, SessionState::Active);
-        session.save(&connection).await?;
+        let request = UserRegistrationRequest {
+            username: payload.username.clone(),
+            password: payload.password.clone(),
+            role: Some(role),
+        };
 
-        let mut user = Users::new(
-            payload.username.clone(),
-            payload.password.clone(),
-            role,
-            session.id,
-        );
-        user.save(&connection).await?;
+        let user = Users::register(&state.database, request).await?;
 
         if !state.init {
-            let mut deinit = ServerSettings::fetch_by_name(&connection, "initialized").await?;
+            let mut deinit =
+                ServerSettings::fetch_by_name(&state.connection().await, "initialized").await?;
             deinit.set_boolean("true");
-            deinit.update(&connection).await?;
+            deinit.update(&state.connection().await).await?;
             info!("Server is now initialized");
         }
+
+        log::info!("Registered new user: {:?}", user.id);
 
         konarr::tasks::StatisticsTask::spawn(&state.database).await?;
 
