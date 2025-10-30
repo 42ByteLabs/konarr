@@ -143,7 +143,7 @@ mod tests {
             ComponentType::CryptographyLibrary,
         );
 
-        let mut data = vec![
+        let mut data = [
             Component::from_purl("pkg:deb/debian/openssl").unwrap(),
             Component::from_purl("pkg:apk/alpine/openssl").unwrap(),
             Component::from_purl("pkg:rpm/fedora/openssl").unwrap(),
@@ -163,7 +163,7 @@ mod tests {
     fn test_catalogue() {
         let catalogue = Catalogue::new();
 
-        let mut data = vec![
+        let mut data = [
             (
                 Component::from_purl("pkg:apk/alpine").unwrap(),
                 ComponentType::OperatingSystem,

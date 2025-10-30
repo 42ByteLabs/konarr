@@ -144,7 +144,7 @@ impl KonarrSnapshot {
             }
         }
 
-        if changes.len() == 0 {
+        if changes.is_empty() {
             return Ok(());
         }
 
