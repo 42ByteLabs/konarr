@@ -10,7 +10,7 @@ pub use advisories::{Advisories, AdvisorySource};
 pub use alerts::{Alerts, SecurityState};
 
 /// List of Security Criticality
-pub const SECURITY_SEVERITY: [&'static str; 8] = [
+pub const SECURITY_SEVERITY: [&str; 8] = [
     "Critical",
     "High",
     "Medium",

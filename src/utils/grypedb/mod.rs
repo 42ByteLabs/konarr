@@ -1,12 +1,13 @@
 //! # Grype Database
 #![allow(missing_docs)]
+#![allow(clippy::needless_question_mark)]
 
 use chrono::Timelike;
 use geekorm::{ConnectionManager, prelude::*};
 use log::{debug, error, trace, warn};
 use semver::Version;
 use sha2::Digest;
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::{Path, PathBuf}};
 use url::Url;
 
 use crate::{
@@ -35,12 +36,12 @@ impl GrypeDatabase {
     /// Create a connection to the Grype database
     ///
     /// Path can be a directory (with vulnerability.db) or the database file
-    pub async fn connect(path: &PathBuf) -> Result<Self, KonarrError> {
+    pub async fn connect(path: &Path) -> Result<Self, KonarrError> {
         log::debug!("Connecting to Grype DB at: {}", path.display());
         let db = if path.is_dir() {
             path.join("5").join("vulnerability.db")
         } else {
-            path.clone()
+            path.to_path_buf()
         };
 
         Ok(Self {
@@ -53,7 +54,7 @@ impl GrypeDatabase {
     /// Sync the Grype database
     ///
     /// The path is the directory where the Grype database is stored
-    pub async fn sync(path: &PathBuf) -> Result<bool, KonarrError> {
+    pub async fn sync(path: &Path) -> Result<bool, KonarrError> {
         debug!("Syncing Grype DB");
         let dbpath = path.join("5").join("vulnerability.db");
 
@@ -122,7 +123,7 @@ impl GrypeDatabase {
     /// Download, verify and unarchive a build of the Grype database
     ///
     /// This is the full process of updating the Grype database
-    pub async fn download(path: &PathBuf, build: &GrypeDatabaseEntry) -> Result<(), KonarrError> {
+    pub async fn download(path: &Path, build: &GrypeDatabaseEntry) -> Result<(), KonarrError> {
         debug!("Downloading Grype DB from: {}", build.url);
         let path_version = path.join(build.version.to_string());
         if !path_version.exists() {
@@ -214,7 +215,7 @@ impl GrypeDatabase {
     }
 
     /// Scan a SBOM with Grype
-    pub async fn scan_sbom(&self, path: &PathBuf) -> Result<BillOfMaterials, KonarrError> {
+    pub async fn scan_sbom(&self, path: &Path) -> Result<BillOfMaterials, KonarrError> {
         let sbom = format!("sbom:{}", path.display());
         let output = Grype::run(&self.tool, sbom).await?;
 
@@ -314,7 +315,7 @@ impl GrypeListingResponse {
         self.available
             .iter()
             .find(|e| *e.0 == 5)
-            .map_or(None, |e| e.1.first())
+            .and_then(|e| e.1.first())
     }
 }
 

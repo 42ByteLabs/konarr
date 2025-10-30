@@ -1,4 +1,4 @@
-use bollard::{API_DEFAULT_VERSION, container::ListContainersOptions};
+use bollard::{API_DEFAULT_VERSION, query_parameters::ListContainersOptions};
 use konarr::{
     Config, KonarrError,
     bom::{BomParser, Parsers},
@@ -22,7 +22,7 @@ pub async fn setup(
     let mut project = if let Some(project_id) = config.agent.project_id {
         log::debug!("Project ID :: {}", project_id);
 
-        match KonarrProjects::by_id(&client, project_id).await {
+        match KonarrProjects::by_id(client, project_id).await {
             Ok(Some(project)) => project,
             _ => {
                 log::error!("Failed to get project by id: {}", project_id);
@@ -36,7 +36,7 @@ pub async fn setup(
         let lhost = hostname.to_lowercase();
 
         // Look at top projects
-        let project: Option<KonarrProject> = KonarrProjects::by_name(&client, &lhost).await?;
+        let project: Option<KonarrProject> = KonarrProjects::by_name(client, &lhost).await?;
 
         match project {
             Some(p) => p,
@@ -51,7 +51,7 @@ pub async fn setup(
                 // Auto-Create Projects
                 log::info!("Auto-Create mode enabled");
                 KonarrProject::new(hostname, "Server")
-                    .create(&client)
+                    .create(client)
                     .await?
             }
         }
@@ -165,7 +165,7 @@ async fn run_docker(
 
     let mut tool = if let Some(tool_name) = &config.agent.tool {
         debug!("Tool Name :: {}", tool_name);
-        ToolConfig::find_tool(&tool_name).await?
+        ToolConfig::find_tool(tool_name).await?
     } else {
         log::error!("Tool not specified");
         return Err(KonarrError::UnknownError(format!(
@@ -212,9 +212,9 @@ async fn run_docker(
 
     info!("Getting Docker Containers...");
     let containers = docker
-        .list_containers(Some(ListContainersOptions::<String> {
+        .list_containers(Some(ListContainersOptions {
             all: true,
-            filters: HashMap::from([("status".to_string(), vec!["running".to_string()])]),
+            filters: Some(HashMap::from([("status".to_string(), vec!["running".to_string()])])),
             ..Default::default()
         }))
         .await?;
@@ -296,7 +296,7 @@ async fn run_docker(
             let results = tool.run(container_image).await?;
 
             log::info!("Parsing and validating SBOM with Konarr...");
-            match Parsers::parse(&results.as_bytes()) {
+            match Parsers::parse(results.as_bytes()) {
                 Ok(bom) => {
                     info!("Validate SBOM spec supported by Konarr: {}", bom.sbom_type);
                 }
@@ -308,7 +308,7 @@ async fn run_docker(
             }
 
             info!("Uploading BOM to Server...");
-            let json_data: serde_json::Value = serde_json::from_slice(&results.as_bytes())?;
+            let json_data: serde_json::Value = serde_json::from_slice(results.as_bytes())?;
 
             let result = container_snapshot.upload_bom(client, json_data).await?;
             info!("Uploaded BOM to Server");

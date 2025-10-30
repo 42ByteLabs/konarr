@@ -13,9 +13,9 @@ pub struct CycloneDx;
 impl BomParser for CycloneDx {
     fn parse(data: &[u8]) -> Result<BillOfMaterials, crate::KonarrError> {
         if let Ok(sbom) = Bom_v1_5::parse(data) {
-            Ok(sbom.into())
+            Ok(sbom)
         } else if let Ok(sbom) = Bom_v1_6::parse(data) {
-            Ok(sbom.into())
+            Ok(sbom)
         } else {
             Err(crate::KonarrError::ParseSBOM(
                 "Failed to parse SBOM".to_string(),

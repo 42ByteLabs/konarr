@@ -40,10 +40,8 @@ impl Catalogue {
                 return Ok(true);
             }
         } else {
-            let wildcards = vec![
-                format!("pkg:*/{}", component.name),
-                format!("pkg:{}/*", component.manager),
-            ];
+            let wildcards = [format!("pkg:*/{}", component.name),
+                format!("pkg:{}/*", component.manager)];
 
             for wildcard in wildcards.iter() {
                 if let Some(comp) = self.catalogue.get(wildcard) {

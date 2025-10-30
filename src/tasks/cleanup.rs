@@ -50,7 +50,7 @@ impl CleanupTask {
     ) -> Result<TimeDelta, crate::KonarrError> {
         match ServerSettings::fetch_by_name(connection, Setting::CleanupTimer).await {
             Ok(timer_setting) => Ok(TimeDelta::days(
-                timer_setting.integer().unwrap_or(90 as i64),
+                timer_setting.integer().unwrap_or(90_i64),
             )),
             Err(_) => {
                 // Create a default timer
@@ -71,7 +71,7 @@ impl CleanupTask {
     pub async fn cleanup_snapshots(
         &self,
         connection: &Connection<'_>,
-        snapshots: &mut Vec<Snapshot>,
+        snapshots: &mut [Snapshot],
         timer: TimeDelta,
     ) -> Result<(), crate::KonarrError> {
         for snatshot in snapshots.iter_mut() {
@@ -84,11 +84,9 @@ impl CleanupTask {
                     log::info!("Deleting snapshot: {}", snatshot.id);
                     snatshot.delete(connection).await?;
                 }
-            } else {
-                if snatshot.created_at < chrono::Utc::now() - timer {
-                    log::info!("Deleting snapshot: {}", snatshot.id);
-                    snatshot.delete(connection).await?;
-                }
+            } else if snatshot.created_at < chrono::Utc::now() - timer {
+                log::info!("Deleting snapshot: {}", snatshot.id);
+                snatshot.delete(connection).await?;
             }
         }
 
