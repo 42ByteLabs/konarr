@@ -180,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_parsing() {
-        let debs = vec!["deb", "DeBiAn", "debian", "DEBIAN", "Debian"];
+        let debs = ["deb", "DeBiAn", "debian", "DEBIAN", "Debian"];
         for deb in debs.iter() {
             let pdeb = ComponentManager::from(*deb);
             assert_eq!(pdeb, ComponentManager::Deb);
@@ -215,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_purls() {
-        let purls = vec!["pkg:deb/debian", "pkg:deb/debian/openssl", "pkg:apk/alpine"];
+        let purls = ["pkg:deb/debian", "pkg:deb/debian/openssl", "pkg:apk/alpine"];
 
         for purl in purls.iter() {
             let (comp, _version) = Component::from_purl(purl.to_string()).unwrap();

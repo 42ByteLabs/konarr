@@ -6,7 +6,7 @@ fn main() {
     } else {
         // Git commit hash
         let git_output = Command::new("git")
-            .args(&["rev-parse", "--short", "HEAD"])
+            .args(["rev-parse", "--short", "HEAD"])
             .output()
             .expect("Failed to execute git command");
         String::from_utf8(git_output.stdout).unwrap()
