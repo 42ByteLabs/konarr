@@ -125,7 +125,7 @@ pub async fn get_dependencies(
             query = query.where_eq("component_type", models::ComponentType::from_str(&dtyp)?);
         }
     } else if top.unwrap_or(false) {
-        log::warn!("The 'top' parameter is deprecated. Please use 'select=all' instead.");
+        log::warn!("The 'top' parameter is deprecated. Please use 'select=top' instead.");
     }
 
     let total: u32 =
