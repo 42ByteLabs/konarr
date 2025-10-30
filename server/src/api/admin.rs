@@ -205,7 +205,7 @@ pub(crate) async fn update_users(
 ) -> ApiResult<AdminUserSummary> {
     let mut user =
         konarr::models::Users::fetch_by_primary_key(&state.connection().await, id as i32).await?;
-    log::info!("Updating user :: {}", user.username);
+    log::info!("Updating user :: id={}", user.id);
 
     // The default user cannot be changed
     if user.id == 1.into() {
