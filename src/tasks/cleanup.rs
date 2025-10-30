@@ -49,9 +49,7 @@ impl CleanupTask {
         connection: &Connection<'_>,
     ) -> Result<TimeDelta, crate::KonarrError> {
         match ServerSettings::fetch_by_name(connection, Setting::CleanupTimer).await {
-            Ok(timer_setting) => Ok(TimeDelta::days(
-                timer_setting.integer().unwrap_or(90_i64),
-            )),
+            Ok(timer_setting) => Ok(TimeDelta::days(timer_setting.integer().unwrap_or(90_i64))),
             Err(_) => {
                 // Create a default timer
                 let mut setting = ServerSettings::new(

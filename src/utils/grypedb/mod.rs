@@ -7,7 +7,10 @@ use geekorm::{ConnectionManager, prelude::*};
 use log::{debug, error, trace, warn};
 use semver::Version;
 use sha2::Digest;
-use std::{collections::HashMap, path::{Path, PathBuf}};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 use url::Url;
 
 use crate::{

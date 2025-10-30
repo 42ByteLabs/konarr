@@ -188,15 +188,9 @@ impl ToolConfig {
     /// Run the Tool
     pub async fn run(&self, image: impl Into<String> + Send) -> Result<String, KonarrError> {
         match self.name.as_str() {
-            "grype" => {
-                Grype::run(self, image).await
-            }
-            "syft" => {
-                Syft::run(self, image).await
-            }
-            "trivy" => {
-                Trivy::run(self, image).await
-            }
+            "grype" => Grype::run(self, image).await,
+            "syft" => Syft::run(self, image).await,
+            "trivy" => Trivy::run(self, image).await,
             _ => panic!("Tool not implemented"),
         }
     }
@@ -205,15 +199,9 @@ impl ToolConfig {
     pub fn find(&self) -> Result<PathBuf, KonarrError> {
         log::debug!("Finding tool: {}", self.name);
         match self.name.as_str() {
-            "grype" => {
-                Grype::find("grype")
-            }
-            "syft" => {
-                Syft::find("syft")
-            }
-            "trivy" => {
-                Trivy::find("trivy")
-            }
+            "grype" => Grype::find("grype"),
+            "syft" => Syft::find("syft"),
+            "trivy" => Trivy::find("trivy"),
             _ => panic!("Tool not implemented"),
         }
     }
@@ -221,15 +209,9 @@ impl ToolConfig {
     /// Get the version of the Tool
     pub async fn version(&self) -> Result<String, KonarrError> {
         match self.name.as_str() {
-            "grype" => {
-                Grype::version(self).await
-            }
-            "syft" => {
-                Syft::version(self).await
-            }
-            "trivy" => {
-                Trivy::version(self).await
-            }
+            "grype" => Grype::version(self).await,
+            "syft" => Syft::version(self).await,
+            "trivy" => Trivy::version(self).await,
             _ => panic!("Tool not implemented"),
         }
     }

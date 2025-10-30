@@ -106,7 +106,8 @@ impl GrypeDatabase {
                         .get_metadata(connection, "description")
                         .await?
                         .is_none()
-                        && !vuln_metadata.description.is_empty() {
+                        && !vuln_metadata.description.is_empty()
+                    {
                         advisory
                             .add_metadata(
                                 connection,
@@ -119,7 +120,8 @@ impl GrypeDatabase {
                         .get_metadata(connection, "description")
                         .await?
                         .is_none()
-                        && !vuln_metadata.description.is_empty() {
+                        && !vuln_metadata.description.is_empty()
+                    {
                         advisory
                             .add_metadata(
                                 connection,
