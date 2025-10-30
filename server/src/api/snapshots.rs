@@ -15,7 +15,11 @@ use super::{
     dependencies::DependencyResp,
     security::{AlertResp, SecuritySummary},
 };
-use crate::{AppState, error::KonarrServerError, guards::Session};
+use crate::{
+    AppState,
+    error::KonarrServerError,
+    guards::{Pagination, Session},
+};
 
 pub fn routes() -> Vec<rocket::Route> {
     routes![
@@ -32,19 +36,22 @@ pub fn routes() -> Vec<rocket::Route> {
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", crate = "rocket::serde")]
 pub(crate) struct SnapshotResp {
+    /// Snapshot ID
     id: i32,
-
-    created_at: chrono::DateTime<chrono::Utc>,
-
+    /// Status of the snapshot
     status: Option<String>,
-
+    /// If there was an error while processing the snapshot
+    error: Option<String>,
+    /// Where the snapshot was updated
+    created_at: chrono::DateTime<chrono::Utc>,
+    /// When the snapshot was Updated
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<chrono::DateTime<chrono::Utc>>,
-
+    /// Dependency count
     dependencies: i32,
-
+    /// Security Summary
     security: SecuritySummary,
-
+    /// Metadata of the snapshot
     metadata: HashMap<String, String>,
 }
 
@@ -191,22 +198,20 @@ pub(crate) async fn upload_bom(
     Ok(Json(snapshot.into()))
 }
 
-#[get("/<id>/dependencies?<search>&<page>&<limit>")]
+#[get("/<id>/dependencies?<search>")]
 pub(crate) async fn get_snapshot_dependencies(
     state: &State<AppState>,
     _session: Session,
     id: u32,
     search: Option<String>,
-    page: Option<u32>,
-    limit: Option<u32>,
+    pagination: Pagination,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
-    let page = Page::from((page, limit));
+    let total = models::Dependencies::count_by_snapshot(&state.connection().await, id).await?;
+    let page = pagination.page_with_total(total as u32);
 
     let mut snapshot =
         models::Snapshot::fetch_by_primary_key(&state.connection().await, id as i32).await?;
     snapshot.fetch_metadata(&state.connection().await).await?;
-
-    let total = snapshot.find_metadata_usize("bom.dependencies.count");
 
     let mut deps = if let Some(search) = search {
         models::Dependencies::search(&state.connection().await, snapshot.id, search).await?
@@ -223,19 +228,19 @@ pub(crate) async fn get_snapshot_dependencies(
     Ok(Json(ApiResponse::new(
         deps.into_iter().map(|d| d.into()).collect(),
         total as u32,
+        total as u32,
         page.pages(),
     )))
 }
 
-#[get("/<id>/alerts?<search>&<severity>&<page>&<limit>")]
+#[get("/<id>/alerts?<search>&<severity>")]
 pub(crate) async fn get_snapshot_alerts(
     state: &State<AppState>,
     _session: Session,
     id: u32,
     search: Option<String>,
     severity: Option<String>,
-    page: Option<u32>,
-    limit: Option<u32>,
+    pagination: Pagination,
 ) -> ApiResult<ApiResponse<Vec<AlertResp>>> {
     let snapshot =
         models::Snapshot::fetch_by_primary_key(&state.connection().await, id as i32).await?;
@@ -243,7 +248,7 @@ pub(crate) async fn get_snapshot_alerts(
         .fetch_alerts_count(&state.connection().await)
         .await?;
 
-    let page = Page::from((page, limit));
+    let page = pagination.page_with_total(total as u32);
 
     let alerts: Vec<Alerts> = if let Some(_search) = search {
         vec![] // TODO: Implement search
@@ -280,26 +285,22 @@ pub(crate) async fn get_snapshot_alerts(
     Ok(Json(ApiResponse::new(
         alerts.into_iter().map(|a| a.into()).collect(),
         total as u32,
+        total as u32,
         page.pages(),
     )))
 }
 
-#[get("/?<page>&<limit>")]
+#[get("/")]
 pub async fn get_snapshots(
     state: &State<AppState>,
     _session: Session,
-    page: Option<u32>,
-    limit: Option<u32>,
+    pagination: Pagination,
 ) -> ApiResult<Vec<SnapshotResp>> {
-    let page = page.unwrap_or(0) as usize;
-    let limit = limit.unwrap_or(25) as usize;
+    let page = pagination.page();
 
     let mut snapshots = models::Snapshot::query(
         &state.connection().await,
-        models::Snapshot::query_select()
-            .limit(limit)
-            .offset(page * limit)
-            .build()?,
+        models::Snapshot::query_select().page(&page).build()?,
     )
     .await?;
 
@@ -322,6 +323,7 @@ pub async fn get_snapshots(
         resp.push(SnapshotResp {
             id: snapshot.id.into(),
             status: Some(snapshot.state.to_string()),
+            error: snapshot.error.clone(),
             created_at: snapshot.created_at,
             updated_at: snapshot.updated_at,
             dependencies: count,
@@ -354,6 +356,7 @@ impl From<models::Snapshot> for SnapshotResp {
         SnapshotResp {
             id: snapshot.id.into(),
             status: Some(snapshot.state.to_string()),
+            error: snapshot.error,
             created_at: snapshot.created_at,
             updated_at: snapshot.updated_at,
             dependencies: count,

@@ -3,7 +3,7 @@ use geekorm::{ConnectionManager, prelude::*};
 
 use super::TaskTrait;
 use crate::{
-    models::{Component, ComponentType},
+    models::{Component, ComponentType, SnapshotMetadataKey},
     utils::catalogue::Catalogue,
 };
 
@@ -11,6 +11,7 @@ use crate::{
 #[derive(Default)]
 pub struct CatalogueTask {
     force: bool,
+    snapshot: Option<i32>,
 }
 
 #[async_trait::async_trait]
@@ -47,6 +48,11 @@ impl TaskTrait for CatalogueTask {
             log::info!("Updated `{}` component out of `{}`", counter, comps.len());
         }
 
+        if let Some(snapshot) = self.snapshot {
+            process_snapshot(database, snapshot).await?;
+        }
+
+        log::info!("Catalogue Task Completed");
         Ok(())
     }
 }
@@ -54,6 +60,60 @@ impl TaskTrait for CatalogueTask {
 impl CatalogueTask {
     /// Set the Catalogue Task to force
     pub fn force() -> Self {
-        Self { force: true }
+        Self {
+            force: true,
+            snapshot: None,
+        }
     }
+    /// Set the Catalogue Task to a specific snapshot
+    pub fn snapshot(id: impl Into<i32>) -> Self {
+        Self {
+            force: false,
+            snapshot: Some(id.into()),
+        }
+    }
+}
+
+/// Once the catalogue has been run, process the snapshot metadata.
+/// This function will process a specific snapshot and catalogue its components
+/// and update the snapshot metadata accordingly.
+async fn process_snapshot(
+    database: &ConnectionManager,
+    snapshot_id: i32,
+) -> Result<(), crate::KonarrError> {
+    log::info!("Processing catalogue Snapshot ID: {}", snapshot_id);
+    let mut snapshot =
+        crate::models::Snapshot::fetch_by_primary_key(&database.acquire().await, snapshot_id)
+            .await?;
+    let dependencies = snapshot
+        .fetch_all_dependencies(&database.acquire().await)
+        .await?;
+
+    for dependency in dependencies {
+        let comp = dependency.component();
+        match comp.component_type {
+            ComponentType::OperatingSystem => {
+                // Capture OS Name and Version
+                snapshot
+                    .set_metadata(
+                        &database.acquire().await,
+                        SnapshotMetadataKey::Os,
+                        &dependency.name(),
+                    )
+                    .await?;
+
+                if let Some(version) = dependency.version() {
+                    snapshot
+                        .set_metadata(
+                            &database.acquire().await,
+                            SnapshotMetadataKey::OsVersion,
+                            &version,
+                        )
+                        .await?;
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
 }

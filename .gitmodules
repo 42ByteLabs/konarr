@@ -2,3 +2,7 @@
 	path = frontend 
 	url = https://github.com/42ByteLabs/konarr-client
     branch = "main"
+[submodule "docs"]
+	path = docs
+	url = https://github.com/42ByteLabs/konarr-docs.git
+	branch = "main"

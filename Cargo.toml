@@ -45,6 +45,8 @@ tag-name = "v{{version}}"
 
 [features]
 default = []
+all = ["tasks", "models", "tools-grypedb", "sbom", "client", "websocket", "docker"]
+
 tasks = ["dep:tokio", "dep:tokio_schedule"]
 # Database / Models
 models = ["dep:geekorm", "dep:libsql"]
@@ -113,4 +115,3 @@ required-features = ["models", "tasks"]
 name = "grypedb"
 path = "examples/grypedb.rs"
 required-features = ["tasks", "tools-grypedb"]
-

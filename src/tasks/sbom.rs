@@ -1,8 +1,8 @@
 //! SBOM Task
-use geekorm::ConnectionManager;
 
-use crate::models::Snapshot;
 use crate::models::dependencies::snapshots::SnapshotState;
+use crate::models::{ProjectSnapshots, Snapshot};
+use geekorm::ConnectionManager;
 
 use super::TaskTrait;
 
@@ -42,13 +42,28 @@ impl TaskTrait for SbomTask {
             };
             log::debug!("Parsed SBOM: {:?}", bom);
 
-            if let Err(err) = snapshot.process_bom(&database.acquire().await, &bom).await {
+            if let Err(err) = snapshot.process_bom(&database, &bom).await {
                 snapshot
                     .set_error(&database.acquire().await, err.to_string())
                     .await?;
             } else {
                 snapshot
                     .set_state(&database.acquire().await, SnapshotState::Completed)
+                    .await?;
+            }
+
+            // Update previous snapshots for the same project to 'Stale'
+            let project_snaps =
+                ProjectSnapshots::fetch_by_snapshot_id(&database.acquire().await, snapshot.id)
+                    .await?;
+
+            if let Some(project_snap) = project_snaps.first() {
+                log::debug!(
+                    "Marking previous snapshots as stale for project: {}",
+                    project_snap.project_id
+                );
+
+                ProjectSnapshots::set_stale(&database.acquire().await, project_snap.project_id.key)
                     .await?;
             }
         }

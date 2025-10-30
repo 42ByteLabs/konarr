@@ -23,6 +23,10 @@ pub enum KonarrServerError {
     #[error("Snapshot {0} not found")]
     SnapshotNotFoundError(i32),
 
+    /// SBOM Error
+    #[error("SBOM Error: {0}")]
+    SbomError(String),
+
     /// Bill of Materials Parsing Error
     #[error("Failed to parse bill of materials: {0}")]
     BillOfMaterialsParseError(String),

@@ -1,5 +1,5 @@
 //! # Snapshot Bill of Materials
-use geekorm::{Connection, GeekConnector};
+use geekorm::{Connection, ConnectionManager, GeekConnector};
 use log::{debug, info};
 use std::path::PathBuf;
 
@@ -11,7 +11,10 @@ use crate::{
         cyclonedx::spec_v1_6::Bom as CycloneDx,
     },
     models::{Alerts, Dependencies, ServerSettings, Setting, SnapshotMetadataKey},
+    tasks::{CatalogueTask, TaskTrait},
 };
+
+const SBOM_MIN_SIZE: usize = 100;
 
 impl Snapshot {
     /// Check if the Snapshot has an SBOM
@@ -23,30 +26,31 @@ impl Snapshot {
     ///
     /// If the snapshot already exists, it will return the existing snapshot.
     pub async fn from_bom(
-        connection: &Connection<'_>,
+        database: &ConnectionManager,
         bom: &BillOfMaterials,
     ) -> Result<Self, crate::KonarrError> {
         // Based on the SHA, check if the snapshot already exists
         let mut snapshot: Snapshot =
-            match SnapshotMetadata::find_by_sha(connection, bom.sha.clone()).await {
+            match SnapshotMetadata::find_by_sha(&database.acquire().await, bom.sha.clone()).await {
                 Ok(Some(meta)) => {
                     debug!("Snapshot Found with same SHA :: {:?}", meta);
                     let mut snap =
-                        Snapshot::fetch_by_primary_key(connection, meta.snapshot_id).await?;
-                    snap.fetch(connection).await?;
-                    snap.fetch_metadata(connection).await?;
+                        Snapshot::fetch_by_primary_key(&database.acquire().await, meta.snapshot_id)
+                            .await?;
+                    snap.fetch(&database.acquire().await).await?;
+                    snap.fetch_metadata(&database.acquire().await).await?;
 
                     snap
                 }
                 _ => {
                     let mut snap = Self::new();
-                    snap.save(connection).await?;
+                    snap.save(&database.acquire().await).await?;
                     snap
                 }
             };
 
         // Inline processing of the BOM
-        snapshot.process_bom(connection, bom).await?;
+        snapshot.process_bom(&database, bom).await?;
 
         Ok(snapshot)
     }
@@ -57,8 +61,16 @@ impl Snapshot {
         connection: &Connection<'_>,
         bom: Vec<u8>,
     ) -> Result<(), crate::KonarrError> {
+        // Make sure we aren't uploading small files that can't possibly be a file
+        if bom.len() < SBOM_MIN_SIZE {
+            self.set_error(connection, "SBOM file is too small").await?;
+            return Err(KonarrError::ParseSBOM("SBOM file is too small".to_string()));
+        }
+
         self.state = SnapshotState::Created;
+        debug!("Updating snapshot state to `Created`");
         self.sbom = Some(bom);
+        debug!("SBOM({}) is {} bytes", self.id, self.sbom.iter().len());
         self.update(connection).await?;
         Ok(())
     }
@@ -66,7 +78,7 @@ impl Snapshot {
     /// Process the Bill of Materials to create Dependencies
     pub async fn process_bom(
         &mut self,
-        connection: &Connection<'_>,
+        database: &ConnectionManager,
         bom: &BillOfMaterials,
     ) -> Result<(), crate::KonarrError> {
         let metadata = vec![
@@ -79,13 +91,14 @@ impl Snapshot {
             (SnapshotMetadataKey::BomSha, bom.sha.clone()),
         ];
         for (key, value) in metadata {
-            SnapshotMetadata::update_or_create(connection, self.id, &key, value).await?;
+            SnapshotMetadata::update_or_create(&database.acquire().await, self.id, &key, value)
+                .await?;
         }
         // Tools
         // TODO: Supporting multiple tools (for now, only one tool)
         for tool in bom.tools.iter() {
             SnapshotMetadata::update_or_create(
-                connection,
+                &database.acquire().await,
                 self.id,
                 &SnapshotMetadataKey::BomToolName,
                 tool.name.clone(),
@@ -93,7 +106,7 @@ impl Snapshot {
             .await?;
             if !tool.version.is_empty() {
                 SnapshotMetadata::update_or_create(
-                    connection,
+                    &database.acquire().await,
                     self.id,
                     &SnapshotMetadataKey::BomToolVersion,
                     tool.version.clone(),
@@ -103,7 +116,7 @@ impl Snapshot {
 
             let name = format!("{}@{}", tool.name, tool.version);
             SnapshotMetadata::update_or_create(
-                connection,
+                &database.acquire().await,
                 self.id,
                 &SnapshotMetadataKey::BomTool,
                 name,
@@ -115,7 +128,7 @@ impl Snapshot {
         if let Some(image) = &bom.container.image {
             // TODO: Assume its from docker.io by default? Latest?
             SnapshotMetadata::update_or_create(
-                connection,
+                &database.acquire().await,
                 self.id,
                 &SnapshotMetadataKey::ContainerImage,
                 image.clone(),
@@ -126,7 +139,7 @@ impl Snapshot {
         // TODO: Assume latest?
         if let Some(version) = &bom.container.version {
             SnapshotMetadata::update_or_create(
-                connection,
+                &database.acquire().await,
                 self.id,
                 &SnapshotMetadataKey::ContainerVersion,
                 version.clone(),
@@ -136,18 +149,22 @@ impl Snapshot {
 
         for comp in bom.components.iter() {
             // Create dependency from PURL
-            Dependencies::from_bom_compontent(connection, self.id, comp).await?;
+            Dependencies::from_bom_compontent(&database.acquire().await, self.id, comp).await?;
         }
         info!("Finished indexing dependencies");
 
-        if ServerSettings::feature_security(connection).await? {
+        CatalogueTask::snapshot(self.id)
+            .spawn_task(&database)
+            .await?;
+
+        if ServerSettings::feature_security(&database.acquire().await).await? {
             info!("Indexing Security Alerts from BillOfMaterials");
 
             for vuln in bom.vulnerabilities.iter() {
-                Alerts::from_bom_vulnerability(connection, self, vuln).await?;
+                Alerts::from_bom_vulnerability(&database.acquire().await, self, vuln).await?;
             }
             SnapshotMetadata::update_or_create(
-                connection,
+                &database.acquire().await,
                 self.id,
                 &SnapshotMetadataKey::SecurityToolsAlerts,
                 "true",
@@ -156,7 +173,8 @@ impl Snapshot {
 
             // Calculate the totals
             info!("Calculating Security Alert Totals");
-            self.calculate_alerts_summary(connection).await?;
+            self.calculate_alerts_summary(&database.acquire().await)
+                .await?;
         }
 
         Ok(())
@@ -268,7 +286,6 @@ impl Snapshot {
             }
             Err(err) => {
                 log::error!("Failed to parse SBOM, requesting rescan and setting error");
-                self.sbom = None;
                 self.rescan(connection).await?;
                 self.set_error(connection, "Failed to parse SBOM".to_string())
                     .await?;

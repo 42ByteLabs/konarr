@@ -9,7 +9,7 @@ use super::{ApiResponse, ApiResult, security::SecuritySummary};
 use crate::{
     AppState,
     error::KonarrServerError,
-    guards::{AdminSession, Session},
+    guards::{AdminSession, Pagination, Session},
 };
 
 pub fn routes() -> Vec<rocket::Route> {
@@ -96,49 +96,68 @@ pub(crate) async fn get_project(
     }
 }
 
-#[get("/?<page>&<limit>&<search>&<type>&<top>&<parents>")]
+#[get("/?<search>&<select>&<top>&<parents>")]
 pub(crate) async fn get_projects(
     state: &State<AppState>,
     _session: Session,
-    page: Option<u32>,
-    limit: Option<u32>,
+    pagination: Pagination,
     search: Option<String>,
     top: Option<bool>,
-    r#type: Option<String>,
+    select: Option<String>,
     parents: Option<bool>,
 ) -> ApiResult<ApiResponse<Vec<ProjectResp>>> {
-    let connection = state.connection().await;
-    let total = models::Projects::count_active(&connection).await?;
-    let mut page = Page::from((page, limit));
-    page.set_total(total as u32);
+    // Build Query
+    let mut query = models::Projects::query_select()
+        .where_eq("status", ProjectStatus::Active)
+        .order_by("created_at", QueryOrder::Desc);
 
-    let projects = if let Some(search) = search {
+    // Search by name
+    if let Some(search) = search {
         log::info!("Searching for projects with name: '{}'", search);
-        models::Projects::search_title(&connection, search).await?
-    } else if parents.unwrap_or(false) {
+        query = query.and().where_like("name", format!("%{}%", search));
+    }
+    // Filter by parents or top level projects
+    if parents.unwrap_or(false) {
         log::info!("Get the parent projects");
-        models::Projects::find_parents(&connection).await?
+        query = query.and().where_gt("parent", 0);
     } else if top.unwrap_or(false) {
         log::info!("Fetching the top level projects");
-        models::Projects::fetch_top_level(&connection, &page).await?
-        // state.projects.read_page(&page)?
-    } else if let Some(prjtype) = r#type {
+        query = query.and().where_eq("parent", 0);
+    }
+    // Filter by project type
+    if let Some(prjtype) = select {
         if prjtype.as_str() == "all" {
             log::info!("Fetching all projects");
-            models::Projects::page(&connection, &page).await?
+            // No additional filtering
         } else {
             log::info!("Fetching by type: {}", prjtype);
-            models::Projects::fetch_project_type(&connection, prjtype, &page).await?
+            query = query
+                .and()
+                .where_eq("project_type", ProjectType::from(prjtype));
         }
-    } else {
-        models::Projects::page(&connection, &page).await?
-    };
+    }
 
-    log::info!("Database - Get Projects :: {}", connection.count());
+    // TODO: The total should be based on the filtered query
+    let total = models::ProjectStatus::count_active(&state.connection().await).await?;
+    let page = pagination.page_with_total(total as u32);
+
+    let mut projects =
+        models::Projects::query(&state.connection().await, query.page(&page).build()?).await?;
+    for project in projects.iter_mut() {
+        // Fetch Children
+        project.fetch_children(&state.connection().await).await?;
+        // Fetch the latest snapshot for the current project
+        project
+            .fetch_latest_snapshot(&state.connection().await)
+            .await?;
+    }
+    let count = projects.len();
+    log::info!("Fetched {} projects", projects.len());
 
     Ok(Json(ApiResponse::new(
         projects.into_iter().map(|p| p.into()).collect(),
         total as u32,
+        count as u32,
         page.pages(),
     )))
 }
@@ -169,7 +188,7 @@ pub struct ProjectUpdateRequest {
     #[serde(rename = "type")]
     pub(crate) project_type: Option<String>,
     pub(crate) description: Option<String>,
-    pub(crate) parent: Option<u32>,
+    pub(crate) parent: Option<i32>,
 }
 
 #[patch("/<id>", data = "<project_req>", format = "json")]
@@ -209,7 +228,10 @@ pub async fn patch_project(
         }
     }
     if let Some(parent) = &project_req.parent {
-        project.parent = *parent as i32;
+        if parent != project.id.value() {
+            log::info!("Updating Project (parent) :: {}", parent);
+            project.parent = *parent;
+        }
         // TODO: Update the name of the project?
     }
 
