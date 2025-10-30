@@ -3,7 +3,12 @@ use konarr::models::Sessions;
 use rocket::{State, serde::json::Json};
 
 use super::ApiResult;
-use crate::{AppState, api::ApiResponse, error::KonarrServerError, guards::{Pagination, Session}};
+use crate::{
+    AppState,
+    api::ApiResponse,
+    error::KonarrServerError,
+    guards::{Pagination, Session},
+};
 
 pub fn routes() -> Vec<rocket::Route> {
     routes![whoami, update_password, list_sessions, revoke_session]
