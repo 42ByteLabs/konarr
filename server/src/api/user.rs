@@ -3,7 +3,12 @@ use konarr::models::Sessions;
 use rocket::{State, serde::json::Json};
 
 use super::ApiResult;
-use crate::{AppState, error::KonarrServerError, guards::Session};
+use crate::{
+    AppState,
+    api::ApiResponse,
+    error::KonarrServerError,
+    guards::{Pagination, Session},
+};
 
 pub fn routes() -> Vec<rocket::Route> {
     routes![whoami, update_password, list_sessions, revoke_session]
@@ -106,7 +111,8 @@ pub struct SessionSummary {
 pub async fn list_sessions(
     state: &State<AppState>,
     session: Session,
-) -> ApiResult<Vec<SessionSummary>> {
+    _pagination: Pagination,
+) -> ApiResult<ApiResponse<Vec<SessionSummary>>> {
     let connection = state.connection().await;
 
     // The Sessions table can be queried for the sessions belonging to the user's session id.
@@ -122,7 +128,7 @@ pub async fn list_sessions(
         state: sess.state.to_string(),
     }];
 
-    Ok(Json(out))
+    Ok(Json(ApiResponse::new(out, 1, 1, 1)))
 }
 
 #[delete("/sessions/<id>")]

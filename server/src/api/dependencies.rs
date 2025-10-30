@@ -100,33 +100,39 @@ pub async fn get_dependencies(
     select: Option<String>,
     pagination: Pagination,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
-    let total: u32 = models::Component::row_count(
-        &state.connection().await,
-        models::Component::query_count().build()?,
-    )
-    .await? as u32;
-
-    let page = pagination.page_with_total(total);
-
+    let mut total = models::Component::query_count();
     let mut query = models::Component::query_select().order_by("name", QueryOrder::Asc);
 
     if let Some(search) = search {
         log::info!("Searching for components with name: '{}'", search);
+        total = total.where_like("name", format!("%{}%", search));
         query = query.where_like("name", format!("%{}%", search));
     }
     if let Some(dtyp) = select {
         log::info!("Filtering components by type: '{}'", dtyp);
-        query = query.where_eq("component_type", models::ComponentType::from_str(&dtyp)?);
+        if dtyp.to_lowercase() == "top" {
+            log::info!("Fetching the top level components");
+            total = total
+                .where_ne("component_type", models::ComponentType::Library)
+                .where_ne("component_type", models::ComponentType::Unknown)
+                .where_ne("component_type", models::ComponentType::Framework);
+            query = query
+                .where_ne("component_type", models::ComponentType::Library)
+                .where_ne("component_type", models::ComponentType::Unknown)
+                .where_ne("component_type", models::ComponentType::Framework);
+        } else {
+            total = total.where_eq("component_type", models::ComponentType::from_str(&dtyp)?);
+            query = query.where_eq("component_type", models::ComponentType::from_str(&dtyp)?);
+        }
     } else if top.unwrap_or(false) {
-        // Fetch top level
-        log::info!("Fetching the top level components");
-        query = query
-            .where_ne("component_type", models::ComponentType::Library)
-            .and()
-            .where_ne("component_type", models::ComponentType::Unknown)
-            .and()
-            .where_ne("component_type", models::ComponentType::Framework)
+        log::warn!("The 'top' parameter is deprecated. Please use 'select=top' instead.");
     }
+
+    let total: u32 =
+        models::Component::row_count(&state.connection().await, total.build()?).await? as u32;
+
+    let page = pagination.page_with_total(total);
+    query = query.page(&page);
 
     let deps = models::Component::query(&state.connection().await, query.build()?).await?;
 
