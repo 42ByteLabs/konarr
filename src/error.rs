@@ -14,14 +14,14 @@ pub enum KonarrError {
     #[error("IO Error: {0}")]
     YamlError(#[from] serde_yaml::Error),
     /// JSON Error
-    #[cfg(feature = "sbom")]
+    #[cfg(any(feature = "sbom", feature = "agent"))]
     #[error("JSON Error: {0}")]
     JsonError(#[from] serde_json::Error),
     /// Figment Error
     #[error("Figment Error")]
     FigmentError(#[from] figment::Error),
     /// Semver Version Error
-    #[cfg(feature = "sbom")]
+    #[cfg(any(feature = "sbom", feature = "agent"))]
     #[error("Version Error")]
     VersionError(#[from] semver::Error),
 

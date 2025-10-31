@@ -18,7 +18,7 @@ shared-version = true
 tag-name = "v{{version}}"
 
 [features]
-default = ["agent"]
+default = ["agent", "tasks"]
 # Database
 database = ["dep:geekorm", "dep:libsql", "konarr/models"]
 # Tasks
@@ -31,6 +31,7 @@ agent = [
     "konarr/docker",
     "konarr/tools",
     "konarr/agent",
+    "konarr/sbom",
 ]
 
 [dependencies]

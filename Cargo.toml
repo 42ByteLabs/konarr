@@ -56,7 +56,7 @@ tools-grypedb = ["tools", "models", "dep:hex", "dep:flate2", "dep:tar"]
 # SBOM Generation/Parsing
 sbom = ["models", "dep:purl", "dep:serde_json", "dep:semver"]
 # Client
-client = ["dep:reqwest", "dep:openssl", "dep:tokio", "dep:semver", "dep:serde_json"]
+client = ["sbom", "dep:reqwest", "dep:openssl", "dep:tokio"]
 agent = []
 websocket = ["dep:tokio-tungstenite"]
 docker = ["dep:bollard"]
