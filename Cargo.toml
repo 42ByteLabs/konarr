@@ -99,7 +99,7 @@ figment = { version = "0.10", features = ["env", "serde_yaml", "yaml"] }
 tokio-tungstenite = { version = "0.28", features = ["url", "native-tls"], optional = true }
 
 [dev-dependencies]
-konarr = { path = ".", features = ["client"] }
+konarr = { path = ".", features = ["client", "tasks", "tools", "tools-grypedb"] }
 geekorm = { version = "0.11", features = ["all", "semver", "libsql"] }
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
