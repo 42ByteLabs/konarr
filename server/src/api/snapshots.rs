@@ -6,7 +6,6 @@ use konarr::{
     },
     tasks::{TaskTrait, sbom::SbomTask},
 };
-use log::{debug, info};
 use rocket::{State, data::ToByteUnit, serde::json::Json};
 use std::{collections::HashMap, str::FromStr};
 
@@ -88,7 +87,7 @@ pub(crate) async fn create_snapshot(
     _session: Session,
     snapshot: Json<SnapshotCreateReq>,
 ) -> ApiResult<SnapshotResp> {
-    info!("Creating snapshot for Project: {}", snapshot.project_id);
+    log::info!("Creating snapshot for Project: {}", snapshot.project_id);
 
     let mut project = match models::Projects::fetch_by_primary_key(
         &state.connection().await,
@@ -108,7 +107,7 @@ pub(crate) async fn create_snapshot(
             return Err(KonarrServerError::InternalServerError);
         }
     };
-    debug!("Project: {:?}", project);
+    log::debug!("Project: {:?}", project);
 
     let mut snapshot = models::Snapshot::new();
     match snapshot.save(&state.connection().await).await {
@@ -132,7 +131,8 @@ pub(crate) async fn patch_snapshot_metadata(
     id: u32,
     metadata: Json<HashMap<String, String>>,
 ) -> ApiResult<SnapshotResp> {
-    info!("Updating metadata for snapshot: {}", id);
+    log::info!("Updating metadata for snapshot: {}", id);
+
     let mut snapshot =
         match models::Snapshot::fetch_by_primary_key(&state.connection().await, id as i32).await {
             Ok(snapshot) => snapshot,
@@ -176,7 +176,7 @@ pub(crate) async fn upload_bom(
     id: u32,
     data: rocket::data::Data<'_>,
 ) -> ApiResult<SnapshotResp> {
-    info!("Uploading SBOM for snapshot: {}", id);
+    log::info!("Uploading SBOM for snapshot: {}", id);
     let mut snapshot =
         models::Snapshot::fetch_by_primary_key(&state.connection().await, id as i32).await?;
 
@@ -186,7 +186,7 @@ pub(crate) async fn upload_bom(
         .await
         .map_err(|_| konarr::KonarrError::ParseSBOM("Failed to read data".to_string()))?;
 
-    info!("Adding SBOM to snapshot: {}", snapshot.id);
+    log::info!("Adding SBOM to snapshot: {}", snapshot.id);
     snapshot
         .add_bom(&state.connection().await, data.to_vec())
         .await?;
@@ -206,6 +206,7 @@ pub(crate) async fn get_snapshot_dependencies(
     search: Option<String>,
     pagination: Pagination,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
+    log::info!("Fetching dependencies for snapshot: {}", id);
     let total = models::Dependencies::count_by_snapshot(&state.connection().await, id).await?;
     let page = pagination.page_with_total(total as u32);
 
@@ -242,50 +243,61 @@ pub(crate) async fn get_snapshot_alerts(
     severity: Option<String>,
     pagination: Pagination,
 ) -> ApiResult<ApiResponse<Vec<AlertResp>>> {
+    log::info!("Fetching alerts for snapshot: {}", id);
+
     let snapshot =
         models::Snapshot::fetch_by_primary_key(&state.connection().await, id as i32).await?;
-    let total = snapshot
-        .fetch_alerts_count(&state.connection().await)
-        .await?;
 
-    let page = pagination.page_with_total(total as u32);
+    let mut query_count = Alerts::query_count()
+        .join(Advisories::table())
+        .where_eq("snapshot_id", snapshot.id);
+    let mut query = Alerts::query_select()
+        .join(Advisories::table())
+        .where_eq("snapshot_id", snapshot.id)
+        .order_by("Alerts.created_at", QueryOrder::Asc);
 
-    let alerts: Vec<Alerts> = if let Some(_search) = search {
-        vec![] // TODO: Implement search
-    } else if let Some(severity) = severity {
+    if let Some(search) = search {
+        log::info!("Searching alerts for: '{}'", search);
+        query = query
+            .and()
+            .where_like("Advisories.advisory_id", format!("%{}%", search));
+        query_count = query_count
+            .and()
+            .where_like("Advisories.advisory_id", format!("%{}%", search));
+    }
+    if let Some(severity) = severity {
         let severity = SecuritySeverity::from(severity);
 
-        info!("Filtering alerts by severity: {:?}", severity);
-        let mut alerts = Alerts::query(
-            &state.connection().await,
-            Alerts::query_select()
-                .join(Advisories::table())
-                .where_eq("snapshot_id", snapshot.id)
-                .and()
-                .where_eq("Advisories.severity", severity)
-                .page(&page)
-                .build()?,
-        )
-        .await?;
-        for alert in alerts.iter_mut() {
-            alert.fetch(&state.connection().await).await?;
-        }
-        alerts
+        log::info!("Filtering alerts by severity: {:?}", severity);
+
+        query = query.and().where_eq("Advisories.severity", &severity);
+        query_count = query_count.and().where_eq("Advisories.severity", severity);
     } else {
-        snapshot
-            .fetch_alerts_page(&state.connection().await, &page)
-            .await?
-    };
+        // By default, filter out 'Unknown' severity alerts
+        query = query
+            .and()
+            .where_ne("Advisories.severity", SecuritySeverity::Unknown);
+    }
+
+    let total = Alerts::row_count(&state.connection().await, query_count.build()?).await?;
+    let page = pagination.page_with_total(total as u32);
+
+    let mut alerts = Alerts::query(&state.connection().await, query.page(&page).build()?).await?;
+    for alert in alerts.iter_mut() {
+        alert.fetch(&state.connection().await).await?;
+    }
+
     info!(
         "Found `{}` alerts in snapshot `{}`",
         alerts.len(),
         snapshot.id
     );
+    let count = alerts.len() as u32;
 
     Ok(Json(ApiResponse::new(
         alerts.into_iter().map(|a| a.into()).collect(),
         total as u32,
-        total as u32,
+        count,
         page.pages(),
     )))
 }
