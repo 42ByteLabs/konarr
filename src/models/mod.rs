@@ -23,6 +23,7 @@ pub use settings::{ServerSettings, Setting};
 
 use crate::tasks::alerts::AlertCalculatorTask;
 use crate::tasks::projects::ProjectsTask;
+use crate::tasks::server::ServerTask;
 use crate::tasks::statistics::StatisticsTask;
 use crate::tasks::{CatalogueTask, TaskTrait};
 use crate::{Config, KonarrError, db};
@@ -63,6 +64,7 @@ pub async fn database_initialise(config: &mut Config) -> Result<ConnectionManage
     log::debug!("Loaded Server Settings from Config");
 
     // Update Stats
+    ServerTask::spawn(&database).await?;
     StatisticsTask::spawn(&database).await?;
     ProjectsTask::spawn(&database).await?;
     AlertCalculatorTask::spawn(&database).await?;

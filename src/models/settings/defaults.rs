@@ -2,7 +2,7 @@
 use super::{Setting, SettingType};
 
 /// Server Settings Defaults
-pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 42] = [
+pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 44] = [
     // Registration Settings
     (Setting::Registration, SettingType::Toggle, "enabled"),
     // If we are already initialized
@@ -12,7 +12,7 @@ pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 42] = [
     // Server Settings
     (
         Setting::ServerUrl,
-        SettingType::String,
+        SettingType::SetString,
         "http://localhost:8000",
     ),
     (
@@ -21,10 +21,12 @@ pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 42] = [
         "/app/dist",
     ),
     (Setting::ServerData, SettingType::String, "/var/lib/konarr"),
+    // Password Settings
+    (Setting::PasswordStrength, SettingType::SetInteger, "3"),
     // Session Settings
-    (Setting::SessionAdminsExpires, SettingType::String, "1"),
-    (Setting::SessionUsersExpires, SettingType::String, "24"),
-    (Setting::SessionAgentsExpires, SettingType::String, "360"),
+    (Setting::SessionAdminsExpires, SettingType::SetInteger, "1"),
+    (Setting::SessionUsersExpires, SettingType::SetInteger, "24"),
+    (Setting::SessionAgentsExpires, SettingType::Integer, "360"),
     // Agent Settings
     (Setting::Agent, SettingType::Toggle, "disabled"),
     (
@@ -61,6 +63,11 @@ pub const SERVER_SETTINGS_DEFAULTS: [(Setting, SettingType, &str); 42] = [
     (Setting::Security, SettingType::Toggle, "disabled"),
     (Setting::SecurityRescan, SettingType::Toggle, "disabled"),
     (Setting::SecurityToolsName, SettingType::SetString, "syft"),
+    (
+        Setting::SecurityToolsVersion,
+        SettingType::String,
+        "Unknown",
+    ),
     // Tools Settings
     (
         Setting::SecurityToolsAlerts,

@@ -33,6 +33,10 @@ pub enum Setting {
     #[geekorm(key = "server.frontend.path")]
     ServerFrontendPath,
 
+    /// User Password Strength Requirements
+    #[geekorm(key = "users.password.strength", aliases = "password.strength")]
+    PasswordStrength,
+
     // Session Settings
     /// Session Expiration for Admins
     #[geekorm(key = "sessions.admins.expires")]
@@ -49,8 +53,6 @@ pub enum Setting {
     Agent,
     #[geekorm(key = "agent.key")]
     AgentKey,
-    #[geekorm(key = "agent.tool")]
-    AgentTool,
     #[geekorm(key = "agent.tool.auto-install")]
     AgentToolAutoInstall,
     #[geekorm(key = "agent.tool.auto-update")]
@@ -138,8 +140,11 @@ pub enum Setting {
     #[geekorm(key = "security")]
     Security,
     /// Security tool name to use by default
-    #[geekorm(key = "security.tools.name")]
+    #[geekorm(key = "security.tools.name", aliases = "agent.tool")]
     SecurityToolsName,
+    /// Security tool version
+    #[geekorm(key = "security.tools.version", aliases = "agent.tool.version")]
+    SecurityToolsVersion,
     /// Allow Security tools to submit alerts
     #[geekorm(key = "security.tools.alerts")]
     SecurityToolsAlerts,
