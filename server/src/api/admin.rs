@@ -114,7 +114,7 @@ pub async fn update_settings(
             // Check the value is valid
             let valid_tools = &["syft", "grype", "trivy"];
             if !valid_tools.contains(&value.as_str()) {
-                warn!("Invalid tool specified for AgentTool: {}", value);
+                warn!("Invalid tool specified for SecurityToolsName: {}", value);
                 return Err(KonarrServerError::UnknownError(value.to_string()));
             }
         }
