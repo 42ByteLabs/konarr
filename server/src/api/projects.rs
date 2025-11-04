@@ -42,10 +42,13 @@ pub(crate) struct ProjectResp {
     #[serde(skip_serializing_if = "Option::is_none")]
     parent: Option<i32>,
 
+    /// Total Snapshots count
+    snapshots: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     snapshot: Option<super::snapshots::SnapshotResp>,
-    snapshots: u32,
 
+    /// Total Alerts count
+    alerts: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     security: Option<super::security::SecuritySummary>,
 
@@ -314,6 +317,7 @@ impl From<models::Projects> for ProjectResp {
             created_at: project.created_at,
             snapshot: snapshot.map(|snap| snap.into()),
             snapshots: project.snapshot_count.unwrap_or_default() as u32,
+            alerts: security.as_ref().map_or(0, |s| s.total),
             security,
             parent,
             children: project
