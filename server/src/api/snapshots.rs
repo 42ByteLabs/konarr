@@ -67,7 +67,7 @@ pub(crate) async fn get_snapshot(
             Ok(snapshot) => snapshot,
             Err(e) => {
                 log::error!("Failed to fetch snapshot: {:?}", e);
-                return Err(KonarrServerError::SnapshotNotFoundError(id as i32).into());
+                return Err(KonarrServerError::SnapshotNotFoundError(id as i32));
             }
         };
     snapshot.fetch_metadata(&state.connection().await).await?;
@@ -81,6 +81,9 @@ pub struct SnapshotCreateReq {
     project_id: u32,
 }
 
+/// Create a new snapshot for a project
+///
+/// The project ID must be provided in the request body.
 #[post("/", data = "<snapshot>")]
 pub(crate) async fn create_snapshot(
     state: &State<AppState>,
@@ -124,6 +127,9 @@ pub(crate) async fn create_snapshot(
     Ok(Json(snapshot.into()))
 }
 
+/// Update snapshot metadata
+///
+/// The metadata should be provided as a JSON object in the request body.
 #[patch("/<id>/metadata", data = "<metadata>")]
 pub(crate) async fn patch_snapshot_metadata(
     state: &State<AppState>,
@@ -169,6 +175,9 @@ pub(crate) async fn patch_snapshot_metadata(
     Ok(Json(snapshot.into()))
 }
 
+/// Upload a SBOM for a snapshot
+///
+/// The SBOM should be provided in the request body as raw data.
 #[post("/<id>/bom", data = "<data>")]
 pub(crate) async fn upload_bom(
     state: &State<AppState>,
@@ -198,6 +207,10 @@ pub(crate) async fn upload_bom(
     Ok(Json(snapshot.into()))
 }
 
+/// Get dependencies for a snapshot
+///
+/// Optionally, a search query can be provided to filter dependencies by name
+/// or version.
 #[get("/<id>/dependencies?<search>")]
 pub(crate) async fn get_snapshot_dependencies(
     state: &State<AppState>,
@@ -207,11 +220,28 @@ pub(crate) async fn get_snapshot_dependencies(
     pagination: Pagination,
 ) -> ApiResult<ApiResponse<Vec<DependencyResp>>> {
     log::info!("Fetching dependencies for snapshot: {}", id);
-    let total = models::Dependencies::count_by_snapshot(&state.connection().await, id).await?;
+
+    let mut query = models::Dependencies::query_select()
+        .where_eq("snapshot_id", id as i32)
+        .order_by("name", QueryOrder::Asc);
+    let mut query_count = models::Dependencies::query_count().where_eq("snapshot_id", id as i32);
+
+    if let Some(search) = &search {
+        log::info!("Searching dependencies for: '{}'", search);
+        query = query.and().where_like("name", format!("%{}%", search));
+        query_count = query_count
+            .and()
+            .where_like("name", format!("%{}%", search));
+    }
+
+    let total =
+        models::Dependencies::row_count(&state.connection().await, query_count.build()?).await?;
+
     let page = pagination.page_with_total(total as u32);
 
     let mut snapshot =
-        models::Snapshot::fetch_by_primary_key(&state.connection().await, id as i32).await?;
+        models::Snapshot::query_first(&state.connection().await, query.page(&page).build()?)
+            .await?;
     snapshot.fetch_metadata(&state.connection().await).await?;
 
     let mut deps = if let Some(search) = search {
@@ -234,6 +264,9 @@ pub(crate) async fn get_snapshot_dependencies(
     )))
 }
 
+/// Get alerts for a snapshot
+///
+/// By default, 'Unknown' severity alerts are filtered out
 #[get("/<id>/alerts?<search>&<severity>")]
 pub(crate) async fn get_snapshot_alerts(
     state: &State<AppState>,
@@ -302,6 +335,7 @@ pub(crate) async fn get_snapshot_alerts(
     )))
 }
 
+/// Get all snapshots with pagination
 #[get("/")]
 pub async fn get_snapshots(
     state: &State<AppState>,
