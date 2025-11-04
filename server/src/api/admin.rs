@@ -4,7 +4,7 @@ use konarr::{
         auth::users::UserState,
         settings::{ServerSettings, SettingType, keys::Setting},
     },
-    tasks::{AdvisoriesSyncTask, AdvisoriesTask, TaskTrait},
+    tasks::{AdvisoriesSyncTask, AdvisoriesTask, TaskTrait, server::ServerTask},
 };
 use log::{info, warn};
 use rocket::{State, serde::json::Json};
@@ -110,8 +110,20 @@ pub async fn update_settings(
     for (name, value) in settings.iter() {
         let mut setting = ServerSettings::fetch_by_name(&connection, name).await?;
 
+        if setting.name == Setting::SecurityToolsName {
+            // Check the value is valid
+            let valid_tools = &["syft", "grype", "trivy"];
+            if !valid_tools.contains(&value.as_str()) {
+                warn!("Invalid tool specified for AgentTool: {}", value);
+                return Err(KonarrServerError::UnknownError(value.to_string()));
+            }
+        }
+
         match setting.setting_type {
-            SettingType::Toggle | SettingType::Regenerate | SettingType::SetString => {
+            SettingType::Toggle
+            | SettingType::Regenerate
+            | SettingType::SetString
+            | SettingType::SetInteger => {
                 setting.set(value);
                 setting.update(&connection).await?;
             }
@@ -131,6 +143,8 @@ pub async fn update_settings(
             _ => {}
         }
     }
+
+    ServerTask::spawn(&state.database).await?;
 
     // TODO: Return updated settings
     let stats = konarr::models::ServerSettings::fetch_statistics(&connection).await?;

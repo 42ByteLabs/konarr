@@ -51,4 +51,8 @@ pub enum KonarrServerError {
     /// ORM Error
     #[error("GeekOrm Error: {0}")]
     GeekOrmError(#[from] geekorm::Error),
+
+    /// Unknown Error
+    #[error("Unknown Error: {0}")]
+    UnknownError(String),
 }
