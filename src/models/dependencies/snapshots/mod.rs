@@ -315,6 +315,11 @@ impl Snapshot {
         connection: &Connection<'_>,
         page: &Page,
     ) -> Result<Vec<Alerts>, crate::KonarrError> {
+        log::debug!(
+            "Fetching alerts for snapshot: {} (page: {})",
+            self.id,
+            page.page(),
+        );
         let mut alerts = Alerts::query(
             connection,
             Alerts::query_select()

@@ -13,6 +13,7 @@ pub mod catalogue;
 pub mod cleanup;
 pub mod projects;
 pub mod sbom;
+pub mod server;
 pub mod statistics;
 
 pub use advisories::AdvisoriesTask;
@@ -23,7 +24,7 @@ pub use catalogue::CatalogueTask;
 pub use projects::ProjectsTask;
 pub use statistics::StatisticsTask;
 
-use crate::Config;
+use crate::{Config, tasks::server::ServerTask};
 use cleanup::CleanupTask;
 
 /// Initialse background tasks
@@ -51,6 +52,10 @@ pub async fn init(
                 if let Err(e) = task.run(&database).await {
                     log::error!("Task Error :: {}", e);
                 }
+            }
+
+            if let Err(e) = ServerTask::task(&database).await {
+                log::error!("Task Error :: {}", e);
             }
 
             if let Err(e) = AdvisoriesSyncTask::spawn(&database).await {

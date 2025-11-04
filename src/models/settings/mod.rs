@@ -20,6 +20,8 @@ pub enum SettingType {
     Regenerate,
     /// User controllable setting
     SetString,
+    /// User controllable setting
+    SetInteger,
 
     /// Boolean
     Boolean,
