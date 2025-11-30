@@ -12,15 +12,15 @@ impl Config {
 impl ServerConfig {
     /// Get the Konarr Client
     pub fn client(&self) -> Result<KonarrClient, crate::KonarrError> {
-        Ok(KonarrClient::init().base(self.api_url()?)?.build()?)
+        KonarrClient::init().base(self.api_url()?)?.build()
     }
 
     /// Get the Konarr Client with Token
     pub fn client_with_token(&self, token: String) -> Result<KonarrClient, crate::KonarrError> {
-        Ok(KonarrClient::init()
+        KonarrClient::init()
             .base(self.api_url()?)?
             .token(token)
-            .build()?)
+            .build()
     }
 
     /// Get the Konarr Client with Credentials
@@ -29,9 +29,9 @@ impl ServerConfig {
         username: String,
         password: String,
     ) -> Result<KonarrClient, crate::KonarrError> {
-        Ok(KonarrClient::init()
+        KonarrClient::init()
             .base(self.api_url()?)?
             .credentials(username, password)
-            .build()?)
+            .build()
     }
 }
