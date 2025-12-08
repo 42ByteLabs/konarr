@@ -40,5 +40,5 @@ dotenvy = { version = "0.15", features = ["clap"] }
 console = "0.16"
 thiserror = "2"
 semver = { version = "1.0", features = ["serde"] }
-uuid = { version = "1.18", features = ["serde", "v4"] }
+uuid = { version = "1.19", features = ["serde", "v4"] }
 
