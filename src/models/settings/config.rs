@@ -24,7 +24,7 @@ impl ServerSettings {
                 .await?;
         }
         // Data path
-        if let Some(path) = config.data_path().ok() {
+        if let Ok(path) = config.data_path() {
             log::debug!("Server Data Path: {}", path.canonicalize()?.display());
             if !path.exists() {
                 log::debug!("Creating data path: {}", path.display());
@@ -39,7 +39,7 @@ impl ServerSettings {
             .await?;
         }
 
-        if let Some(path) = config.server.frontend.canonicalize().ok() {
+        if let Ok(path) = config.server.frontend.canonicalize() {
             if path.exists() && path.is_dir() {
                 log::debug!("Server Frontend Path: {}", path.display());
                 // Frontend setting

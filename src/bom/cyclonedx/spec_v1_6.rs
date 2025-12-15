@@ -176,8 +176,8 @@ impl BillOfMaterialsBuilder for Bom {
                     },
                     Component {
                         comp_type: Some("application".to_string()),
-                        name: name,
-                        version: version,
+                        name,
+                        version,
                         ..Default::default()
                     },
                 ],

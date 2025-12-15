@@ -50,7 +50,7 @@ impl Snapshot {
             };
 
         // Inline processing of the BOM
-        snapshot.process_bom(&database, bom).await?;
+        snapshot.process_bom(database, bom).await?;
 
         Ok(snapshot)
     }
@@ -154,7 +154,7 @@ impl Snapshot {
         info!("Finished indexing dependencies");
 
         CatalogueTask::snapshot(self.id)
-            .spawn_task(&database)
+            .spawn_task(database)
             .await?;
 
         if ServerSettings::feature_security(&database.acquire().await).await? {

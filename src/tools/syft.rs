@@ -46,8 +46,8 @@ impl Tool for Syft {
             let output_path = format!("cyclonedx-json={}", config.output.display());
 
             // Run Syft
-            let output = tokio::process::Command::new(&path)
-                .args(&["scan", "-o", output_path.as_str(), image.as_str()])
+            let output = tokio::process::Command::new(path)
+                .args(["scan", "-o", output_path.as_str(), image.as_str()])
                 .output()
                 .await?;
 

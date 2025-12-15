@@ -24,13 +24,13 @@ impl TaskTrait for CatalogueTask {
         let mut comps = Component::all(&database.acquire().await).await?;
         log::debug!("Checking component types for `{}` Components", comps.len());
 
-        for mut comp in comps.iter_mut() {
+        for comp in comps.iter_mut() {
             if !self.force {
                 match comp.component_type {
                     ComponentType::Unknown
                     | ComponentType::Library
                     | ComponentType::Application => {
-                        if catalogue.catalogue(&mut comp)? {
+                        if catalogue.catalogue(comp)? {
                             log::info!("Updating component_type: {}", comp.component_type);
                             comp.update(&database.acquire().await).await?;
                             counter += 1;
@@ -38,7 +38,7 @@ impl TaskTrait for CatalogueTask {
                     }
                     _ => {}
                 }
-            } else if self.force && catalogue.catalogue(&mut comp)? {
+            } else if self.force && catalogue.catalogue(comp)? {
                 log::info!("Updating component_type: {}", comp.component_type);
                 comp.update(&database.acquire().await).await?;
                 counter += 1;
@@ -91,28 +91,25 @@ async fn process_snapshot(
 
     for dependency in dependencies {
         let comp = dependency.component();
-        match comp.component_type {
-            ComponentType::OperatingSystem => {
-                // Capture OS Name and Version
+        if comp.component_type == ComponentType::OperatingSystem {
+            // Capture OS Name and Version
+            snapshot
+                .set_metadata(
+                    &database.acquire().await,
+                    SnapshotMetadataKey::Os,
+                    &dependency.name(),
+                )
+                .await?;
+
+            if let Some(version) = dependency.version() {
                 snapshot
                     .set_metadata(
                         &database.acquire().await,
-                        SnapshotMetadataKey::Os,
-                        &dependency.name(),
+                        SnapshotMetadataKey::OsVersion,
+                        &version,
                     )
                     .await?;
-
-                if let Some(version) = dependency.version() {
-                    snapshot
-                        .set_metadata(
-                            &database.acquire().await,
-                            SnapshotMetadataKey::OsVersion,
-                            &version,
-                        )
-                        .await?;
-                }
             }
-            _ => {}
         }
     }
     Ok(())

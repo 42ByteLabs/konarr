@@ -1,4 +1,5 @@
 //! # Konarr Models
+#![allow(clippy::needless_question_mark)]
 
 use geekorm::ConnectionManager;
 
