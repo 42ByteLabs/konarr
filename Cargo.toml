@@ -90,11 +90,11 @@ tokio = { version = "1", features = ["full"], optional = true }
 tokio_schedule = { version = "0.3", optional = true }
 async-trait = "0.1"
 # Web Client
-reqwest = { version = "0.12", features = ["json", "cookies"], optional = true }
+reqwest = { version = "0.13", features = ["json", "cookies"], optional = true }
 openssl = { version = "0.10", features = ["vendored"], optional = true }
 
 # Docker
-bollard = { version = "0.19", optional = true }
+bollard = { version = "0.20", optional = true }
 figment = { version = "0.10", features = ["env", "serde_yaml", "yaml"] }
 tokio-tungstenite = { version = "0.28", features = ["url", "native-tls"], optional = true }
 
