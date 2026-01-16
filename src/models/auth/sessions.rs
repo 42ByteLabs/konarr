@@ -1,4 +1,5 @@
 //! # Sessions
+#![allow(clippy::needless_question_mark)]
 
 use geekorm::prelude::*;
 use serde::{Deserialize, Serialize};

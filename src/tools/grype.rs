@@ -53,8 +53,8 @@ impl Tool for Grype {
             .join("grypedb");
 
             log::debug!("Run Grype (all layers, output to temp file)");
-            let output = tokio::process::Command::new(&path)
-                .args(&["-s", "all-layers", "-o", opath.as_str(), image.as_str()])
+            let output = tokio::process::Command::new(path)
+                .args(["-s", "all-layers", "-o", opath.as_str(), image.as_str()])
                 .envs([
                     // Disable auto update
                     ("GRYPE_DB_AUTO_UPDATE", "false"),
@@ -72,7 +72,7 @@ impl Tool for Grype {
                     "Grype failed with status: {}",
                     output.status.code().unwrap_or(-1)
                 );
-                log::error!("{}", String::from_utf8_lossy(&output.stderr).to_string());
+                log::error!("{}", String::from_utf8_lossy(&output.stderr));
                 return Err(KonarrError::ToolError("Failed to run tool".to_string()));
             }
             if !config.output.exists() {

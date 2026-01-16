@@ -37,8 +37,8 @@ impl Tool for Trivy {
         Self: Sized,
     {
         if let Some(path) = &config.path {
-            let output = tokio::process::Command::new(&path)
-                .args(&["--version"])
+            let output = tokio::process::Command::new(path)
+                .args(["--version"])
                 .output()
                 .await?;
             if !output.status.success() {
@@ -67,8 +67,8 @@ impl Tool for Trivy {
             let opath = config.output.display().to_string();
 
             // Run Grype (all layers, output to temp file)
-            let output = tokio::process::Command::new(&path)
-                .args(&[
+            let output = tokio::process::Command::new(path)
+                .args([
                     "image",
                     "--offline-scan",
                     "--format",
