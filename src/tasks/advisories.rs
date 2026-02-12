@@ -158,7 +158,7 @@ impl AdvisoriesTask {
 
             let bom = tool_config.run(&sbom_path.display().to_string()).await?;
 
-            let sbom = Parsers::parse(&bom.as_bytes())?;
+            let sbom = Parsers::parse(bom.as_bytes())?;
             log::info!(
                 "BillOfMaterials(comps='{}', vulns='{}')",
                 sbom.components.len(),

@@ -81,7 +81,7 @@ impl KonarrSnapshot {
         let value = value.into();
         if !value.is_empty() {
             debug!("Adding Metadata for Snapshot({:?}) :: {}", self.id, key);
-            self.metadata.insert(key, value.into());
+            self.metadata.insert(key, value);
             self.updated_metadata = true;
         } else {
             debug!("Skipping empty metadata value for key: {}", key);
@@ -144,7 +144,7 @@ impl KonarrSnapshot {
             }
         }
 
-        if changes.len() == 0 {
+        if changes.is_empty() {
             return Ok(());
         }
 

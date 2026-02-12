@@ -124,7 +124,7 @@ impl Users {
             let mut session = user.fetch_sessions(connection).await?;
             session.state = SessionState::Active;
             session.regenerate_token();
-            session.last_accessed = login_time.clone();
+            session.last_accessed = login_time;
             session.update(connection).await?;
 
             log::info!("Created new session for user");

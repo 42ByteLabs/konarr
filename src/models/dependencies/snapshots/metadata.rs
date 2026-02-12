@@ -60,7 +60,7 @@ impl SnapshotMetadata {
         let value = value.into();
         debug!("Updating Metadata for Snapshot({:?}) :: {} ", snapshot, key);
 
-        Ok(match Self::find_by_key(connection, snapshot, &key).await {
+        Ok(match Self::find_by_key(connection, snapshot, key).await {
             Ok(Some(mut meta)) => {
                 meta.value = value;
                 meta.updated_at = chrono::Utc::now();

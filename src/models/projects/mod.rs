@@ -369,7 +369,7 @@ impl Projects {
     ) -> Result<(), crate::KonarrError> {
         if let Some(snapshot) = self.snapshots.last_mut() {
             snapshot.fetch_alerts(connection).await?;
-        } else if let Some(_) = self.fetch_latest_snapshot(connection).await? {
+        } else if (self.fetch_latest_snapshot(connection).await?).is_some() {
             if let Some(snap) = self.snapshots.last_mut() {
                 snap.fetch_alerts(connection).await?;
             }
@@ -386,7 +386,7 @@ impl Projects {
     ) -> Result<(), crate::KonarrError> {
         if let Some(snapshot) = self.snapshots.last_mut() {
             snapshot.components = snapshot.fetch_all_dependencies(connection).await?;
-        } else if let Some(_) = self.fetch_latest_snapshot(connection).await? {
+        } else if (self.fetch_latest_snapshot(connection).await?).is_some() {
             if let Some(snap) = self.snapshots.last_mut() {
                 snap.components = snap.fetch_all_dependencies(connection).await?;
             }

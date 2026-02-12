@@ -39,7 +39,7 @@ impl Dependencies {
     }
     /// Get component ID
     pub fn component_id(&self) -> PrimaryKey<i32> {
-        self.component_id.data.id.clone()
+        self.component_id.data.id
     }
     /// Get Component Type
     pub fn component_type(&self) -> ComponentType {
@@ -73,7 +73,7 @@ impl Dependencies {
         if let Some(version) = &self.version() {
             purl.push_str(&format!(":{}", version));
         }
-        return purl;
+        purl
     }
 
     /// Create a new Dependency from Package URL

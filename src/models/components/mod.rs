@@ -1,7 +1,8 @@
 //! Components Models
+#![allow(clippy::module_inception)]
 
 pub mod compmanager;
-pub mod components;
+mod components;
 pub mod comptype;
 pub mod compversion;
 

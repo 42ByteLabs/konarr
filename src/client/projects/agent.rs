@@ -49,7 +49,7 @@ impl KonarrProject {
             if let Some(data_tool) = &data.tool {
                 log::debug!("Local tool version: {}", data_tool);
                 if let Some(tool) = snap.metadata.get("bom.tool") {
-                    if version.major <= 0 && version.minor <= 3 {
+                    if version.major == 0 && version.minor <= 3 {
                         // +v0.3 = name@version
                         log::debug!("Remote Tool version: {}", tool);
                         if tool != data_tool {

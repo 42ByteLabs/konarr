@@ -27,7 +27,7 @@ pub trait Tool {
     {
         if let Some(path) = &config.path {
             let output = tokio::process::Command::new(path)
-                .args(&["--version"])
+                .args(["--version"])
                 .output()
                 .await?;
             if !output.status.success() {
@@ -169,7 +169,7 @@ impl ToolConfig {
 
     /// Find a tool by name
     pub async fn find_tool(tool_name: &String) -> Result<ToolConfig, KonarrError> {
-        Ok(ToolConfig::tools()
+        ToolConfig::tools()
             .await?
             .iter()
             .find(|t| t.name == *tool_name)
@@ -177,30 +177,20 @@ impl ToolConfig {
             .ok_or(KonarrError::ToolError(format!(
                 "Tool not found: {}",
                 tool_name
-            )))?)
+            )))
     }
 
     /// Check if the Tool is available
     pub fn is_available(&self) -> bool {
-        if self.path.is_some() && !self.version.is_empty() {
-            true
-        } else {
-            false
-        }
+        self.path.is_some() && !self.version.is_empty()
     }
 
     /// Run the Tool
     pub async fn run(&self, image: impl Into<String> + Send) -> Result<String, KonarrError> {
         match self.name.as_str() {
-            "grype" => {
-                return Grype::run(&self, image).await;
-            }
-            "syft" => {
-                return Syft::run(&self, image).await;
-            }
-            "trivy" => {
-                return Trivy::run(&self, image).await;
-            }
+            "grype" => Grype::run(self, image).await,
+            "syft" => Syft::run(self, image).await,
+            "trivy" => Trivy::run(self, image).await,
             _ => panic!("Tool not implemented"),
         }
     }
@@ -209,15 +199,9 @@ impl ToolConfig {
     pub fn find(&self) -> Result<PathBuf, KonarrError> {
         log::debug!("Finding tool: {}", self.name);
         match self.name.as_str() {
-            "grype" => {
-                return Grype::find("grype");
-            }
-            "syft" => {
-                return Syft::find("syft");
-            }
-            "trivy" => {
-                return Trivy::find("trivy");
-            }
+            "grype" => Grype::find("grype"),
+            "syft" => Syft::find("syft"),
+            "trivy" => Trivy::find("trivy"),
             _ => panic!("Tool not implemented"),
         }
     }
@@ -225,15 +209,9 @@ impl ToolConfig {
     /// Get the version of the Tool
     pub async fn version(&self) -> Result<String, KonarrError> {
         match self.name.as_str() {
-            "grype" => {
-                return Grype::version(&self).await;
-            }
-            "syft" => {
-                return Syft::version(&self).await;
-            }
-            "trivy" => {
-                return Trivy::version(&self).await;
-            }
+            "grype" => Grype::version(self).await,
+            "syft" => Syft::version(self).await,
+            "trivy" => Trivy::version(self).await,
             _ => panic!("Tool not implemented"),
         }
     }
@@ -261,16 +239,16 @@ impl ToolConfig {
 
             let output: PathBuf = TOOLCACHE_DIRS
                 .iter()
-                .map(|d| PathBuf::from(d))
+                .map(PathBuf::from)
                 .find(|d| {
                     d.is_dir() && d.exists() && !d.metadata().unwrap().permissions().readonly()
                 })
-                .unwrap_or_else(|| std::env::temp_dir());
+                .unwrap_or_else(std::env::temp_dir);
             log::debug!("Toolcache directory: {}", output.display());
 
             tokio::process::Command::new("sh")
                 .arg(ipath)
-                .args(&["-b", output.display().to_string().as_str()])
+                .args(["-b", output.display().to_string().as_str()])
                 .output()
                 .await
                 .map_err(|e| {

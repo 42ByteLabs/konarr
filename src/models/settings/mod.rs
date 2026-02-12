@@ -122,7 +122,7 @@ impl ServerSettings {
         let mut defaults: Vec<(Setting, SettingType, String)> = SERVER_SETTINGS_DEFAULTS
             .to_vec()
             .into_iter()
-            .map(|(a, b, c)| (a.into(), b, c.to_string()))
+            .map(|(a, b, c)| (a, b, c.to_string()))
             .collect();
 
         let agent_key = geekorm::utils::generate_random_string(43, "kagent_");
@@ -292,7 +292,7 @@ impl ServerSettings {
 
     /// Check if security features are enabled
     pub async fn feature_security(connection: &Connection<'_>) -> Result<bool, crate::KonarrError> {
-        Ok(Self::get_bool(connection, "security").await?)
+        Self::get_bool(connection, "security").await
     }
 
     /// Reset the Setting to the default value

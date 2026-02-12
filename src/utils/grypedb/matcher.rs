@@ -106,31 +106,29 @@ impl GrypeDatabase {
                         .get_metadata(connection, "description")
                         .await?
                         .is_none()
+                        && !vuln_metadata.description.is_empty()
                     {
-                        if !vuln_metadata.description.is_empty() {
-                            advisory
-                                .add_metadata(
-                                    connection,
-                                    "description",
-                                    vuln_metadata.description.clone(),
-                                )
-                                .await?;
-                        }
+                        advisory
+                            .add_metadata(
+                                connection,
+                                "description",
+                                vuln_metadata.description.clone(),
+                            )
+                            .await?;
                     }
                     if advisory
                         .get_metadata(connection, "description")
                         .await?
                         .is_none()
+                        && !vuln_metadata.description.is_empty()
                     {
-                        if !vuln_metadata.description.is_empty() {
-                            advisory
-                                .add_metadata(
-                                    connection,
-                                    "description",
-                                    vuln_metadata.description.clone(),
-                                )
-                                .await?;
-                        }
+                        advisory
+                            .add_metadata(
+                                connection,
+                                "description",
+                                vuln_metadata.description.clone(),
+                            )
+                            .await?;
                     }
                     if let Some(cvss) = vuln_metadata.cvss {
                         advisory

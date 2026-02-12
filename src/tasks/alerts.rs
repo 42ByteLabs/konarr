@@ -52,7 +52,7 @@ impl TaskTrait for AlertCalculatorTask {
 /// Alert Calculator Task
 pub async fn alert_calculator(
     connection: &geekorm::Connection<'_>,
-    projects: &mut Vec<Projects>,
+    projects: &mut [Projects],
 ) -> Result<(), crate::KonarrError> {
     info!("Task - Running Alert Calculator");
 
@@ -119,7 +119,7 @@ pub async fn alert_calculator(
 /// Calculate Group Alerts
 pub async fn calculate_group_alerts(
     connection: &geekorm::Connection<'_>,
-    projects: &Vec<Projects>,
+    projects: &[Projects],
     project_summaries: &HashMap<i32, AlertsSummary>,
 ) -> Result<(), crate::KonarrError> {
     log::debug!("Calculating Group Alerts");
