@@ -8,8 +8,8 @@ use std::path::PathBuf;
 
 pub use sbom::BillOfMaterials;
 
-use crate::KonarrError;
 use crate::models::{Component, ComponentVersion, Dependencies, Projects};
+use crate::KonarrError;
 
 /// SBOM Parser Trait
 pub trait BomParser {
@@ -116,7 +116,7 @@ impl BomParser for Parsers {
 
         // CycloneDX
         if let Ok(mut sbom) = cyclonedx::CycloneDx::parse(data) {
-            sbom.sha = format!("{:x}", sha);
+            sbom.sha = hex::encode(sha);
             Ok(sbom)
         } else {
             Err(KonarrError::ParseSBOM("Failed to parse SBOM".to_string()))

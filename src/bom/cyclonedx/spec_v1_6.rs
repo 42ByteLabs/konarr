@@ -4,8 +4,8 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 
 use crate::bom::{
-    BillOfMaterials, BillOfMaterialsBuilder, BomParser,
     sbom::{BomComponent, BomComponentType, BomTool, BomType, BomVulnerability, Container},
+    BillOfMaterials, BillOfMaterialsBuilder, BomParser,
 };
 
 /// CycloneDX SBOM v1.6
