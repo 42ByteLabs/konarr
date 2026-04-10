@@ -214,7 +214,10 @@ async fn run_docker(
     let containers = docker
         .list_containers(Some(ListContainersOptions {
             all: true,
-            filters: Some(HashMap::from([("status".to_string(), vec!["running".to_string()])])),
+            filters: Some(HashMap::from([(
+                "status".to_string(),
+                vec!["running".to_string()],
+            )])),
             ..Default::default()
         }))
         .await?;

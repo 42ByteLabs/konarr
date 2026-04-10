@@ -8,8 +8,8 @@ use std::path::PathBuf;
 
 pub use sbom::BillOfMaterials;
 
-use crate::models::{Component, ComponentVersion, Dependencies, Projects};
 use crate::KonarrError;
+use crate::models::{Component, ComponentVersion, Dependencies, Projects};
 
 /// SBOM Parser Trait
 pub trait BomParser {
