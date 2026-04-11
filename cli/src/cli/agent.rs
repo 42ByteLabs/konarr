@@ -1,4 +1,4 @@
-use bollard::{API_DEFAULT_VERSION, container::ListContainersOptions};
+use bollard::{API_DEFAULT_VERSION, query_parameters::ListContainersOptions};
 use konarr::{
     Config, KonarrError,
     bom::{BomParser, Parsers},
@@ -212,9 +212,12 @@ async fn run_docker(
 
     info!("Getting Docker Containers...");
     let containers = docker
-        .list_containers(Some(ListContainersOptions::<String> {
+        .list_containers(Some(ListContainersOptions {
             all: true,
-            filters: HashMap::from([("status".to_string(), vec!["running".to_string()])]),
+            filters: Some(HashMap::from([(
+                "status".to_string(),
+                vec!["running".to_string()],
+            )])),
             ..Default::default()
         }))
         .await?;

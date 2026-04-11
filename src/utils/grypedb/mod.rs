@@ -163,7 +163,9 @@ impl GrypeDatabase {
         let file = std::fs::File::open(path)?;
         let mut reader = std::io::BufReader::new(file);
         let mut hasher = sha2::Sha256::new();
-        std::io::copy(&mut reader, &mut hasher)?;
+        let mut buffer = Vec::new();
+        std::io::Read::read_to_end(&mut reader, &mut buffer)?;
+        hasher.update(&buffer);
         let result = hasher.finalize();
 
         debug!("GrypeDB Checksum - {} :: {}", hex::encode(result), checksum);

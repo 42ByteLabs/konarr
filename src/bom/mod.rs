@@ -116,7 +116,7 @@ impl BomParser for Parsers {
 
         // CycloneDX
         if let Ok(mut sbom) = cyclonedx::CycloneDx::parse(data) {
-            sbom.sha = format!("{:x}", sha);
+            sbom.sha = hex::encode(sha);
             Ok(sbom)
         } else {
             Err(KonarrError::ParseSBOM("Failed to parse SBOM".to_string()))
