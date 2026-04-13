@@ -9,7 +9,7 @@ description = "Konarr"
 
 edition = "2024"
 
-rust-version = "1.85"
+rust-version = "1.94"
 
 keywords = []
 categories = []
