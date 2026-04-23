@@ -66,7 +66,7 @@ log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
 chrono = { version = "0.4", features = ["serde"] }
-rand = "0.9"
+rand = "0.10"
 thiserror = "2"
 url = { version = "2.5", features = ["serde"] }
 uuid = { version = "1.19", features = ["serde", "v4"] }
