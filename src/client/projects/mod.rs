@@ -87,7 +87,7 @@ impl KonarrProjects {
                 return Ok(Some(result));
             }
         }
-        return Ok(None);
+        Ok(None)
     }
 }
 

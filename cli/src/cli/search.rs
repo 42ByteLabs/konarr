@@ -62,7 +62,7 @@ pub async fn run(
     }
 }
 
-fn display_results(dependencies: &Vec<Dependencies>) {
+fn display_results(dependencies: &[Dependencies]) {
     info!("Instances :: {}", dependencies.len());
     for dep in dependencies.iter() {
         info!(

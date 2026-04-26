@@ -81,17 +81,17 @@ mod tests {
 
     #[test]
     fn test_parsing() {
-        for lib in vec!["library", "lib", "LiBrArY", "LIB"] {
+        for lib in ["library", "lib", "LiBrArY", "LIB"] {
             let plib = ComponentType::from(lib);
             assert_eq!(plib, ComponentType::Library);
             assert_eq!(plib.to_string(), "Library");
         }
-        for app in vec!["application", "APP"] {
+        for app in ["application", "APP"] {
             let papp = ComponentType::from(app);
             assert_eq!(papp, ComponentType::Application);
             assert_eq!(papp.to_string(), "Application");
         }
-        for crypto in vec!["CrYpTo", "cryptography", "cryptography_library"] {
+        for crypto in ["CrYpTo", "cryptography", "cryptography_library"] {
             let pcrypto = ComponentType::from(crypto);
             assert_eq!(pcrypto, ComponentType::CryptographyLibrary);
             assert_eq!(pcrypto.to_string(), "CryptographyLibrary");
