@@ -142,7 +142,9 @@ async fn server(config: Config, database: ConnectionManager) -> Result<()> {
     };
 
     info!("Building Rocket");
-    let rocket = rocket(&config)
+
+    #[allow(unused)]
+    let mut rocket = rocket(&config)
         .manage(state)
         .attach(cors)
         // Limit
@@ -159,8 +161,12 @@ async fn server(config: Config, database: ConnectionManager) -> Result<()> {
         .mount("/api/dependencies", api::dependencies::routes())
         .mount("/api/security", api::security::routes())
         .mount("/api/user", api::user::routes())
-        .mount("/api/admin", api::admin::routes())
-        .mount("/api", api::websock::routes());
+        .mount("/api/admin", api::admin::routes());
+
+    #[cfg(feature = "websocket")]
+    {
+        rocket.mount("/api", api::websock::routes());
+    }
 
     if let Err(e) = rocket.launch().await {
         error!("Error launching Rocket: {}", e);

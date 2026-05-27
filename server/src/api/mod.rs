@@ -19,6 +19,7 @@ pub mod projects;
 pub mod security;
 pub mod snapshots;
 pub mod user;
+#[cfg(feature = "websocket")]
 pub mod websock;
 
 /// API Response Wrapper
