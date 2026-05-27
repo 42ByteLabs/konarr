@@ -2,10 +2,10 @@
 
 use konarr::KonarrError;
 use rocket::{
+    Request,
     http::Status,
     response::{self, Responder},
     serde::json::Json,
-    Request,
 };
 
 use crate::error::KonarrServerError;
