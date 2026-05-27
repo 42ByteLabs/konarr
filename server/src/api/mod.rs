@@ -2,10 +2,10 @@
 
 use konarr::KonarrError;
 use rocket::{
-    Request,
     http::Status,
     response::{self, Responder},
     serde::json::Json,
+    Request,
 };
 
 use crate::error::KonarrServerError;
@@ -19,6 +19,7 @@ pub mod projects;
 pub mod security;
 pub mod snapshots;
 pub mod user;
+#[cfg(feature = "websocket")]
 pub mod websock;
 
 /// API Response Wrapper

@@ -21,7 +21,7 @@ konarr = { path = "../", version = "0.5.0", features = ["models", "sbom", "tasks
 rocket = { version = "^0.5", features = ["serde_json", "json", "secrets"] }
 rocket_cors = "^0.6"
 rocket-governor = "0.2.0-rc.4"
-ws = { package = "rocket_ws", version = "0.1" }
+ws = { package = "rocket_ws", version = "0.1", optional = true }
 
 # Database
 geekorm = { version = "0.11", features = ["all", "libsql"] }
@@ -41,4 +41,7 @@ console = "0.16"
 thiserror = "2"
 semver = { version = "1.0", features = ["serde"] }
 uuid = { version = "1.19", features = ["serde", "v4"] }
+
+[features]
+websocket = ["konarr/websocket", "dep:ws"]
 

@@ -113,19 +113,25 @@ pub(crate) async fn get_projects(
     let mut query = models::Projects::query_select()
         .where_eq("status", ProjectStatus::Active)
         .order_by("created_at", QueryOrder::Desc);
+    let mut query_count = models::Projects::query_count().where_eq("status", ProjectStatus::Active);
 
     // Search by name
     if let Some(search) = search {
         log::info!("Searching for projects with name: '{}'", search);
         query = query.and().where_like("name", format!("%{}%", search));
+        query_count = query_count
+            .and()
+            .where_like("name", format!("%{}%", search));
     }
     // Filter by parents or top level projects
     if parents.unwrap_or(false) {
         log::info!("Get the parent projects");
         query = query.and().where_gt("parent", 0);
+        query_count = query_count.and().where_gt("parent", 0);
     } else if top.unwrap_or(false) {
         log::info!("Fetching the top level projects");
         query = query.and().where_eq("parent", 0);
+        query_count = query_count.and().where_eq("parent", 0);
     }
     // Filter by project type
     if let Some(prjtype) = select {
@@ -136,12 +142,15 @@ pub(crate) async fn get_projects(
             log::info!("Fetching by type: {}", prjtype);
             query = query
                 .and()
+                .where_eq("project_type", ProjectType::from(&prjtype));
+            query_count = query_count
+                .and()
                 .where_eq("project_type", ProjectType::from(prjtype));
         }
     }
 
-    // TODO: The total should be based on the filtered query
-    let total = models::ProjectStatus::count_active(&state.connection().await).await?;
+    let total =
+        models::Projects::row_count(&state.connection().await, query_count.build()?).await?;
     let page = pagination.page_with_total(total as u32);
 
     let mut projects =
