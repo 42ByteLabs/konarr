@@ -164,7 +164,9 @@ async fn server(config: Config, database: ConnectionManager) -> Result<()> {
         .mount("/api/admin", api::admin::routes());
 
     #[cfg(feature = "websocket")]
-    rocket.mount("/api", api::websock::routes());
+    {
+        rocket.mount("/api", api::websock::routes());
+    }
 
     if let Err(e) = rocket.launch().await {
         error!("Error launching Rocket: {}", e);

@@ -1,5 +1,6 @@
 //! # Random utilities
-// use rand::Ra
+//!
+//! Using `rand::random_range()` to create a random string
 
 pub(crate) const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                             abcdefghijklmnopqrstuvwxyz\
