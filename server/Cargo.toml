@@ -25,7 +25,7 @@ ws = { package = "rocket_ws", version = "0.1", optional = true }
 
 # Database
 geekorm = { version = "0.12", features = ["all", "libsql"] }
-libsql = "^0.9"
+libsql = "^0.10"
 
 tokio = { version = "1", features = ["full"] }
 
